@@ -1,6 +1,7 @@
 package bnmanager
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -12,22 +13,28 @@ import (
 	"github.com/go-gotop/kit/wsmanager/manager"
 )
 
+const (
+	bnSpotEndpoint    = "https://api.binance.com"
+	bnFuturesEndpoint = "https://fapi.binance.com"
+)
+
 var (
 	exitChan = make(chan struct{})
 )
 
 type listenKey struct {
-	key        string
-	createTime time.Time
+	key            string
+	createTime     time.Time
+	instrumentType exchange.InstrumentType
 }
 
 type BnManager struct {
-	client          *bnhttp.Client
-	exchange        exchange.Exchange
-	listenKeyExpire time.Duration
-	wsm             wsmanager.WebsocketManager
-	listenKeySets   map[string]listenKey // listenKey 集合
 	mux             sync.Mutex
+	client          *bnhttp.Client
+	wsm             wsmanager.WebsocketManager
+	listenKeyExpire time.Duration
+	listenKeySets   map[string]listenKey // listenKey 集合, 合约一个，现货一个
+
 }
 
 func NewBnManager(cli *bnhttp.Client) *BnManager {
@@ -47,7 +54,7 @@ func NewBnManager(cli *bnhttp.Client) *BnManager {
 }
 
 // 添加市场行情推送 websocket 连接
-func (b *BnManager) AddMarketWebSocket(aReq *websocket.WebsocketRequest, instrumentType wsmanager.InstrumentType) (string, error) {
+func (b *BnManager) AddMarketWebSocket(aReq *websocket.WebsocketRequest, instrumentType exchange.InstrumentType) (string, error) {
 	b.mux.Lock()
 	defer b.mux.Unlock()
 
@@ -65,7 +72,7 @@ func (b *BnManager) AddMarketWebSocket(aReq *websocket.WebsocketRequest, instrum
 }
 
 // 添加账户信息推送 websocket 连接
-func (b *BnManager) AddAccountWebSocket(aReq *websocket.WebsocketRequest, instrumentType wsmanager.InstrumentType) (string, error) {
+func (b *BnManager) AddAccountWebSocket(aReq *websocket.WebsocketRequest, instrumentType exchange.InstrumentType) (string, error) {
 	b.mux.Lock()
 	defer b.mux.Unlock()
 
@@ -74,7 +81,7 @@ func (b *BnManager) AddAccountWebSocket(aReq *websocket.WebsocketRequest, instru
 		PongHandler: pongHandler,
 	}
 	// 生成 listenKey
-	key, err := b.generateListenKey()
+	key, err := b.generateListenKey(instrumentType)
 	generateTime := time.Now()
 
 	if err != nil {
@@ -85,8 +92,9 @@ func (b *BnManager) AddAccountWebSocket(aReq *websocket.WebsocketRequest, instru
 	uniq, err := b.addWebsocket(aReq, conf)
 
 	b.listenKeySets[uniq] = listenKey{
-		key:        key,
-		createTime: generateTime,
+		key:            key,
+		createTime:     generateTime,
+		instrumentType: instrumentType,
 	}
 
 	if err != nil {
@@ -107,7 +115,7 @@ func (b *BnManager) CloseWebSocket(uniq string) error {
 
 	if lk, ok := b.listenKeySets[uniq]; ok {
 		delete(b.listenKeySets, uniq)
-		b.closeListenKey(lk.key)
+		b.closeListenKey(lk.instrumentType)
 	}
 	return nil
 }
@@ -126,24 +134,82 @@ func (b *BnManager) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanage
 	if err != nil {
 		return "", err
 	}
-
 	return uniq, nil
 }
 
-func (b *BnManager) generateListenKey(instrumentType wsmanager.InstrumentType) (string, error) {
-	// r := &bnhttp.Request{
-	// 	Method: "POST",
-	// 	Endpoint: "/api/v3/userDataStream",
-	// 	SecType: bnhttp.SecTypeAPIKey,
-	// }
-	return "", nil
+func (b *BnManager) generateListenKey(instrumentType exchange.InstrumentType) (string, error) {
+	r := &bnhttp.Request{
+		Method:  "POST",
+		SecType: bnhttp.SecTypeAPIKey,
+	}
+
+	if instrumentType == exchange.InstrumentTypeSpot {
+		r.Endpoint = "/api/v3/userDataStream"
+		b.client.SetApiEndpoint(bnSpotEndpoint)
+	} else if instrumentType == exchange.InstrumentTypeFutures {
+		r.Endpoint = "/fapi/v1/listenKey"
+		b.client.SetApiEndpoint(bnFuturesEndpoint)
+	}
+
+	data, err := b.client.CallAPI(context.Background(), r)
+
+	if err != nil {
+		return "", err
+	}
+
+	var res struct {
+		ListenKey string `json:"listenKey"`
+	}
+
+	err = bnhttp.Json.Unmarshal(data, &res)
+	if err != nil {
+		return "", err
+	}
+
+	return res.ListenKey, nil
 }
 
-func (b *BnManager) updateListenKey(instrumentType wsmanager.InstrumentType) error {
+func (b *BnManager) updateListenKey(instrumentType exchange.InstrumentType) error {
+	r := &bnhttp.Request{
+		Method:  "PUT",
+		SecType: bnhttp.SecTypeAPIKey,
+	}
+
+	if instrumentType == exchange.InstrumentTypeSpot {
+		r.Endpoint = "/api/v3/userDataStream"
+		b.client.SetApiEndpoint(bnSpotEndpoint)
+	} else if instrumentType == exchange.InstrumentTypeFutures {
+		r.Endpoint = "/fapi/v1/listenKey"
+		b.client.SetApiEndpoint(bnFuturesEndpoint)
+	}
+
+	_, err := b.client.CallAPI(context.Background(), r)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (b *BnManager) closeListenKey(instrumentType wsmanager.InstrumentType, key string) error {
+func (b *BnManager) closeListenKey(instrumentType exchange.InstrumentType) error {
+	r := &bnhttp.Request{
+		Method:  "DELETE",
+		SecType: bnhttp.SecTypeAPIKey,
+	}
+
+	if instrumentType == exchange.InstrumentTypeSpot {
+		r.Endpoint = "/api/v3/userDataStream"
+		b.client.SetApiEndpoint(bnSpotEndpoint)
+	} else if instrumentType == exchange.InstrumentTypeFutures {
+		r.Endpoint = "/fapi/v1/listenKey"
+		b.client.SetApiEndpoint(bnFuturesEndpoint)
+	}
+
+	_, err := b.client.CallAPI(context.Background(), r)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -157,7 +223,7 @@ func (b *BnManager) checkListenKey() {
 			b.mux.Lock()
 			for _, lk := range b.listenKeySets {
 				if time.Since(lk.createTime) >= b.listenKeyExpire-1*time.Minute {
-					b.updateListenKey()
+					b.updateListenKey(lk.instrumentType)
 				}
 			}
 			b.mux.Unlock()

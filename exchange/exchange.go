@@ -39,7 +39,7 @@ const (
 	MockExchange     = "MOCK"
 
 	InstrumentTypeSpot    InstrumentType = "SPOT"
-	InstrumentTypeFutures InstrumentType = "FUUTRES"
+	InstrumentTypeFutures InstrumentType = "FUTURES"
 
 	SymbolStatusTrading SymbolStatus = "SYMBOL_TRADING"
 	SymbolStatusSuspend SymbolStatus = "SYMBOL_SUSPEND"

@@ -291,6 +291,14 @@ func bnSpotSymbolsToSymbols(s *bnSpotExchangeInfo) ([]exchange.Symbol, error) {
 				return nil, err
 			}
 			priceFilter := v.PriceFilter()
+			minPrice, err := decimal.NewFromString(priceFilter.MinPrice)
+			if err != nil {
+				return nil, err
+			}
+			maxPrice, err := decimal.NewFromString(priceFilter.MaxPrice)
+			if err != nil {
+				return nil, err
+			}
 			pp, err := findFirstNonZeroDigitAfterDecimal(priceFilter.TickSize)
 			if err != nil {
 				return nil, err
@@ -304,6 +312,8 @@ func bnSpotSymbolsToSymbols(s *bnSpotExchangeInfo) ([]exchange.Symbol, error) {
 				SymbolName:     s,
 				MaxSize:        maxSize,
 				MinSize:        minSize,
+				MinPrice:       minPrice,
+				MaxPrice:       maxPrice,
 				SizePrecision:  int32(sp),
 				PricePrecision: int32(pp),
 				Status:         exchange.SymbolStatusTrading,
@@ -330,6 +340,14 @@ func bnFuturesSymbolsToSymbols(s *bnFuturesExchangeInfo) ([]exchange.Symbol, err
 				return nil, err
 			}
 			priceFilter := v.PriceFilter()
+			minPrice, err := decimal.NewFromString(priceFilter.MinPrice)
+			if err != nil {
+				return nil, err
+			}
+			maxPrice, err := decimal.NewFromString(priceFilter.MaxPrice)
+			if err != nil {
+				return nil, err
+			}
 			pp, err := findFirstNonZeroDigitAfterDecimal(priceFilter.TickSize)
 			if err != nil {
 				return nil, err
@@ -343,6 +361,8 @@ func bnFuturesSymbolsToSymbols(s *bnFuturesExchangeInfo) ([]exchange.Symbol, err
 				SymbolName:     s,
 				MaxSize:        maxSize,
 				MinSize:        minSize,
+				MinPrice:       minPrice,
+				MaxPrice:       maxPrice,
 				SizePrecision:  int32(sp),
 				PricePrecision: int32(pp),
 				Status:         exchange.SymbolStatusTrading,
