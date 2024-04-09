@@ -2,10 +2,12 @@ package bnmanager
 
 import (
 	"context"
+	"log"
 	"sync"
 	"time"
 
 	"github.com/go-gotop/kit/exchange"
+	"github.com/go-gotop/kit/limiter"
 	"github.com/go-gotop/kit/limiter/bnlimiter"
 	"github.com/go-gotop/kit/requests/bnhttp"
 	"github.com/go-gotop/kit/websocket"
@@ -13,38 +15,63 @@ import (
 	"github.com/go-gotop/kit/wsmanager/manager"
 )
 
-const (
-	bnSpotEndpoint    = "https://api.binance.com"
-	bnFuturesEndpoint = "https://fapi.binance.com"
-)
-
 var (
 	exitChan = make(chan struct{})
 )
 
 type listenKey struct {
+	uniq           string
 	key            string
 	createTime     time.Time
 	instrumentType exchange.InstrumentType
 }
 
 type BnManager struct {
-	mux             sync.Mutex
-	client          *bnhttp.Client
-	wsm             wsmanager.WebsocketManager
-	listenKeyExpire time.Duration
-	listenKeySets   map[string]listenKey // listenKey 集合, 合约一个，现货一个
-
+	mux                  sync.Mutex
+	client               *bnhttp.Client
+	wsm                  wsmanager.WebsocketManager
+	listenKeyExpire      time.Duration
+	listenKeySets        map[string]*listenKey // listenKey 集合, 合约一个，现货一个
+	checkListenKeyPeriod time.Duration
 }
 
-func NewBnManager(cli *bnhttp.Client) *BnManager {
-	limiter := bnlimiter.NewBinanceLimiter()
+func NewBnManager(cli *bnhttp.Client, opts ...Option) *BnManager {
+	o := &options{
+		maxConn:              1000,
+		maxConnDuration:      24*time.Hour - 5*time.Minute,
+		listenKeyExpire:      58 * time.Minute,
+		checkListenKeyPeriod: 1 * time.Minute,
+	}
+	for _, opt := range opts {
+		opt(o)
+	}
+	limiter := bnlimiter.NewBinanceLimiter(
+		limiter.WithPeriodLimitArray([]limiter.PeriodLimit{
+			{
+				WsConnectPeriod:         "5m",
+				WsConnectTimes:          300,
+				SpotCreateOrderPeriod:   "10s",
+				SpotCreateOrderTimes:    100,
+				FutureCreateOrderPeriod: "10s",
+				FutureCreateOrderTimes:  300,
+				SpotNormalRequestPeriod: "5m",
+				SpotNormalRequestTimes:  61000,
+			},
+			{
+				FutureCreateOrderPeriod: "1m",
+				FutureCreateOrderTimes:  1200,
+			},
+		}),
+	)
 	b := &BnManager{
-		client:          cli,
-		listenKeyExpire: 60 * time.Minute, // listenkey 60分钟过期，这里设置59分钟
+		mux:                  sync.Mutex{},
+		client:               cli,
+		listenKeyExpire:      o.listenKeyExpire, // listenkey 60分钟过期，这里设置59分钟
+		checkListenKeyPeriod: o.checkListenKeyPeriod,
+		listenKeySets:        make(map[string]*listenKey),
 		wsm: manager.NewManager(
-			manager.WithMaxConn(1000),
-			manager.WithMaxConnDuration(24*time.Hour-5*time.Minute),
+			manager.WithMaxConn(o.maxConn),
+			manager.WithMaxConnDuration(o.maxConnDuration),
 			manager.WithConnLimiter(limiter),
 			manager.WithCheckReConn(true),
 		),
@@ -91,7 +118,8 @@ func (b *BnManager) AddAccountWebSocket(aReq *websocket.WebsocketRequest, instru
 	aReq.Endpoint += "/ws/" + key
 	uniq, err := b.addWebsocket(aReq, conf)
 
-	b.listenKeySets[uniq] = listenKey{
+	b.listenKeySets[uniq] = &listenKey{
+		uniq:           uniq,
 		key:            key,
 		createTime:     generateTime,
 		instrumentType: instrumentType,
@@ -115,13 +143,17 @@ func (b *BnManager) CloseWebSocket(uniq string) error {
 
 	if lk, ok := b.listenKeySets[uniq]; ok {
 		delete(b.listenKeySets, uniq)
-		b.closeListenKey(lk.instrumentType)
+		b.closeListenKey(lk)
 	}
 	return nil
 }
 
 func (b *BnManager) GetWebSocket(uniq string) websocket.Websocket {
 	return b.wsm.GetWebsocket(uniq)
+}
+
+func (b *BnManager) IsConnected(uniq string) bool {
+	return b.wsm.IsConnected(uniq)
 }
 
 func (b *BnManager) Shutdown() {
@@ -145,15 +177,13 @@ func (b *BnManager) generateListenKey(instrumentType exchange.InstrumentType) (s
 
 	if instrumentType == exchange.InstrumentTypeSpot {
 		r.Endpoint = "/api/v3/userDataStream"
-		b.client.SetApiEndpoint(bnSpotEndpoint)
 	} else if instrumentType == exchange.InstrumentTypeFutures {
 		r.Endpoint = "/fapi/v1/listenKey"
-		b.client.SetApiEndpoint(bnFuturesEndpoint)
 	}
 
 	data, err := b.client.CallAPI(context.Background(), r)
-
 	if err != nil {
+		log.Printf("err: %v", err)
 		return "", err
 	}
 
@@ -169,67 +199,76 @@ func (b *BnManager) generateListenKey(instrumentType exchange.InstrumentType) (s
 	return res.ListenKey, nil
 }
 
-func (b *BnManager) updateListenKey(instrumentType exchange.InstrumentType) error {
+func (b *BnManager) updateListenKey(lk *listenKey) error {
+	log.Printf("update listen key")
 	r := &bnhttp.Request{
 		Method:  "PUT",
 		SecType: bnhttp.SecTypeAPIKey,
 	}
 
-	if instrumentType == exchange.InstrumentTypeSpot {
+	if lk.instrumentType == exchange.InstrumentTypeSpot {
 		r.Endpoint = "/api/v3/userDataStream"
-		b.client.SetApiEndpoint(bnSpotEndpoint)
-	} else if instrumentType == exchange.InstrumentTypeFutures {
+		r.SetFormParam("listenKey", lk.key)
+	} else if lk.instrumentType == exchange.InstrumentTypeFutures {
 		r.Endpoint = "/fapi/v1/listenKey"
-		b.client.SetApiEndpoint(bnFuturesEndpoint)
 	}
 
 	_, err := b.client.CallAPI(context.Background(), r)
 	if err != nil {
+		log.Printf("err: %v", err)
 		return err
 	}
+
+	// 更新listenKey createTime
+	lk.createTime = time.Now()
+	log.Printf("update listen key success %v", lk.createTime)
 
 	return nil
 }
 
-func (b *BnManager) closeListenKey(instrumentType exchange.InstrumentType) error {
+func (b *BnManager) closeListenKey(lk *listenKey) error {
 	r := &bnhttp.Request{
 		Method:  "DELETE",
 		SecType: bnhttp.SecTypeAPIKey,
 	}
 
-	if instrumentType == exchange.InstrumentTypeSpot {
+	if lk.instrumentType == exchange.InstrumentTypeSpot {
 		r.Endpoint = "/api/v3/userDataStream"
-		b.client.SetApiEndpoint(bnSpotEndpoint)
-	} else if instrumentType == exchange.InstrumentTypeFutures {
+	} else if lk.instrumentType == exchange.InstrumentTypeFutures {
 		r.Endpoint = "/fapi/v1/listenKey"
-		b.client.SetApiEndpoint(bnFuturesEndpoint)
 	}
 
 	_, err := b.client.CallAPI(context.Background(), r)
 	if err != nil {
 		return err
 	}
+
+	// 删除 listenKey
+	delete(b.listenKeySets, lk.uniq)
 
 	return nil
 }
 
 // 检查 listenKey 是否过期
 func (b *BnManager) checkListenKey() {
-	for {
-		select {
-		case <-exitChan:
-			return
-		default:
-			b.mux.Lock()
-			for _, lk := range b.listenKeySets {
-				if time.Since(lk.createTime) >= b.listenKeyExpire-1*time.Minute {
-					b.updateListenKey(lk.instrumentType)
+	go func() {
+		for {
+			select {
+			case <-exitChan:
+				return
+			default:
+				b.mux.Lock()
+				for _, lk := range b.listenKeySets {
+					if time.Since(lk.createTime) >= b.listenKeyExpire {
+						log.Printf("check listen key: %v", lk.createTime)
+						b.updateListenKey(lk)
+					}
 				}
+				b.mux.Unlock()
+				time.Sleep(b.checkListenKeyPeriod)
 			}
-			b.mux.Unlock()
-			time.Sleep(1 * time.Minute)
 		}
-	}
+	}()
 }
 
 func pingHandler(appData string, conn websocket.WebSocketConn) error {

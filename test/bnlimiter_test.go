@@ -1,4 +1,4 @@
-package bnlimiter
+package test
 
 import (
 	"log"

@@ -5,11 +5,11 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
+	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
-	"fmt"
-	"io"
 
 	"github.com/bitly/go-simplejson"
 	jsoniter "github.com/json-iterator/go"
@@ -57,14 +57,14 @@ func NewClient(ops ...Option) *Client {
 			panic(err)
 		}
 		tr := &http.Transport{
-			Proxy:           http.ProxyURL(proxy),
+			Proxy: http.ProxyURL(proxy),
 			// TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 		opts.httpClient.Transport = tr
 	}
 	return &Client{
 		userAgent: "GoTop",
-		opts: opts,
+		opts:      opts,
 	}
 }
 

@@ -1,6 +1,7 @@
 package gorilla
 
 import (
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -15,7 +16,6 @@ func NewGorillaWebsocket(conn websocket.WebSocketConn, config *websocket.Websock
 		closeCh: make(chan struct{}),
 		doneCh:  make(chan struct{}),
 	}
-	g.configure()
 	return g
 }
 
@@ -37,11 +37,13 @@ func (w *GorillaWebsocket) Connect(req *websocket.WebsocketRequest) error {
 	if err := w.conn.Dial(req.Endpoint, nil); err != nil {
 		return err
 	}
+	w.configure()
 	go w.readMessages(req)
 	w.req = req
 	w.isConnected = true
 	w.connectTime = time.Now()
 	w.messageCount = 0
+
 	return nil
 }
 
@@ -63,6 +65,7 @@ func (w *GorillaWebsocket) readMessages(req *websocket.WebsocketRequest) {
 			return
 		default:
 			_, message, err := w.conn.ReadMessage()
+			log.Printf("开始读取消息: %s", message)
 			if err != nil {
 				// 当遇到错误时，首先检查是否因为连接已关闭
 				select {

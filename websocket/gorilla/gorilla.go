@@ -8,7 +8,9 @@ import (
 )
 
 func NewGorillaWebSocketConn() *GorillaWebSocketConn {
-	return &GorillaWebSocketConn{}
+	return &GorillaWebSocketConn{
+
+	}
 }
 
 type GorillaWebSocketConn struct {

@@ -1,4 +1,4 @@
-package bnlimiter
+package limiter
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 )
 
 // 解析 period 字符串，返回 time.Duration 和 int
-func parsePeriod(period string) (time.Duration, int, error) {
+func ParsePeriod(period string) (time.Duration, int, error) {
 	var unit time.Duration
 
 	// 去除字符串中的空格
@@ -54,9 +54,10 @@ func parsePeriod(period string) (time.Duration, int, error) {
 // 动态添加所有限流器
 func SetAllLimiters(periodLimitArray []PeriodLimit) map[string][]*rate.Limiter {
 	limiterMap := make(map[string][]*rate.Limiter)
-	limiterMap[spotCreateOrderLimit] = SetLimiterMap(periodLimitArray, "spotCreateOrderPeriod", "spotCreateOrderTimes")
-	limiterMap[futureCreateOrderLimit] = SetLimiterMap(periodLimitArray, "futureCreateOrderPeriod", "futureCreateOrderTimes")
-	limiterMap[spotNormalRequestLimit] = SetLimiterMap(periodLimitArray, "spotNormalRequestPeriod", "spotNormalRequestTimes")
+	limiterMap[WsConnectLimit] = SetLimiterMap(periodLimitArray, "WsConnectPeriod", "WsConnectTimes")
+	limiterMap[SpotCreateOrderLimit] = SetLimiterMap(periodLimitArray, "SpotCreateOrderPeriod", "SpotCreateOrderTimes")
+	limiterMap[FutureCreateOrderLimit] = SetLimiterMap(periodLimitArray, "FutureCreateOrderPeriod", "FutureCreateOrderTimes")
+	limiterMap[SpotNormalRequestLimit] = SetLimiterMap(periodLimitArray, "SpotNormalRequestPeriod", "SpotNormalRequestTimes")
 	return limiterMap
 }
 
@@ -71,7 +72,7 @@ func SetLimiterMap(periodLimitArray []PeriodLimit, periodField string, timesFiel
 		periodFieldValue := plValue.FieldByName(periodField).String()
 		timesFieldValue := plValue.FieldByName(timesField).Int()
 		if periodFieldValue != "" && timesFieldValue != 0 {
-			timeUnit, duration, err := parsePeriod(periodFieldValue)
+			timeUnit, duration, err := ParsePeriod(periodFieldValue)
 			if err != nil {
 				log.Printf("parse period error: %v", err)
 				continue
@@ -87,7 +88,7 @@ func SetLimiterMap(periodLimitArray []PeriodLimit, periodField string, timesFiel
 	return limiterGroup
 }
 
-func limiterAllow(l []*rate.Limiter) bool {
+func LimiterAllow(l []*rate.Limiter) bool {
 	for _, limiter := range l {
 		if !limiter.AllowC() {
 			return false

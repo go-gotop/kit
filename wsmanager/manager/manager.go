@@ -2,6 +2,7 @@ package manager
 
 import (
 	"errors"
+	"log"
 	"sync"
 	"time"
 
@@ -68,12 +69,25 @@ func (b *Manager) AddWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.
 
 	conn := gorilla.NewGorillaWebSocketConn()
 
-	// ping pong 处理函数
 	pingh := func(appData string) error {
-		return conf.PingHandler(appData, conn)
+		return nil
 	}
+
 	pongh := func(appData string) error {
-		return conf.PongHandler(appData, conn)
+		return nil
+	}
+
+	// ping pong 处理函数
+	if conf != nil && conf.PingHandler == nil {
+		pingh = func(appData string) error {
+			return conf.PingHandler(appData, conn)
+		}
+	}
+
+	if conf != nil && conf.PongHandler == nil {
+		pongh = func(appData string) error {
+			return conf.PongHandler(appData, conn)
+		}
 	}
 
 	ws := gorilla.NewGorillaWebsocket(conn, &websocket.WebsocketConfig{
@@ -92,6 +106,9 @@ func (b *Manager) AddWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.
 }
 
 func (b *Manager) CloseWebsocket(uniq string) error {
+	b.mux.Lock()
+	defer b.mux.Unlock()
+
 	ws := b.wsSets[uniq]
 	if ws == nil {
 		return ErrWSNotFound
@@ -104,6 +121,14 @@ func (b *Manager) CloseWebsocket(uniq string) error {
 
 func (b *Manager) GetWebsocket(uniq string) websocket.Websocket {
 	return b.wsSets[uniq]
+}
+
+func (b *Manager) IsConnected(uniq string) bool {
+	ws := b.wsSets[uniq]
+	if ws == nil {
+		return false
+	}
+	return ws.IsConnected()
 }
 
 func (b *Manager) Reconnect(uniq string) error {
@@ -139,6 +164,7 @@ func (b *Manager) checkConnection() {
 				for _, ws := range b.wsSets {
 					if !ws.IsConnected() ||
 						ws.ConnectionDuration() > b.config.maxConnDuration {
+						log.Printf("reconnect websocket")
 						ws.Reconnect()
 					}
 				}

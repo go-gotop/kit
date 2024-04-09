@@ -9,41 +9,34 @@ import (
 )
 
 // map 保存的限流器
-const (
-	wsConnectLimit         = "ws_connect"
-	spotCreateOrderLimit   = "spot_create_order"
-	spotNormalRequestLimit = "spot_normal_request"
-	futureCreateOrderLimit = "future_create_order"
-)
-
-func NewBinanceLimiter(opts ...Option) *BinanceLimiter {
-	o := &options{
-		periodLimitArray: []PeriodLimit{
+func NewBinanceLimiter(opts ...limiter.Option) *BinanceLimiter {
+	o := &limiter.Options{
+		PeriodLimitArray: []limiter.PeriodLimit{
 			{
-				wsConnectPeriod:         "5m",
-				wsConnectTimes:          300,
-				spotCreateOrderPeriod:   "10s",
-				spotCreateOrderTimes:    100,
-				futureCreateOrderPeriod: "10s",
-				futureCreateOrderTimes:  300,
-				spotNormalRequestPeriod: "5m",
-				spotNormalRequestTimes:  61000,
+				WsConnectPeriod:         "5m",
+				WsConnectTimes:          300,
+				SpotCreateOrderPeriod:   "10s",
+				SpotCreateOrderTimes:    100,
+				FutureCreateOrderPeriod: "10s",
+				FutureCreateOrderTimes:  300,
+				SpotNormalRequestPeriod: "5m",
+				SpotNormalRequestTimes:  61000,
 			},
 			{
-				futureCreateOrderPeriod: "1m",
-				futureCreateOrderTimes:  1200,
+				FutureCreateOrderPeriod: "1m",
+				FutureCreateOrderTimes:  1200,
 			},
 		},
-		createSpotOrderWeights:   1,
-		createOcoOrderWeights:    2,
-		createFutureOrderWeights: 0,
-		cancelSpotOrderWeights:   1,
-		cancelFutureOrderWeights: 1,
-		searchSpotOrderWeights:   1,
-		searchFutureOrderWeights: 1,
-		updateSpotOrderWeights:   1,
-		updateFutureOrderWeights: 1,
-		otherWeights:             1,
+		CreateSpotOrderWeights:   1,
+		CreateOcoOrderWeights:    2,
+		CreateFutureOrderWeights: 0,
+		CancelSpotOrderWeights:   1,
+		CancelFutureOrderWeights: 1,
+		SearchSpotOrderWeights:   1,
+		SearchFutureOrderWeights: 1,
+		UpdateSpotOrderWeights:   1,
+		UpdateFutureOrderWeights: 1,
+		OtherWeights:             1,
 	}
 	for _, opt := range opts {
 		opt(o)
@@ -51,7 +44,7 @@ func NewBinanceLimiter(opts ...Option) *BinanceLimiter {
 
 	return &BinanceLimiter{
 		opts:       o,
-		limiterMap: SetAllLimiters(o.periodLimitArray),
+		limiterMap: limiter.SetAllLimiters(o.PeriodLimitArray),
 
 		spotWeight:          0,
 		futureWeight:        0,
@@ -63,16 +56,16 @@ func NewBinanceLimiter(opts ...Option) *BinanceLimiter {
 }
 
 type BinanceLimiter struct {
-	opts *options // 配置
+	opts *limiter.Options // 配置
 
 	limiterMap map[string][]*rate.Limiter // 限流器
 
-	spotWeight          WeightType // 现货权重统计
-	futureWeight        WeightType // 合约权重统计
-	spotLastResetTime   time.Time  // 现货上次重置时间
-	futureLastResetTime time.Time  // 合约上次重置时间
-	spotMutex           sync.Mutex // 互斥锁
-	futureMutex         sync.Mutex // 互斥锁
+	spotWeight          limiter.WeightType // 现货权重统计
+	futureWeight        limiter.WeightType // 合约权重统计
+	spotLastResetTime   time.Time          // 现货上次重置时间
+	futureLastResetTime time.Time          // 合约上次重置时间
+	spotMutex           sync.Mutex         // 互斥锁
+	futureMutex         sync.Mutex         // 互斥锁
 }
 
 type LimiterGroup struct {
@@ -82,7 +75,7 @@ type LimiterGroup struct {
 }
 
 func (b *BinanceLimiter) WsAllow() bool {
-	return limiterAllow(b.limiterMap[wsConnectLimit])
+	return limiter.LimiterAllow(b.limiterMap[limiter.WsConnectLimit])
 }
 
 // SpotAllow checks if the request is allowed for spot trading
@@ -121,51 +114,51 @@ func (b *BinanceLimiter) FutureAllow(t limiter.LimitType) bool {
 
 // 允许创建现货oco订单
 func (b *BinanceLimiter) allowCreateOcoOrder() bool {
-	return limiterAllow(b.limiterMap[spotCreateOrderLimit]) && b.allowSpotWeights(b.opts.createOcoOrderWeights)
+	return limiter.LimiterAllow(b.limiterMap[limiter.SpotCreateOrderLimit]) && b.allowSpotWeights(b.opts.CreateOcoOrderWeights)
 }
 
 // 允许创建现货订单
 func (b *BinanceLimiter) allowCreateSpotOrder() bool {
-	return limiterAllow(b.limiterMap[spotCreateOrderLimit]) && b.allowSpotWeights(b.opts.createSpotOrderWeights)
+	return limiter.LimiterAllow(b.limiterMap[limiter.SpotCreateOrderLimit]) && b.allowSpotWeights(b.opts.CreateSpotOrderWeights)
 }
 
 // 允许取消现货订单
 func (b *BinanceLimiter) allowCancelSpotOrder() bool {
-	return limiterAllow(b.limiterMap[spotNormalRequestLimit]) && b.allowSpotWeights(b.opts.cancelSpotOrderWeights)
+	return limiter.LimiterAllow(b.limiterMap[limiter.SpotNormalRequestLimit]) && b.allowSpotWeights(b.opts.CancelSpotOrderWeights)
 }
 
 // 允许查询现货订单
 func (b *BinanceLimiter) allowSearchSpotOrder() bool {
-	return limiterAllow(b.limiterMap[spotNormalRequestLimit]) && b.allowSpotWeights(b.opts.searchSpotOrderWeights)
+	return limiter.LimiterAllow(b.limiterMap[limiter.SpotNormalRequestLimit]) && b.allowSpotWeights(b.opts.SearchSpotOrderWeights)
 }
 
 // 允许现货其他普通请求
 func (b *BinanceLimiter) allowSpotNormalRequest() bool {
-	return limiterAllow(b.limiterMap[spotNormalRequestLimit]) && b.allowSpotWeights(b.opts.otherWeights)
+	return limiter.LimiterAllow(b.limiterMap[limiter.SpotNormalRequestLimit]) && b.allowSpotWeights(b.opts.OtherWeights)
 }
 
 // 允许创建合约订单
 func (b *BinanceLimiter) allowCreateFutureOrder() bool {
-	return limiterAllow(b.limiterMap[futureCreateOrderLimit]) && b.allowFutureWeights(b.opts.createFutureOrderWeights)
+	return limiter.LimiterAllow(b.limiterMap[limiter.FutureCreateOrderLimit]) && b.allowFutureWeights(b.opts.CreateFutureOrderWeights)
 }
 
 // 允许取消合约订单
 func (b *BinanceLimiter) allCancelFutureOrder() bool {
-	return b.allowFutureWeights(b.opts.cancelFutureOrderWeights)
+	return b.allowFutureWeights(b.opts.CancelFutureOrderWeights)
 }
 
 // 允许查询合约订单
 func (b *BinanceLimiter) allSearchFutureOrder() bool {
-	return b.allowFutureWeights(b.opts.searchFutureOrderWeights)
+	return b.allowFutureWeights(b.opts.SearchFutureOrderWeights)
 }
 
 // 允许合约其他普通请求
 func (b *BinanceLimiter) allFutureNormalRequest() bool {
-	return b.allowFutureWeights(b.opts.otherWeights)
+	return b.allowFutureWeights(b.opts.OtherWeights)
 }
 
 // 现货权重统计与判断
-func (b *BinanceLimiter) allowSpotWeights(wt WeightType) bool {
+func (b *BinanceLimiter) allowSpotWeights(wt limiter.WeightType) bool {
 	b.spotMutex.Lock()
 	defer b.spotMutex.Unlock()
 
@@ -187,7 +180,7 @@ func (b *BinanceLimiter) allowSpotWeights(wt WeightType) bool {
 }
 
 // 合约权重统计与判断
-func (b *BinanceLimiter) allowFutureWeights(wt WeightType) bool {
+func (b *BinanceLimiter) allowFutureWeights(wt limiter.WeightType) bool {
 	b.futureMutex.Lock()
 	defer b.futureMutex.Unlock()
 

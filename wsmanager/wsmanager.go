@@ -15,6 +15,7 @@ type WebsocketManager interface {
 	AddWebsocket(req *websocket.WebsocketRequest, conf *ExchangeWebsocketConfig) (string, error)
 	CloseWebsocket(uniq string) error
 	GetWebsocket(uniq string) websocket.Websocket
+	IsConnected(uniq string) bool
 	Reconnect(uniq string) error
 	Shutdown()
 }
@@ -25,5 +26,6 @@ type ExchangeWsManager interface {
 	AddAccountWebSocket(req *websocket.WebsocketRequest, instrumentType exchange.InstrumentType) (string, error)
 	CloseWeSocket(uniq string) error
 	GetWebsocket(uniq string) websocket.Websocket
+	IsConnected(uniq string) bool
 	Shutdown()
 }

@@ -3,12 +3,12 @@ package limiter
 type LimitType string
 
 const (
-	CreateOcoOrderLimit LimitType = "create_oco_order" // 创建现货oco订单
-	CreateOrderLimit    LimitType = "create_order"     // 创建订单
-	UpdateOrderLimit    LimitType = "update_order"     // 更新订单
-	CancelOrderLimit    LimitType = "cancel_order"     // 取消订单
-	SearchOrderLimit    LimitType = "search_order"     // 查询订单
-	NormalRequestLimit  LimitType = "normal_request"   // 普通请求
+	CreateOcoOrderLimit LimitType = "CREATE_OCO_ORDER_LIMIT" // 创建现货oco订单
+	CreateOrderLimit    LimitType = "CREATE_ORDER"           // 创建订单
+	UpdateOrderLimit    LimitType = "UPDATE_ORDER"           // 更新订单
+	CancelOrderLimit    LimitType = "CANCEL_ORDER"           // 取消订单
+	SearchOrderLimit    LimitType = "SEARCH_ORDER"           // 查询订单
+	NormalRequestLimit  LimitType = "NORMAL_REQUEST"         // 普通请求
 )
 
 type Limiter interface {

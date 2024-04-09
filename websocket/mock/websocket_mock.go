@@ -10,7 +10,7 @@
 package mock_websocket
 
 import (
-	websocket "gotop-frame/pkg/websocket"
+	websocket "github.com/go-gotop/kit/websocket"
 	http "net/http"
 	reflect "reflect"
 	time "time"
