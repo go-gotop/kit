@@ -2,7 +2,6 @@ package manager
 
 import (
 	"errors"
-	"log"
 	"sync"
 	"time"
 
@@ -164,7 +163,6 @@ func (b *Manager) checkConnection() {
 				for _, ws := range b.wsSets {
 					if !ws.IsConnected() ||
 						ws.ConnectionDuration() > b.config.maxConnDuration {
-						log.Printf("reconnect websocket")
 						ws.Reconnect()
 					}
 				}

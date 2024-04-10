@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/mock/gomock"
 
-	"gotop-frame/pkg/websocket"
-	mock_websocket "gotop-frame/pkg/websocket/mock"
+	"github.com/go-gotop/kit/websocket"
+	mock_websocket "github.com/go-gotop/kit/websocket/mock"
 )
 
 func TestSuite(t *testing.T) {
