@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 
-	"github.com/go-gotop/kit/broker/tracing"
+	"github.com/go-gotop/kit/tracing"
 	"github.com/go-kratos/kratos/v2/encoding"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
