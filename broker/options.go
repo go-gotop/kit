@@ -3,16 +3,21 @@ package broker
 import (
 	"context"
 	"crypto/tls"
+
+	"github.com/go-gotop/kit/broker/tracing"
+	"github.com/go-kratos/kratos/v2/encoding"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
-// var (
-// 	DefaultCodec encoding.Codec = nil
-// )
+var (
+	DefaultCodec encoding.Codec = nil
+)
 
 type Options struct {
 	Addrs []string
 
-	// Codec encoding.Codec
+	Codec encoding.Codec
 
 	ErrorHandler Handler
 
@@ -21,7 +26,7 @@ type Options struct {
 
 	Context context.Context
 
-	// Tracings []tracing.Option
+	Tracings []tracing.Option
 }
 
 type Option func(*Options)
@@ -35,7 +40,7 @@ func (o *Options) Apply(opts ...Option) {
 func NewOptions() Options {
 	opt := Options{
 		Addrs: []string{},
-		// Codec: DefaultCodec,
+		Codec: DefaultCodec,
 
 		ErrorHandler: nil,
 
@@ -44,7 +49,7 @@ func NewOptions() Options {
 
 		Context: context.Background(),
 
-		// Tracings: []tracing.Option{},
+		Tracings: []tracing.Option{},
 	}
 
 	return opt
@@ -81,11 +86,11 @@ func WithAddress(addressList ...string) Option {
 }
 
 // WithCodec set codec, support: json, proto.
-// func WithCodec(name string) Option {
-// 	return func(o *Options) {
-// 		o.Codec = encoding.GetCodec(name)
-// 	}
-// }
+func WithCodec(name string) Option {
+	return func(o *Options) {
+		o.Codec = encoding.GetCodec(name)
+	}
+}
 
 func WithErrorHandler(handler Handler) Option {
 	return func(o *Options) {
@@ -108,29 +113,29 @@ func WithTLSConfig(config *tls.Config) Option {
 	}
 }
 
-// func WithTracerProvider(provider trace.TracerProvider, tracerName string) Option {
-// 	return func(opt *Options) {
-// 		opt.Tracings = append(opt.Tracings, tracing.WithTracerProvider(provider))
-// 	}
-// }
+func WithTracerProvider(provider trace.TracerProvider, tracerName string) Option {
+	return func(opt *Options) {
+		opt.Tracings = append(opt.Tracings, tracing.WithTracerProvider(provider))
+	}
+}
 
-// func WithPropagator(propagators propagation.TextMapPropagator) Option {
-// 	return func(opt *Options) {
-// 		opt.Tracings = append(opt.Tracings, tracing.WithPropagator(propagators))
-// 	}
-// }
+func WithPropagator(propagators propagation.TextMapPropagator) Option {
+	return func(opt *Options) {
+		opt.Tracings = append(opt.Tracings, tracing.WithPropagator(propagators))
+	}
+}
 
-// func WithGlobalTracerProvider() Option {
-// 	return func(opt *Options) {
-// 		opt.Tracings = append(opt.Tracings, tracing.WithGlobalTracerProvider())
-// 	}
-// }
+func WithGlobalTracerProvider() Option {
+	return func(opt *Options) {
+		opt.Tracings = append(opt.Tracings, tracing.WithGlobalTracerProvider())
+	}
+}
 
-// func WithGlobalPropagator() Option {
-// 	return func(opt *Options) {
-// 		opt.Tracings = append(opt.Tracings, tracing.WithGlobalPropagator())
-// 	}
-// }
+func WithGlobalPropagator() Option {
+	return func(opt *Options) {
+		opt.Tracings = append(opt.Tracings, tracing.WithGlobalPropagator())
+	}
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 
