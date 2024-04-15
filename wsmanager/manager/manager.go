@@ -11,8 +11,6 @@ import (
 )
 
 var (
-	// 退出通道
-	exitChan = make(chan struct{})
 	// 错误定义
 	ErrMaxConnReached = errors.New("max connection reached")
 	ErrWSNotFound     = errors.New("websocket not found")
@@ -20,6 +18,7 @@ var (
 )
 
 type Manager struct {
+	exitChan 	   chan struct{}                 // 退出通道
 	config           *connConfig                    // 连接配置
 	currentConnCount int                            // 当前连接数
 	mux              sync.Mutex                     // 互斥锁
@@ -39,6 +38,7 @@ func NewManager(opts ...ConnConfig) *Manager {
 	}
 
 	m := &Manager{
+		exitChan:         make(chan struct{}),
 		config:           config,
 		currentConnCount: 0,
 		mux:              sync.Mutex{},
@@ -52,7 +52,7 @@ func NewManager(opts ...ConnConfig) *Manager {
 	return m
 }
 
-func (b *Manager) AddWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.ExchangeWebsocketConfig) (string, error) {
+func (b *Manager) AddWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.WebsocketConfig) (string, error) {
 	b.mux.Lock()
 	defer b.mux.Unlock()
 
@@ -143,7 +143,7 @@ func (b *Manager) Reconnect(uniq string) error {
 }
 
 func (b *Manager) Shutdown() {
-	close(exitChan)
+	close(b.exitChan)
 	b.mux.Lock()
 	defer b.mux.Unlock()
 	for _, ws := range b.wsSets {
@@ -156,7 +156,7 @@ func (b *Manager) checkConnection() {
 	go func() {
 		for {
 			select {
-			case <-exitChan:
+			case <-b.exitChan:
 				return
 			default:
 				b.mux.Lock()

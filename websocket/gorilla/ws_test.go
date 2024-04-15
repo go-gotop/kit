@@ -43,10 +43,10 @@ func (w *websocketTestSuite) TestConnect() {
 	w.ws.Connect(&websocket.WebsocketRequest{
 		Endpoint: "test",
 		ID:       "test",
-		MessageHandler: func(message []byte) error {
-			return nil
+		MessageHandler: func(message []byte) {
+			return
 		},
-		ErrorHandler: func(id string, err error) {},
+		ErrorHandler: func(err error) {},
 	})
 
 	<-done // 等待结束信号

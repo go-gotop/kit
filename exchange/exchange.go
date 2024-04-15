@@ -153,6 +153,38 @@ type Symbol struct {
 	Instrument     InstrumentType
 }
 
+type TradeEvent struct {
+	TradeID  uint64
+	Symbol   string
+	TradedAt int64
+	Side     bool
+	Size     decimal.Decimal
+	Price    decimal.Decimal
+}
+
+type OrderEvent struct {
+	Exchange          string
+	Symbol            string
+	ClientOrderID     string
+	ExecutionType     string
+	Status            string
+	OrderID           string
+	FeeAsset          string
+	TransactionTime   int64
+	IsMaker           bool
+	Side              SideType
+	Type              OrderType
+	Instrument        InstrumentType
+	PositionSide      PositionSide
+	Volume            decimal.Decimal
+	Price             decimal.Decimal
+	LatestVolume      decimal.Decimal
+	FilledVolume      decimal.Decimal
+	LatestPrice       decimal.Decimal
+	FeeCost           decimal.Decimal
+	AvgPrice 		  decimal.Decimal
+}
+
 type Exchange interface {
 	Name() string
 	Assets(ctx context.Context, it InstrumentType) ([]Asset, error)

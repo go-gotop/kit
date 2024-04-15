@@ -28,14 +28,17 @@ type WebsocketRequest struct {
 	ID string
 
 	// MessageHandler 是Websocket消息处理函数
-	MessageHandler func([]byte) error
+	MessageHandler func([]byte)
 
 	// ErrorHandler 是Websocket错误处理函数
-	ErrorHandler func(id string, err error)
+	ErrorHandler func(err error)
 }
 
 // Websocket 接口定义了基本的连接管理操作
 type Websocket interface {
+	// ID 方法返回Websocket连接的唯一标识符
+	ID() string
+
 	// Connect 方法用于建立Websocket连接
 	// req 参数是连接请求的相关信息
 	Connect(req *WebsocketRequest) error

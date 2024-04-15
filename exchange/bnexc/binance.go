@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/shopspring/decimal"
-
 	"github.com/go-gotop/kit/exchange"
 	"github.com/go-gotop/kit/requests/bnhttp"
 )
@@ -15,8 +14,6 @@ import (
 const (
 	bnSpotEndpoint      = "https://api.binance.com"
 	bnFuturesEndpoint   = "https://fapi.binance.com"
-	bnSpotWsEndpoint    = "wss://stream.binance.com:9443/ws"
-	bnFuturesWsEndpoint = "wss://fstream.binance.com/ws"
 )
 
 func NewBinance(cli *bnhttp.Client) exchange.Exchange {
@@ -280,7 +277,7 @@ func bnSpotAssetsToAssets(s *bnSpotAccount) ([]exchange.Asset, error) {
 func bnSpotSymbolsToSymbols(s *bnSpotExchangeInfo) ([]exchange.Symbol, error) {
 	result := make([]exchange.Symbol, 0)
 	for _, v := range s.Symbols {
-		if s, exist := reverseBnSymbols[v.Symbol]; exist {
+		if s, exist := exchange.ReverseBinanceSymbols[v.Symbol]; exist {
 			lotSizeFilter := v.LotSizeFilter()
 			maxSize, err := decimal.NewFromString(lotSizeFilter.MaxQuantity)
 			if err != nil {
@@ -329,7 +326,7 @@ func bnSpotSymbolsToSymbols(s *bnSpotExchangeInfo) ([]exchange.Symbol, error) {
 func bnFuturesSymbolsToSymbols(s *bnFuturesExchangeInfo) ([]exchange.Symbol, error) {
 	result := make([]exchange.Symbol, 0)
 	for _, v := range s.Symbols {
-		if s, exist := reverseBnSymbols[v.Symbol]; exist {
+		if s, exist := exchange.ReverseBinanceSymbols[v.Symbol]; exist {
 			lotSizeFilter := v.LotSizeFilter()
 			maxSize, err := decimal.NewFromString(lotSizeFilter.MaxQuantity)
 			if err != nil {

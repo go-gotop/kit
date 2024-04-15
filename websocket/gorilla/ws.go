@@ -71,7 +71,7 @@ func (w *GorillaWebsocket) readMessages(req *websocket.WebsocketRequest) {
 				select {
 				case <-w.closeCh: // 如果已经收到关闭信号，则不处理错误
 				default:
-					req.ErrorHandler(req.ID, err) // 否则，处理错误
+					req.ErrorHandler(err) // 否则，处理错误
 				}
 				return // 退出循环
 			}
@@ -79,6 +79,10 @@ func (w *GorillaWebsocket) readMessages(req *websocket.WebsocketRequest) {
 			atomic.AddUint64(&w.messageCount, 1)
 		}
 	}
+}
+
+func (w *GorillaWebsocket) ID() string {
+	return w.req.ID
 }
 
 func (w *GorillaWebsocket) Disconnect() error {
