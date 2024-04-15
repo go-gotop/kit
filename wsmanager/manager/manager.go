@@ -18,7 +18,7 @@ var (
 )
 
 type Manager struct {
-	exitChan 	   chan struct{}                 // 退出通道
+	exitChan         chan struct{}                  // 退出通道
 	config           *connConfig                    // 连接配置
 	currentConnCount int                            // 当前连接数
 	mux              sync.Mutex                     // 互斥锁
@@ -27,7 +27,7 @@ type Manager struct {
 
 func NewManager(opts ...ConnConfig) *Manager {
 	config := &connConfig{
-		maxConn:         100,
+		maxConn:         1000,
 		maxConnDuration: 24 * time.Hour,
 		connLimiter:     nil,
 		isCheckReConn:   true,
@@ -122,6 +122,10 @@ func (b *Manager) GetWebsocket(uniq string) websocket.Websocket {
 	return b.wsSets[uniq]
 }
 
+func (b *Manager) GetWebsockets() map[string]websocket.Websocket {
+	return b.wsSets
+}
+
 func (b *Manager) IsConnected(uniq string) bool {
 	ws := b.wsSets[uniq]
 	if ws == nil {
@@ -142,14 +146,24 @@ func (b *Manager) Reconnect(uniq string) error {
 	return nil
 }
 
-func (b *Manager) Shutdown() {
+func (b *Manager) Shutdown() error {
 	close(b.exitChan)
 	b.mux.Lock()
 	defer b.mux.Unlock()
+
+	var err error
+
 	for _, ws := range b.wsSets {
-		ws.Disconnect()
+		err = ws.Disconnect()
+		if err == nil {
+			b.currentConnCount--
+		}
 	}
-	b.currentConnCount = 0
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (b *Manager) checkConnection() {

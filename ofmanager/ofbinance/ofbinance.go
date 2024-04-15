@@ -1,18 +1,15 @@
-package bnmanager
+package ofbinance
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-gotop/kit/exchange"
-	"github.com/go-gotop/kit/excmanager"
 	"github.com/go-gotop/kit/limiter"
-	"github.com/go-gotop/kit/limiter/bnlimiter"
+	"github.com/go-gotop/kit/ofmanager"
 	"github.com/go-gotop/kit/requests/bnhttp"
 	"github.com/go-gotop/kit/websocket"
 	"github.com/go-gotop/kit/wsmanager"
@@ -26,6 +23,32 @@ const (
 	bnFuturesWsEndpoint = "wss://fstream.binance.com/ws"
 )
 
+func NewBinanceOrderFeed(cli *bnhttp.Client, limiter limiter.Limiter, opts ...Option) ofmanager.OrderFeedManager {
+	// 默认配置
+	o := &options{
+		logger:               log.NewHelper(log.DefaultLogger),
+		maxConnDuration:      24*time.Hour - 5*time.Minute,
+		listenKeyExpire:      58 * time.Minute,
+		checkListenKeyPeriod: 1 * time.Minute,
+	}
+
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	return &of{
+		name:          "Binance",
+		opts:          o,
+		client:        cli,
+		listenKeySets: make(map[string]*listenKey),
+		wsm: manager.NewManager(
+			manager.WithMaxConnDuration(o.maxConnDuration),
+			manager.WithConnLimiter(limiter),
+		),
+		exitChan: make(chan struct{}),
+	}
+}
+
 type listenKey struct {
 	uniq           string
 	key            string
@@ -33,117 +56,33 @@ type listenKey struct {
 	instrumentType exchange.InstrumentType
 }
 
-type BnManager struct {
-	opts          *options
+type of struct {
 	exitChan      chan struct{}
-	mux           sync.Mutex
+	name          string
+	opts          *options
 	client        *bnhttp.Client
 	wsm           wsmanager.WebsocketManager
 	listenKeySets map[string]*listenKey // listenKey 集合, 合约一个，现货一个
+	mux           sync.Mutex
 }
 
-func NewBnManager(cli *bnhttp.Client, opts ...Option) *BnManager {
-	o := &options{
-		logger:               log.NewHelper(log.DefaultLogger),
-		maxConn:              1000,
-		maxConnDuration:      24*time.Hour - 5*time.Minute,
-		listenKeyExpire:      58 * time.Minute,
-		checkListenKeyPeriod: 1 * time.Minute,
-	}
-	for _, opt := range opts {
-		opt(o)
-	}
-	limiter := bnlimiter.NewBinanceLimiter(
-		limiter.WithPeriodLimitArray([]limiter.PeriodLimit{
-			{
-				WsConnectPeriod:         "5m",
-				WsConnectTimes:          300,
-				SpotCreateOrderPeriod:   "10s",
-				SpotCreateOrderTimes:    100,
-				FutureCreateOrderPeriod: "10s",
-				FutureCreateOrderTimes:  300,
-				SpotNormalRequestPeriod: "5m",
-				SpotNormalRequestTimes:  61000,
-			},
-			{
-				FutureCreateOrderPeriod: "1m",
-				FutureCreateOrderTimes:  1200,
-			},
-		}),
-	)
-	b := &BnManager{
-		opts:          o,
-		exitChan:      make(chan struct{}),
-		client:        cli,
-		listenKeySets: make(map[string]*listenKey),
-		wsm: manager.NewManager(
-			manager.WithMaxConn(o.maxConn),
-			manager.WithMaxConnDuration(o.maxConnDuration),
-			manager.WithConnLimiter(limiter),
-			manager.WithCheckReConn(true),
-		),
-	}
-	return b
+func (o *of) Name() string {
+	return o.name
 }
 
-// 添加市场行情推送 websocket 连接
-func (b *BnManager) DataFeed(req *excmanager.DataFeedRequest) error {
-	var (
-		endpoint string
-		symbol   string
-		fn       func(message []byte) (*exchange.TradeEvent, error)
-	)
-	b.mux.Lock()
-	defer b.mux.Unlock()
-
-	symbol = strings.ToLower(exchange.ReverseBinanceSymbols[req.Symbol])
-	conf := &wsmanager.WebsocketConfig{
-		PingHandler: pingHandler,
-		PongHandler: pongHandler,
-	}
-	switch req.Instrument {
-	case exchange.InstrumentTypeSpot:
-		endpoint = fmt.Sprintf("%s/%s@trade", bnSpotWsEndpoint, symbol)
-		fn = spotToTradeEvent
-	case exchange.InstrumentTypeFutures:
-		endpoint = fmt.Sprintf("%s/%s@aggTrade", bnFuturesWsEndpoint, symbol)
-		fn = futuresToTradeEvent
-	}
-	wsHandler := func(message []byte) {
-		te, err := fn(message)
-		if err != nil {
-			req.ErrorHandler(err)
-			return
-		}
-		req.Event(te)
-	}
-	_, err := b.addWebsocket(&websocket.WebsocketRequest{
-		ID:             req.ID,
-		Endpoint:       endpoint,
-		MessageHandler: wsHandler,
-		ErrorHandler:   req.ErrorHandler,
-	}, conf)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// 添加账户信息推送 websocket 连接
-func (b *BnManager) OrderFeed(req *excmanager.OrderFeedRequest) (string, error) {
-	b.mux.Lock()
-	defer b.mux.Unlock()
+func (o *of) AddOrderFeed(req *ofmanager.OrderFeedRequest) error {
+	o.mux.Lock()
+	defer o.mux.Unlock()
 
 	conf := &wsmanager.WebsocketConfig{
 		PingHandler: pingHandler,
 		PongHandler: pongHandler,
 	}
 	// 生成 listenKey
-	key, err := b.generateListenKey(req.Instrument)
+	key, err := o.generateListenKey(req.Instrument)
 
 	if err != nil {
-		return "", err
+		return err
 	}
 	generateTime := time.Now()
 	// 拼接 listenKey 到请求地址
@@ -154,7 +93,7 @@ func (b *BnManager) OrderFeed(req *excmanager.OrderFeedRequest) (string, error) 
 	wsHandler := func(message []byte) {
 		j, err := bnhttp.NewJSON(message)
 		if err != nil {
-			b.opts.logger.Error("order new json error", err)
+			o.opts.logger.Error("order new json error", err)
 			return
 		}
 		switch j.Get("e").MustString() {
@@ -162,12 +101,12 @@ func (b *BnManager) OrderFeed(req *excmanager.OrderFeedRequest) (string, error) 
 			event := &bnSpotWsOrderUpdateEvent{}
 			err = bnhttp.Json.Unmarshal(message, event)
 			if err != nil {
-				b.opts.logger.Error("order unmarshal error", err)
+				o.opts.logger.Error("order unmarshal error", err)
 				return
 			}
 			oe, err := swoueToOrderEvent(event)
 			if err != nil {
-				b.opts.logger.Error("order to order event error", err)
+				o.opts.logger.Error("order to order event error", err)
 				return
 			}
 			req.Event(oe)
@@ -175,24 +114,24 @@ func (b *BnManager) OrderFeed(req *excmanager.OrderFeedRequest) (string, error) 
 			event := &bnFuturesWsUserDataEvent{}
 			err = bnhttp.Json.Unmarshal(message, event)
 			if err != nil {
-				b.opts.logger.Error("order unmarshal error", err)
+				o.opts.logger.Error("order unmarshal error", err)
 				return
 			}
 			oe, err := fwoueToOrderEvent(&event.OrderTradeUpdate)
 			if err != nil {
-				b.opts.logger.Error("order to order event error", err)
+				o.opts.logger.Error("order to order event error", err)
 				return
 			}
 			req.Event(oe)
 		}
 	}
-	uniq, err := b.addWebsocket(&websocket.WebsocketRequest{
+	uniq, err := o.addWebsocket(&websocket.WebsocketRequest{
 		Endpoint:       endpoint,
 		ID:             fmt.Sprintf("binance.order.%s", req.Instrument),
 		MessageHandler: wsHandler,
 	}, conf)
 
-	b.listenKeySets[uniq] = &listenKey{
+	o.listenKeySets[uniq] = &listenKey{
 		uniq:           uniq,
 		key:            key,
 		createTime:     generateTime,
@@ -200,50 +139,74 @@ func (b *BnManager) OrderFeed(req *excmanager.OrderFeedRequest) (string, error) 
 	}
 
 	if err != nil {
-		return "", err
-	}
-
-	return uniq, nil
-}
-
-// 关闭websocket，删除 listenKey
-func (b *BnManager) CloseWebSocket(uniq string) error {
-	err := b.wsm.CloseWebsocket(uniq)
-	if err != nil {
 		return err
 	}
-	b.mux.Lock()
-	defer b.mux.Unlock()
 
-	if lk, ok := b.listenKeySets[uniq]; ok {
-		delete(b.listenKeySets, uniq)
-		b.closeListenKey(lk)
-	}
 	return nil
 }
 
-func (b *BnManager) GetWebSocket(uniq string) websocket.Websocket {
-	return b.wsm.GetWebsocket(uniq)
+func (o *of) CloseOrderFeed(id string) error {
+	o.mux.Lock()
+	defer o.mux.Unlock()
+
+	lk, ok := o.listenKeySets[id]
+	if !ok {
+		return fmt.Errorf("listenKey not found")
+	}
+
+	err := o.closeListenKey(lk)
+	if err != nil {
+		return err
+	}
+
+	err = o.wsm.CloseWebsocket(id)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (b *BnManager) IsConnected(uniq string) bool {
-	return b.wsm.IsConnected(uniq)
+func (o *of) OrderFeedList() []string {
+	o.mux.Lock()
+	defer o.mux.Unlock()
+
+	list := make([]string, 0, len(o.listenKeySets))
+	for k := range o.listenKeySets {
+		list = append(list, k)
+	}
+	return list
 }
 
-func (b *BnManager) Shutdown() {
-	b.wsm.Shutdown()
-	close(b.exitChan)
+func (o *of) Shutdown() error {
+	close(o.exitChan)
+	o.mux.Lock()
+	defer o.mux.Unlock()
+
+	for _, lk := range o.listenKeySets {
+		err := o.closeListenKey(lk)
+		if err != nil {
+			return err
+		}
+	}
+
+	err := o.wsm.Shutdown()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (b *BnManager) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.WebsocketConfig) (string, error) {
-	uniq, err := b.wsm.AddWebsocket(req, conf)
+func (o *of) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.WebsocketConfig) (string, error) {
+	uniq, err := o.wsm.AddWebsocket(req, conf)
 	if err != nil {
 		return "", err
 	}
 	return uniq, nil
 }
 
-func (b *BnManager) generateListenKey(instrumentType exchange.InstrumentType) (string, error) {
+func (o *of) generateListenKey(instrumentType exchange.InstrumentType) (string, error) {
 	r := &bnhttp.Request{
 		Method:  http.MethodPost,
 		SecType: bnhttp.SecTypeAPIKey,
@@ -255,7 +218,7 @@ func (b *BnManager) generateListenKey(instrumentType exchange.InstrumentType) (s
 		r.Endpoint = "/fapi/v1/listenKey"
 	}
 
-	data, err := b.client.CallAPI(context.Background(), r)
+	data, err := o.client.CallAPI(context.Background(), r)
 	if err != nil {
 		return "", err
 	}
@@ -272,7 +235,7 @@ func (b *BnManager) generateListenKey(instrumentType exchange.InstrumentType) (s
 	return res.ListenKey, nil
 }
 
-func (b *BnManager) updateListenKey(lk *listenKey) error {
+func (o *of) updateListenKey(lk *listenKey) error {
 	r := &bnhttp.Request{
 		Method:  http.MethodPut,
 		SecType: bnhttp.SecTypeAPIKey,
@@ -285,7 +248,7 @@ func (b *BnManager) updateListenKey(lk *listenKey) error {
 		r.Endpoint = "/fapi/v1/listenKey"
 	}
 
-	_, err := b.client.CallAPI(context.Background(), r)
+	_, err := o.client.CallAPI(context.Background(), r)
 	if err != nil {
 		return err
 	}
@@ -296,7 +259,7 @@ func (b *BnManager) updateListenKey(lk *listenKey) error {
 	return nil
 }
 
-func (b *BnManager) closeListenKey(lk *listenKey) error {
+func (o *of) closeListenKey(lk *listenKey) error {
 	r := &bnhttp.Request{
 		Method:  http.MethodDelete,
 		SecType: bnhttp.SecTypeAPIKey,
@@ -308,32 +271,32 @@ func (b *BnManager) closeListenKey(lk *listenKey) error {
 		r.Endpoint = "/fapi/v1/listenKey"
 	}
 
-	_, err := b.client.CallAPI(context.Background(), r)
+	_, err := o.client.CallAPI(context.Background(), r)
 	if err != nil {
 		return err
 	}
 
 	// 删除 listenKey
-	delete(b.listenKeySets, lk.uniq)
+	delete(o.listenKeySets, lk.uniq)
 
 	return nil
 }
 
 // 检查 listenKey 是否过期
-func (b *BnManager) CheckListenKey() {
+func (o *of) CheckListenKey() {
 	for {
 		select {
-		case <-b.exitChan:
+		case <-o.exitChan:
 			return
 		default:
-			b.mux.Lock()
-			for _, lk := range b.listenKeySets {
-				if time.Since(lk.createTime) >= b.opts.listenKeyExpire {
-					b.updateListenKey(lk)
+			o.mux.Lock()
+			for _, lk := range o.listenKeySets {
+				if time.Since(lk.createTime) >= o.opts.listenKeyExpire {
+					o.updateListenKey(lk)
 				}
 			}
-			b.mux.Unlock()
-			time.Sleep(b.opts.checkListenKeyPeriod)
+			o.mux.Unlock()
+			time.Sleep(o.opts.checkListenKeyPeriod)
 		}
 	}
 }
@@ -344,64 +307,6 @@ func pingHandler(appData string, conn websocket.WebSocketConn) error {
 
 func pongHandler(appData string, conn websocket.WebSocketConn) error {
 	return conn.WriteMessage(9, []byte(appData))
-}
-
-func futuresToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
-	e := &binanceFuturesTradeEvent{}
-	err := json.Unmarshal(message, e)
-	if err != nil {
-		return nil, err
-	}
-	te := &exchange.TradeEvent{
-		TradeID:  uint64(e.AggregateTradeID),
-		Symbol:   e.Symbol,
-		TradedAt: e.TradeTime,
-	}
-	size, err := decimal.NewFromString(e.Quantity)
-	if err != nil {
-		return nil, err
-	}
-	te.Size = size
-
-	p, err := decimal.NewFromString(e.Price)
-	if err != nil {
-		return nil, err
-	}
-	te.Price = p
-
-	if e.Maker {
-		te.Side = true
-	}
-	return te, nil
-}
-
-func spotToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
-	e := &binanceSpotTradeEvent{}
-	err := json.Unmarshal(message, e)
-	if err != nil {
-		return nil, err
-	}
-
-	te := &exchange.TradeEvent{
-		TradeID:  uint64(e.TradeID),
-		Symbol:   e.Symbol,
-		TradedAt: e.TradeTime,
-	}
-	size, err := decimal.NewFromString(e.Quantity)
-	if err != nil {
-		return nil, err
-	}
-	te.Size = size
-
-	p, err := decimal.NewFromString(e.Price)
-	if err != nil {
-		return nil, err
-	}
-	te.Price = p
-	if e.IsBuyerMaker {
-		te.Side = true
-	}
-	return te, nil
 }
 
 func swoueToOrderEvent(event *bnSpotWsOrderUpdateEvent) (*exchange.OrderEvent, error) {

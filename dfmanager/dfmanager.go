@@ -5,11 +5,11 @@ import (
 )
 
 type DataFeedRequest struct {
-	ID             string
-	Symbol         string
-	Instrument     exchange.InstrumentType
-	Event func(data *exchange.TradeEvent)
-	ErrorHandler   func(err error)
+	ID           string
+	Symbol       string
+	Instrument   exchange.InstrumentType
+	Event        func(data *exchange.TradeEvent)
+	ErrorHandler func(err error)
 }
 
 type DataFeedManager interface {

@@ -14,7 +14,8 @@ type WebsocketManager interface {
 	AddWebsocket(req *websocket.WebsocketRequest, conf *WebsocketConfig) (string, error)
 	CloseWebsocket(uniq string) error
 	GetWebsocket(uniq string) websocket.Websocket
+	GetWebsockets() map[string]websocket.Websocket
 	IsConnected(uniq string) bool
 	Reconnect(uniq string) error
-	Shutdown()
+	Shutdown() error
 }
