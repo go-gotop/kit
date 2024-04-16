@@ -36,7 +36,7 @@ func NewBinanceOrderFeed(cli *bnhttp.Client, limiter limiter.Limiter, opts ...Op
 		opt(o)
 	}
 
-	return &of{
+	of := &of{
 		name:          "Binance",
 		opts:          o,
 		client:        cli,
@@ -47,6 +47,10 @@ func NewBinanceOrderFeed(cli *bnhttp.Client, limiter limiter.Limiter, opts ...Op
 		),
 		exitChan: make(chan struct{}),
 	}
+
+	of.CheckListenKey()
+
+	return of
 }
 
 type listenKey struct {
