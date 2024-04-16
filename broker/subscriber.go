@@ -1,7 +1,6 @@
 package broker
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 )
@@ -45,7 +44,7 @@ func (sm *SubscriberSyncMap) Remove(topic string) error {
 		delete(sm.m, topic)
 		return sub.Unsubscribe(true)
 	} else {
-		return errors.New(fmt.Sprintf("topic[%s] not found", topic))
+		return fmt.Errorf("topic[%s] not found", topic)
 	}
 }
 
