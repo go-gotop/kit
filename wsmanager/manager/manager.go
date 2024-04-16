@@ -46,7 +46,7 @@ func NewManager(opts ...ConnConfig) *Manager {
 	}
 
 	if config.isCheckReConn {
-		m.checkConnection()
+		go m.checkConnection()
 	}
 
 	return m
@@ -167,21 +167,21 @@ func (b *Manager) Shutdown() error {
 }
 
 func (b *Manager) checkConnection() {
-	go func() {
-		for {
-			select {
-			case <-b.exitChan:
-				return
-			default:
-				b.mux.Lock()
-				for _, ws := range b.wsSets {
-					if !ws.IsConnected() ||
-						ws.ConnectionDuration() > b.config.maxConnDuration {
-						ws.Reconnect()
+	for {
+		select {
+		case <-b.exitChan:
+			return
+		default:
+			b.mux.Lock()
+			for _, ws := range b.wsSets {
+				if !ws.IsConnected() ||
+					ws.ConnectionDuration() > b.config.maxConnDuration {
+					if err := ws.Reconnect(); err != nil {
+						b.config.logger.Errorf("reconnect websocket error: %s", err)
 					}
 				}
-				b.mux.Unlock()
 			}
+			b.mux.Unlock()
 		}
-	}()
+	}
 }

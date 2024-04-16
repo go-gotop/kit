@@ -39,8 +39,6 @@ type CreateOrderEvent struct {
 }
 
 type OrderResultEvent struct {
-	// TopicID 是策略的ID
-	TopicID           string
 	ClientOrderID     string
 	OrderID           string
 	FeeAsset          string

@@ -163,26 +163,37 @@ type TradeEvent struct {
 }
 
 type OrderEvent struct {
-	Exchange          string
-	Symbol            string
-	ClientOrderID     string
-	ExecutionType     string
-	Status            string
-	OrderID           string
-	FeeAsset          string
-	TransactionTime   int64
-	IsMaker           bool
-	Side              SideType
-	Type              OrderType
-	Instrument        InstrumentType
-	PositionSide      PositionSide
-	Volume            decimal.Decimal
-	Price             decimal.Decimal
-	LatestVolume      decimal.Decimal
-	FilledVolume      decimal.Decimal
-	LatestPrice       decimal.Decimal
-	FeeCost           decimal.Decimal
-	AvgPrice 		  decimal.Decimal
+	Exchange        string
+	Symbol          string
+	ClientOrderID   string
+	ExecutionType   string
+	Status          string
+	OrderID         string
+	FeeAsset        string
+	TransactionTime int64
+	IsMaker         bool
+	Side            SideType
+	Type            OrderType
+	Instrument      InstrumentType
+	PositionSide    PositionSide
+	Volume          decimal.Decimal
+	Price           decimal.Decimal
+	LatestVolume    decimal.Decimal
+	FilledVolume    decimal.Decimal
+	LatestPrice     decimal.Decimal
+	FeeCost         decimal.Decimal
+	AvgPrice        decimal.Decimal
+}
+
+type Position struct {
+	ClientOrderID string
+	Status        PositionStatus
+	// FILLED, PARTIALLY_FILLED, CANCELED
+	State            OrderState
+	Price            decimal.Decimal
+	OriginalQuantity decimal.Decimal
+	ExecutedQuantity decimal.Decimal
+	FeeCost          decimal.Decimal
 }
 
 type Exchange interface {
