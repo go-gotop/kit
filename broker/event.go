@@ -27,6 +27,7 @@ type Event interface {
 type Handler func(ctx context.Context, evt Event) error
 
 type CreateOrderEvent struct {
+	ID             string
 	Timestamp      int64
 	ClientOrderID  string
 	Symbol         string
@@ -39,6 +40,7 @@ type CreateOrderEvent struct {
 }
 
 type OrderResultEvent struct {
+	ID                string
 	ClientOrderID     string
 	OrderID           string
 	FeeAsset          string
@@ -63,6 +65,7 @@ type OrderResultEvent struct {
 }
 
 type StrategySignalEvent struct {
+	ID            string
 	Timestamp     int64
 	ClientOrderID string
 	TimeInForce   exchange.TimeInForce
@@ -75,6 +78,7 @@ type StrategySignalEvent struct {
 }
 
 type StrategyStatusEvent struct {
+	ID     string
 	Symbol exchange.Symbol
 	Status exchange.StrategyStatus
 }
