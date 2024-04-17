@@ -31,6 +31,8 @@ type SymbolStatus string
 // TimeInForce GTC，IOC，FOK，GTX，GTD
 type TimeInForce string
 
+type StrategyStatus string
+
 // Global enums
 const (
 	BinanceExchange  = "BINANCE"
@@ -68,6 +70,9 @@ const (
 
 	PositionSideLong  PositionSide = "LONG"
 	PositionSideShort PositionSide = "SHORT"
+
+	StrategyStatusNew   StrategyStatus = "NEW"
+	StrategyStatusDelete StrategyStatus = "DELETE"
 
 	// Good Till Cancel 成交为止, 一直有效直到被取消
 	TimeInForceGTC TimeInForce = "GTC"
