@@ -76,5 +76,5 @@ type StrategySignalEvent struct {
 
 type StrategyStatusEvent struct {
 	Symbol exchange.Symbol
-	Status string
+	Status exchange.StrategyStatus
 }
