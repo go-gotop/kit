@@ -63,6 +63,7 @@ const (
 	OrderStateClose           OrderState = "CLOSE"
 	OrderStatePartiallyFilled OrderState = "PARTIALLY_FILLED"
 
+	PositionStatusNew     PositionStatus = "NEW_POSITION"
 	PositionStatusOpening PositionStatus = "OPENING_POSITION"
 	PositionStatusHolding PositionStatus = "HOlDING_POSITION"
 	PositionStatusClosing PositionStatus = "CLOSING_POSITION"
