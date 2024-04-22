@@ -72,7 +72,7 @@ const (
 	PositionSideLong  PositionSide = "LONG"
 	PositionSideShort PositionSide = "SHORT"
 
-	StrategyStatusNew   StrategyStatus = "NEW"
+	StrategyStatusNew    StrategyStatus = "NEW"
 	StrategyStatusDelete StrategyStatus = "DELETE"
 
 	// Good Till Cancel 成交为止, 一直有效直到被取消
@@ -208,4 +208,12 @@ type Exchange interface {
 	Symbols(ctx context.Context, it InstrumentType) ([]Symbol, error)
 	CreateOrder(ctx context.Context, o *CreateOrderRequest) error
 	CancelOrder(ctx context.Context, o *CancelOrderRequest) error
+}
+
+type PositionManager interface {
+	Save(ctx context.Context, p *Position) error
+	Delete(ctx context.Context, orderID string) error
+	UpdateStatus(ctx context.Context, orderID string, status PositionStatus) error
+	ListOpenPositions(ctx context.Context, strategyID string) ([]*Position, error)
+	ListClosePositions(ctx context.Context, strategyID string) ([]*Position, error)
 }
