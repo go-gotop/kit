@@ -6,10 +6,11 @@ import (
 
 	"github.com/go-gotop/kit/limiter"
 	"github.com/go-gotop/kit/rate"
+	"github.com/go-redis/redis"
 )
 
 // map 保存的限流器
-func NewBinanceLimiter(opts ...limiter.Option) *BinanceLimiter {
+func NewBinanceLimiter(accountId string, redisClient redis.Client, opts ...limiter.Option) *BinanceLimiter {
 	o := &limiter.Options{
 		PeriodLimitArray: []limiter.PeriodLimit{
 			{
