@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/go-gotop/kit/rate"
-	"github.com/go-redis/redis"
+	"github.com/redis/go-redis/v9"
 )
 
 // 解析 period 字符串，返回 time.Duration 和 int

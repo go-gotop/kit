@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-gotop/kit/limiter"
 	"github.com/go-gotop/kit/limiter/bnlimiter"
-	"github.com/go-redis/redis"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -51,6 +51,7 @@ func TestRoutineCreateSpotOrderAllow(t *testing.T) {
 	wg.Wait()
 	log.Printf("notAllowedNum: %v", notAllowedNum)
 	assert.Equal(t, concurrency*cycle-100, notAllowedNum, "Expected spot order creation within rate limit")
+	defer rdb.Close()
 }
 
 // 测试下单次数
@@ -68,6 +69,7 @@ func TestCreateSpotOrderAllow(t *testing.T) {
 			assert.False(t, allowed, "Expected spot order creation beyond rate limit at %dth attempt", i)
 		}
 	}
+	defer rdb.Close()
 }
 
 // 测试权重
@@ -85,6 +87,7 @@ func TestCancelFutureOrderAllow(t *testing.T) {
 	assert.False(t, b.FutureAllow(limiter.CancelOrderLimit), "Expected spot order cancellation beyond rate limit at 2401th attempt")
 	time.Sleep(time.Minute)
 	assert.True(t, b.FutureAllow(limiter.CancelOrderLimit), "Expected spot order cancellation within rate limit after 60 seconds")
+	defer rdb.Close()
 }
 
 // 测试创建合约订单
@@ -111,8 +114,8 @@ func TestCreateFutureOrderAllow(t *testing.T) {
 // 测试创建合约订单 10s 最多300次，1min 内最多1200次
 func TestCreateFutureOrderAllow1(t *testing.T) {
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379", // Redis 服务器地址
-		DB:       0, // 使用的数据库编号
+		Addr: "localhost:6379", // Redis 服务器地址
+		DB:   0,                // 使用的数据库编号
 	})
 	b := bnlimiter.NewBinanceLimiter("mambaji", *rdb)
 	initTime := time.Now()
@@ -133,4 +136,5 @@ func TestCreateFutureOrderAllow1(t *testing.T) {
 	assert.False(t, allowed, "Expected future order creation beyond rate limit at %dth attempt", 1201)
 	time.Sleep(time.Minute - secondTime.Sub(initTime))
 	assert.True(t, b.FutureAllow(limiter.CreateOrderLimit), "Expected future order creation beyond rate limit at %dth attempt", 1201)
+	defer rdb.Close()
 }

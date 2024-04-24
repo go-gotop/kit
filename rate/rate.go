@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/redis/go-redis/v9"
 )
 
 // Limit defines the maximum frequency of some events.
@@ -147,14 +147,14 @@ func NewLimiterWithPeriod(uniqId string, rdb redis.Client, r Limit, b int, lp ti
 	}
 
 	// 判断是否存在uniqId，不存在则设置为0，存在则获取
-	val, err := rdb.Get(uniqId).Float64()
+	val, err := rdb.Get(context.Background(), uniqId).Float64()
 	if err == redis.Nil {
-		rdb.Set(uniqId, 0, time.Hour*24)
+		rdb.Set(context.Background(), uniqId, float64(0), time.Hour*24)
 	} else {
 		l.actTokensCount = val
 	}
 
-	timeStr, err := rdb.Get(uniqId + "_time").Result()
+	timeStr, err := rdb.Get(context.Background(), uniqId+"_time").Result()
 	if err != redis.Nil {
 		l.firstActTime, _ = time.Parse(time.RFC3339, timeStr)
 	}
@@ -466,7 +466,7 @@ func (lim *Limiter) reserveNC(t time.Time, n int, maxFutureReserve time.Duration
 	lim.mu.Lock()
 	defer lim.mu.Unlock()
 
-	timeStr, err := lim.rdb.Get(lim.uniqId + "_time").Result()
+	timeStr, err := lim.rdb.Get(context.Background(), lim.uniqId+"_time").Result()
 	if err != redis.Nil {
 		lim.firstActTime, _ = time.Parse(time.RFC3339, timeStr)
 	}
@@ -474,18 +474,18 @@ func (lim *Limiter) reserveNC(t time.Time, n int, maxFutureReserve time.Duration
 	// 如果 t 是空时间，则赋值firstActTime
 	if lim.firstActTime.IsZero() {
 		lim.firstActTime = t
-		lim.rdb.Set(lim.uniqId+"_time", lim.firstActTime.Format(time.RFC3339), time.Hour*24)
+		lim.rdb.Set(context.Background(), lim.uniqId+"_time", lim.firstActTime.Format(time.RFC3339), time.Hour*24)
 	}
 
 	// 如果t减去firstActTime 大于等于限制周期，则重置单位时间内消费token数统计
 	if t.Sub(lim.firstActTime) >= lim.limitPeriod {
 		lim.actTokensCount = 0
 		lim.firstActTime = t
-		err := lim.rdb.Set(lim.uniqId, float64(0), time.Hour*24).Err()
+		err := lim.rdb.Set(context.Background(), lim.uniqId, float64(0), time.Hour*24).Err()
 		if err != nil {
 			println("set actTokensCount error: ", err.Error())
 		}
-		err = lim.rdb.Set(lim.uniqId+"_time", lim.firstActTime.Format(time.RFC3339), time.Hour*24).Err()
+		err = lim.rdb.Set(context.Background(), lim.uniqId+"_time", lim.firstActTime.Format(time.RFC3339), time.Hour*24).Err()
 		if err != nil {
 			println("set firstActTime error: ", err.Error())
 		}
@@ -545,7 +545,7 @@ func (lim *Limiter) reserveNC(t time.Time, n int, maxFutureReserve time.Duration
 		lim.tokens = tokens
 		lim.lastEvent = r.timeToAct
 		lim.actTokensCount += float64(n)
-		lim.rdb.Set(lim.uniqId, lim.actTokensCount, time.Hour*24)
+		lim.rdb.Set(context.Background(), lim.uniqId, lim.actTokensCount, time.Hour*24)
 	}
 	return r
 }

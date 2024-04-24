@@ -3,7 +3,7 @@ package testlimiter
 import (
 	"github.com/go-gotop/kit/limiter"
 	"github.com/go-gotop/kit/rate"
-	"github.com/go-redis/redis"
+	"github.com/redis/go-redis/v9"
 )
 
 func NewTestLimiter(accountId string, redisClient redis.Client, opts ...limiter.Option) *TestLimiter {

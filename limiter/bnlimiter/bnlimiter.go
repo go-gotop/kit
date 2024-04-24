@@ -1,12 +1,13 @@
 package bnlimiter
 
 import (
+	"context"
 	"sync"
 	"time"
 
 	"github.com/go-gotop/kit/limiter"
 	"github.com/go-gotop/kit/rate"
-	"github.com/go-redis/redis"
+	"github.com/redis/go-redis/v9"
 )
 
 // map 保存的限流器
@@ -178,8 +179,8 @@ func (b *BinanceLimiter) allowSpotWeights(wt limiter.WeightType) bool {
 	if time.Since(b.spotLastResetTime) > time.Minute {
 		b.spotWeight = 0
 		b.spotLastResetTime = time.Now()
-		b.rdb.Set("BINANCE_SPOT_WEIGHT_"+b.accountId, int64(b.spotWeight), time.Hour*24)
-		b.rdb.Set("BINANCE_SPOT_LAST_RESET_TIME_"+b.accountId, b.spotLastResetTime.Format(time.RFC3339), time.Hour*24)
+		b.rdb.Set(context.Background(), "BINANCE_SPOT_WEIGHT_"+b.accountId, int64(b.spotWeight), time.Hour*24)
+		b.rdb.Set(context.Background(), "BINANCE_SPOT_LAST_RESET_TIME_"+b.accountId, b.spotLastResetTime.Format(time.RFC3339), time.Hour*24)
 	}
 
 	// 检查是否超过权重限制
@@ -189,7 +190,7 @@ func (b *BinanceLimiter) allowSpotWeights(wt limiter.WeightType) bool {
 
 	// 更新权重值
 	b.spotWeight += wt
-	b.rdb.Set("BINANCE_SPOT_WEIGHT_"+b.accountId, int64(b.spotWeight), time.Hour*24)
+	b.rdb.Set(context.Background(), "BINANCE_SPOT_WEIGHT_"+b.accountId, int64(b.spotWeight), time.Hour*24)
 
 	return true
 }
@@ -206,8 +207,8 @@ func (b *BinanceLimiter) allowFutureWeights(wt limiter.WeightType) bool {
 	if time.Since(b.futureLastResetTime) > time.Minute {
 		b.futureWeight = 0
 		b.futureLastResetTime = time.Now()
-		b.rdb.Set("BINANCE_FUTURE_WEIGHT_"+b.accountId, int64(b.futureWeight), time.Hour*24)
-		b.rdb.Set("BINANCE_FUTURE_LAST_RESET_TIME_"+b.accountId, b.futureLastResetTime.Format(time.RFC3339), time.Hour*24)
+		b.rdb.Set(context.Background(), "BINANCE_FUTURE_WEIGHT_"+b.accountId, int64(b.futureWeight), time.Hour*24)
+		b.rdb.Set(context.Background(), "BINANCE_FUTURE_LAST_RESET_TIME_"+b.accountId, b.futureLastResetTime.Format(time.RFC3339), time.Hour*24)
 	}
 
 	// 检查是否超过权重限制
@@ -217,21 +218,21 @@ func (b *BinanceLimiter) allowFutureWeights(wt limiter.WeightType) bool {
 
 	// 更新权重值
 	b.futureWeight += wt
-	b.rdb.Set("BINANCE_FUTURE_WEIGHT_"+b.accountId, int64(b.futureWeight), time.Hour*24)
+	b.rdb.Set(context.Background(), "BINANCE_FUTURE_WEIGHT_"+b.accountId, int64(b.futureWeight), time.Hour*24)
 	return true
 }
 
 func initRedisTime(uniqId string, redisClient redis.Client) time.Time {
 	val := time.Now()
-	timeVal, err := redisClient.Get(uniqId).Result()
+	timeVal, err := redisClient.Get(context.Background(), uniqId).Result()
 	if err == redis.Nil {
 		val = time.Now()
-		redisClient.Set(uniqId, val.Format(time.RFC3339), 0)
+		redisClient.Set(context.Background(), uniqId, val.Format(time.RFC3339), 0)
 	} else if timeVal != "" {
 		timeVal, err := time.Parse(time.RFC3339, timeVal)
 		if err != nil {
 			val = time.Now()
-			redisClient.Set(uniqId, val, time.Hour*24)
+			redisClient.Set(context.Background(), uniqId, val, time.Hour*24)
 		} else {
 			val = timeVal
 		}
@@ -241,10 +242,10 @@ func initRedisTime(uniqId string, redisClient redis.Client) time.Time {
 
 func initRedisInt(uniqId string, redisClient redis.Client) int64 {
 	val := int64(0)
-	intVal, err := redisClient.Get(uniqId).Int64()
+	intVal, err := redisClient.Get(context.Background(), uniqId).Int64()
 	if err == redis.Nil {
 		val = 0
-		redisClient.Set(uniqId, val, time.Hour*24)
+		redisClient.Set(context.Background(), uniqId, val, time.Hour*24)
 	} else if intVal != 0 {
 		val = intVal
 	}
@@ -253,7 +254,7 @@ func initRedisInt(uniqId string, redisClient redis.Client) int64 {
 
 func getRedisTime(uniqId string, redisClient redis.Client) time.Time {
 	val := time.Now()
-	timeVal, err := redisClient.Get(uniqId).Result()
+	timeVal, err := redisClient.Get(context.Background(), uniqId).Result()
 	if err != nil {
 		return val
 	}
@@ -271,7 +272,7 @@ func getRedisTime(uniqId string, redisClient redis.Client) time.Time {
 
 func getRedisInt(uniqId string, redisClient redis.Client) int64 {
 	val := int64(0)
-	intVal, err := redisClient.Get(uniqId).Int64()
+	intVal, err := redisClient.Get(context.Background(), uniqId).Int64()
 	if err != nil {
 		return val
 	}
