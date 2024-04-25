@@ -3,9 +3,10 @@ package testlimiter
 import (
 	"github.com/go-gotop/kit/limiter"
 	"github.com/go-gotop/kit/rate"
+	"github.com/redis/go-redis/v9"
 )
 
-func NewTestLimiter(opts ...limiter.Option) *TestLimiter {
+func NewTestLimiter(accountId string, redisClient redis.Client, opts ...limiter.Option) *TestLimiter {
 	o := &limiter.Options{
 		PeriodLimitArray: []limiter.PeriodLimit{
 			{
@@ -40,7 +41,7 @@ func NewTestLimiter(opts ...limiter.Option) *TestLimiter {
 
 	return &TestLimiter{
 		opts:       o,
-		limiterMap: limiter.SetAllLimiters(o.PeriodLimitArray),
+		limiterMap: limiter.SetAllLimiters(accountId, redisClient, o.PeriodLimitArray),
 	}
 }
 

@@ -1,15 +1,17 @@
 package bnlimiter
 
 import (
+	"context"
 	"sync"
 	"time"
 
 	"github.com/go-gotop/kit/limiter"
 	"github.com/go-gotop/kit/rate"
+	"github.com/redis/go-redis/v9"
 )
 
 // map 保存的限流器
-func NewBinanceLimiter(opts ...limiter.Option) *BinanceLimiter {
+func NewBinanceLimiter(accountId string, redisClient redis.Client, opts ...limiter.Option) *BinanceLimiter {
 	o := &limiter.Options{
 		PeriodLimitArray: []limiter.PeriodLimit{
 			{
@@ -42,21 +44,29 @@ func NewBinanceLimiter(opts ...limiter.Option) *BinanceLimiter {
 		opt(o)
 	}
 
-	return &BinanceLimiter{
+	bl := &BinanceLimiter{
+		rdb:        redisClient,
 		opts:       o,
-		limiterMap: limiter.SetAllLimiters(o.PeriodLimitArray),
+		accountId:  accountId,
+		limiterMap: limiter.SetAllLimiters(accountId, redisClient, o.PeriodLimitArray),
 
-		spotWeight:          0,
-		futureWeight:        0,
-		spotLastResetTime:   time.Now(),
-		futureLastResetTime: time.Now(),
+		spotWeight:          limiter.WeightType(initRedisInt("BINANCE_SPOT_WEIGHT_"+accountId, redisClient)),
+		futureWeight:        limiter.WeightType(initRedisInt("BINANCE_FUTURE_WEIGHT_"+accountId, redisClient)),
+		spotLastResetTime:   initRedisTime("BINANCE_SPOT_LAST_RESET_TIME_"+accountId, redisClient),
+		futureLastResetTime: initRedisTime("BINANCE_FUTURE_LAST_RESET_TIME_"+accountId, redisClient),
 		spotMutex:           sync.Mutex{},
 		futureMutex:         sync.Mutex{},
 	}
+
+	println("futurelastresettime:", bl.futureLastResetTime.Format(time.RFC3339))
+
+	return bl
 }
 
 type BinanceLimiter struct {
-	opts *limiter.Options // 配置
+	rdb       redis.Client     // redis客户端
+	opts      *limiter.Options // 配置
+	accountId string
 
 	limiterMap map[string][]*rate.Limiter // 限流器
 
@@ -162,10 +172,15 @@ func (b *BinanceLimiter) allowSpotWeights(wt limiter.WeightType) bool {
 	b.spotMutex.Lock()
 	defer b.spotMutex.Unlock()
 
+	b.spotLastResetTime = getRedisTime("BINANCE_SPOT_LAST_RESET_TIME_"+b.accountId, b.rdb)
+	b.spotWeight = limiter.WeightType(getRedisInt("BINANCE_SPOT_WEIGHT_"+b.accountId, b.rdb))
+
 	// 检查是否需要重置权重值
 	if time.Since(b.spotLastResetTime) > time.Minute {
 		b.spotWeight = 0
 		b.spotLastResetTime = time.Now()
+		b.rdb.Set(context.Background(), "BINANCE_SPOT_WEIGHT_"+b.accountId, int64(b.spotWeight), time.Hour*24)
+		b.rdb.Set(context.Background(), "BINANCE_SPOT_LAST_RESET_TIME_"+b.accountId, b.spotLastResetTime.Format(time.RFC3339), time.Hour*24)
 	}
 
 	// 检查是否超过权重限制
@@ -175,6 +190,7 @@ func (b *BinanceLimiter) allowSpotWeights(wt limiter.WeightType) bool {
 
 	// 更新权重值
 	b.spotWeight += wt
+	b.rdb.Set(context.Background(), "BINANCE_SPOT_WEIGHT_"+b.accountId, int64(b.spotWeight), time.Hour*24)
 
 	return true
 }
@@ -184,10 +200,15 @@ func (b *BinanceLimiter) allowFutureWeights(wt limiter.WeightType) bool {
 	b.futureMutex.Lock()
 	defer b.futureMutex.Unlock()
 
+	b.futureLastResetTime = getRedisTime("BINANCE_FUTURE_LAST_RESET_TIME_"+b.accountId, b.rdb)
+	b.futureWeight = limiter.WeightType(getRedisInt("BINANCE_FUTURE_WEIGHT_"+b.accountId, b.rdb))
+
 	// 检查是否需要重置权重值
 	if time.Since(b.futureLastResetTime) > time.Minute {
 		b.futureWeight = 0
 		b.futureLastResetTime = time.Now()
+		b.rdb.Set(context.Background(), "BINANCE_FUTURE_WEIGHT_"+b.accountId, int64(b.futureWeight), time.Hour*24)
+		b.rdb.Set(context.Background(), "BINANCE_FUTURE_LAST_RESET_TIME_"+b.accountId, b.futureLastResetTime.Format(time.RFC3339), time.Hour*24)
 	}
 
 	// 检查是否超过权重限制
@@ -197,6 +218,66 @@ func (b *BinanceLimiter) allowFutureWeights(wt limiter.WeightType) bool {
 
 	// 更新权重值
 	b.futureWeight += wt
-
+	b.rdb.Set(context.Background(), "BINANCE_FUTURE_WEIGHT_"+b.accountId, int64(b.futureWeight), time.Hour*24)
 	return true
+}
+
+func initRedisTime(uniqId string, redisClient redis.Client) time.Time {
+	val := time.Now()
+	timeVal, err := redisClient.Get(context.Background(), uniqId).Result()
+	if err == redis.Nil {
+		val = time.Now()
+		redisClient.Set(context.Background(), uniqId, val.Format(time.RFC3339), 0)
+	} else if timeVal != "" {
+		timeVal, err := time.Parse(time.RFC3339, timeVal)
+		if err != nil {
+			val = time.Now()
+			redisClient.Set(context.Background(), uniqId, val, time.Hour*24)
+		} else {
+			val = timeVal
+		}
+	}
+	return val
+}
+
+func initRedisInt(uniqId string, redisClient redis.Client) int64 {
+	val := int64(0)
+	intVal, err := redisClient.Get(context.Background(), uniqId).Int64()
+	if err == redis.Nil {
+		val = 0
+		redisClient.Set(context.Background(), uniqId, val, time.Hour*24)
+	} else if intVal != 0 {
+		val = intVal
+	}
+	return val
+}
+
+func getRedisTime(uniqId string, redisClient redis.Client) time.Time {
+	val := time.Now()
+	timeVal, err := redisClient.Get(context.Background(), uniqId).Result()
+	if err != nil {
+		return val
+	}
+	if timeVal != "" {
+		timeVal, err := time.Parse(time.RFC3339, timeVal)
+		if err != nil {
+			val = time.Now()
+		} else {
+			val = timeVal
+		}
+	}
+	// println("val:", val.Format(time.RFC3339))
+	return val
+}
+
+func getRedisInt(uniqId string, redisClient redis.Client) int64 {
+	val := int64(0)
+	intVal, err := redisClient.Get(context.Background(), uniqId).Int64()
+	if err != nil {
+		return val
+	}
+	if intVal != 0 {
+		val = intVal
+	}
+	return val
 }
