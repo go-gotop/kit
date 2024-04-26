@@ -11,7 +11,7 @@ import (
 )
 
 // map 保存的限流器
-func NewBinanceLimiter(accountId string, redisClient redis.Client, opts ...limiter.Option) *BinanceLimiter {
+func NewBinanceLimiter(accountId string, redisClient *redis.Client, opts ...limiter.Option) *BinanceLimiter {
 	o := &limiter.Options{
 		PeriodLimitArray: []limiter.PeriodLimit{
 			{
@@ -45,15 +45,15 @@ func NewBinanceLimiter(accountId string, redisClient redis.Client, opts ...limit
 	}
 
 	bl := &BinanceLimiter{
-		rdb:        redisClient,
+		rdb:        *redisClient,
 		opts:       o,
 		accountId:  accountId,
-		limiterMap: limiter.SetAllLimiters(accountId, redisClient, o.PeriodLimitArray),
+		limiterMap: limiter.SetAllLimiters(accountId, *redisClient, o.PeriodLimitArray),
 
-		spotWeight:          limiter.WeightType(initRedisInt("BINANCE_SPOT_WEIGHT_"+accountId, redisClient)),
-		futureWeight:        limiter.WeightType(initRedisInt("BINANCE_FUTURE_WEIGHT_"+accountId, redisClient)),
-		spotLastResetTime:   initRedisTime("BINANCE_SPOT_LAST_RESET_TIME_"+accountId, redisClient),
-		futureLastResetTime: initRedisTime("BINANCE_FUTURE_LAST_RESET_TIME_"+accountId, redisClient),
+		spotWeight:          limiter.WeightType(initRedisInt("BINANCE_SPOT_WEIGHT_"+accountId, *redisClient)),
+		futureWeight:        limiter.WeightType(initRedisInt("BINANCE_FUTURE_WEIGHT_"+accountId, *redisClient)),
+		spotLastResetTime:   initRedisTime("BINANCE_SPOT_LAST_RESET_TIME_"+accountId, *redisClient),
+		futureLastResetTime: initRedisTime("BINANCE_FUTURE_LAST_RESET_TIME_"+accountId, *redisClient),
 		spotMutex:           sync.Mutex{},
 		futureMutex:         sync.Mutex{},
 	}

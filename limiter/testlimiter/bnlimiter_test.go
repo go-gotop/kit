@@ -19,7 +19,7 @@ func TestRoutineCreateSpotOrderAllow(t *testing.T) {
 		// Password: "123456",
 		DB: 0, // 使用的数据库编号
 	})
-	b := bnlimiter.NewBinanceLimiter("mambaji", *rdb)
+	b := bnlimiter.NewBinanceLimiter("mambaji", rdb)
 	// 使用 WaitGroup 等待所有 goroutine 结束
 	var wg sync.WaitGroup
 	// 设置并发数量
@@ -60,7 +60,7 @@ func TestCreateSpotOrderAllow(t *testing.T) {
 		Addr: "localhost:6379", // Redis 服务器地址
 		DB:   0,                // 使用的数据库编号
 	})
-	b := bnlimiter.NewBinanceLimiter("mambaji", *rdb)
+	b := bnlimiter.NewBinanceLimiter("mambaji", rdb)
 	for i := 1; i <= 101; i++ {
 		allowed := b.SpotAllow(limiter.CreateOrderLimit)
 		if i < 101 {
@@ -78,7 +78,7 @@ func TestCancelFutureOrderAllow(t *testing.T) {
 		Addr: "localhost:6379", // Redis 服务器地址
 		DB:   0,                // 使用的数据库编号
 	})
-	b := bnlimiter.NewBinanceLimiter("mambaji", *rdb)
+	b := bnlimiter.NewBinanceLimiter("mambaji", rdb)
 	// 测试通过情况：10秒内取消现货订单不超过100次
 	for i := 0; i < 2400; i++ {
 		allowed := b.FutureAllow(limiter.CancelOrderLimit)
@@ -96,7 +96,7 @@ func TestCreateFutureOrderAllow(t *testing.T) {
 		Addr: "localhost:6379", // Redis 服务器地址
 		DB:   0,                // 使用的数据库编号
 	})
-	b := bnlimiter.NewBinanceLimiter("mambaji", *rdb)
+	b := bnlimiter.NewBinanceLimiter("mambaji", rdb)
 	for i := 1; i <= 301; i++ {
 		allowed := b.FutureAllow(limiter.CreateOrderLimit)
 		if i < 301 {
@@ -117,7 +117,7 @@ func TestCreateFutureOrderAllow1(t *testing.T) {
 		Addr: "localhost:6379", // Redis 服务器地址
 		DB:   0,                // 使用的数据库编号
 	})
-	b := bnlimiter.NewBinanceLimiter("mambaji", *rdb)
+	b := bnlimiter.NewBinanceLimiter("mambaji", rdb)
 	initTime := time.Now()
 	for g := 1; g <= 4; g++ {
 		for i := 1; i <= 301; i++ {
