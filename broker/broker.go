@@ -8,9 +8,13 @@ import (
 type Broker interface {
 	Name() string
 
+	Options() Options
+
 	Address() string
 
 	Init(...Option) error
+
+	Connect() error
 
 	Disconnect() error
 
