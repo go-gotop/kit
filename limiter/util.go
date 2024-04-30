@@ -54,17 +54,17 @@ func ParsePeriod(period string) (time.Duration, int, error) {
 }
 
 // 动态添加所有限流器
-func SetAllLimiters(accountId string, redis redis.Client, periodLimitArray []PeriodLimit) map[string][]*rate.Limiter {
+func SetAllLimiters(accountId string, redis redis.Client, exchange string, periodLimitArray []PeriodLimit) map[string][]*rate.Limiter {
 	ip, err := GetOutBoundIP()
 	if err != nil {
 		log.Printf("get out bound ip error: %v", err)
 	}
 	limiterMap := make(map[string][]*rate.Limiter)
 	// 限流器唯一标识用于 redis key，对于websocket只对ip限制，其他请求对accountId限制
-	limiterMap[WsConnectLimit] = SetLimiterMap("BINANCE_WSCONNECT_"+ip, redis, periodLimitArray, "WsConnectPeriod", "WsConnectTimes")
-	limiterMap[SpotCreateOrderLimit] = SetLimiterMap("BINANCE_SPOTCREATEORDER_"+accountId, redis, periodLimitArray, "SpotCreateOrderPeriod", "SpotCreateOrderTimes")
-	limiterMap[FutureCreateOrderLimit] = SetLimiterMap("BINANCE_FUTURECREATEORDER_"+accountId, redis, periodLimitArray, "FutureCreateOrderPeriod", "FutureCreateOrderTimes")
-	limiterMap[SpotNormalRequestLimit] = SetLimiterMap("BINANCE_NORMALREQUEST_"+accountId, redis, periodLimitArray, "SpotNormalRequestPeriod", "SpotNormalRequestTimes")
+	limiterMap[WsConnectLimit] = SetLimiterMap(exchange+"_"+WsConnectLimit+"_"+ip, redis, periodLimitArray, "WsConnectPeriod", "WsConnectTimes")
+	limiterMap[SpotCreateOrderLimit] = SetLimiterMap(exchange+"_"+SpotCreateOrderLimit+"_"+accountId, redis, periodLimitArray, "SpotCreateOrderPeriod", "SpotCreateOrderTimes")
+	limiterMap[FutureCreateOrderLimit] = SetLimiterMap(exchange+"_"+FutureCreateOrderLimit+"_"+accountId, redis, periodLimitArray, "FutureCreateOrderPeriod", "FutureCreateOrderTimes")
+	limiterMap[SpotNormalRequestLimit] = SetLimiterMap(exchange+"_"+SpotNormalRequestLimit+"_"+accountId, redis, periodLimitArray, "SpotNormalRequestPeriod", "SpotNormalRequestTimes")
 	return limiterMap
 }
 

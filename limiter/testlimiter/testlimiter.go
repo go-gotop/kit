@@ -41,7 +41,7 @@ func NewTestLimiter(accountId string, redisClient redis.Client, opts ...limiter.
 
 	return &TestLimiter{
 		opts:       o,
-		limiterMap: limiter.SetAllLimiters(accountId, redisClient, o.PeriodLimitArray),
+		limiterMap: limiter.SetAllLimiters(accountId, redisClient, "test", o.PeriodLimitArray),
 	}
 }
 

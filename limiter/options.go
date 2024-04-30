@@ -5,6 +5,12 @@ const (
 	SpotCreateOrderLimit   = "SPOT_CREATE_ORDER"
 	SpotNormalRequestLimit = "SPOT_NORMAL_REQUEST"
 	FutureCreateOrderLimit = "FUTURE_CREATE_ORDER"
+
+	// redis key
+	SpotWeight = "SPOT_WEIGHT"
+	FutureWeight = "FUTURE_WEIGHT"
+	SpotLastRestTime = "SPOT_LAST_RESET_TIME"
+	FutureLastRestTime = "FUTURE_LAST_RESET_TIME"
 )
 
 type Option func(*Options)
