@@ -89,6 +89,7 @@ type doFunc func(req *http.Request) (*http.Response, error)
 
 // Client define API client
 type Client struct {
+	baseURL   string
 	opts      *options
 	userAgent string
 	do        doFunc
@@ -104,7 +105,7 @@ func (c *Client) parseRequest(r *Request, opts ...RequestOption) (err error) {
 		return err
 	}
 
-	fullURL := fmt.Sprintf("%s%s", c.opts.baseURL, r.Endpoint)
+	fullURL := fmt.Sprintf("%s%s", c.baseURL, r.Endpoint)
 	if r.recvWindow > 0 {
 		r.SetParam(RecvWindowKey, r.recvWindow)
 	}
@@ -123,12 +124,12 @@ func (c *Client) parseRequest(r *Request, opts ...RequestOption) (err error) {
 		body = bytes.NewBufferString(bodyString)
 	}
 	if r.SecType == SecTypeAPIKey || r.SecType == SecTypeSigned {
-		header.Set("X-MBX-APIKEY", c.opts.apiKey)
+		header.Set("X-MBX-APIKEY", r.APIKey)
 	}
 
 	if r.SecType == SecTypeSigned {
 		raw := fmt.Sprintf("%s%s", queryString, bodyString)
-		mac := hmac.New(sha256.New, []byte(c.opts.secretKey))
+		mac := hmac.New(sha256.New, []byte(r.SecretKey))
 		_, err = mac.Write([]byte(raw))
 		if err != nil {
 			return err
@@ -195,7 +196,6 @@ func (c *Client) CallAPI(ctx context.Context, r *Request, opts ...RequestOption)
 }
 
 // SetApiEndpoint set api Endpoint
-func (c *Client) SetApiEndpoint(url string) *Client {
-	c.opts.baseURL = url
-	return c
+func (c *Client) SetApiEndpoint(url string) {
+	c.baseURL = url
 }

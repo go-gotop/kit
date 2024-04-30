@@ -49,7 +49,7 @@ func NewBinanceLimiter(accountId string, redisClient *redis.Client, opts ...limi
 	}
 
 	bl := &BinanceLimiter{
-		rdb:        *redisClient,
+		rdb:        redisClient,
 		opts:       o,
 		accountId:  accountId,
 		limiterMap: limiter.SetAllLimiters(accountId, *redisClient, Exchange, o.PeriodLimitArray),
@@ -66,7 +66,7 @@ func NewBinanceLimiter(accountId string, redisClient *redis.Client, opts ...limi
 }
 
 type BinanceLimiter struct {
-	rdb       redis.Client     // redis客户端
+	rdb       *redis.Client     // redis客户端
 	opts      *limiter.Options // 配置
 	accountId string
 
@@ -254,7 +254,7 @@ func initRedisInt(uniqId string, redisClient redis.Client) int64 {
 	return val
 }
 
-func getRedisTime(uniqId string, redisClient redis.Client) time.Time {
+func getRedisTime(uniqId string, redisClient *redis.Client) time.Time {
 	val := time.Now()
 	timeVal, err := redisClient.Get(context.Background(), uniqId).Result()
 	if err != nil {
@@ -272,7 +272,7 @@ func getRedisTime(uniqId string, redisClient redis.Client) time.Time {
 	return val
 }
 
-func getRedisInt(uniqId string, redisClient redis.Client) int64 {
+func getRedisInt(uniqId string, redisClient *redis.Client) int64 {
 	val := int64(0)
 	intVal, err := redisClient.Get(context.Background(), uniqId).Int64()
 	if err != nil {

@@ -20,6 +20,8 @@ type Params map[string]interface{}
 
 // Request define an API request
 type Request struct {
+	APIKey     string
+	SecretKey  string
 	Method     string
 	Endpoint   string
 	SecType    SecType

@@ -42,12 +42,12 @@ type kafkaBroker struct {
 	retriesCount int
 
 	subscribers *broker.SubscriberSyncMap
-
+	logger *log.Helper
 	producerTracer *tracing.Tracer
 	consumerTracer *tracing.Tracer
 }
 
-func NewBroker(opts ...broker.Option) broker.Broker {
+func NewBroker(logger *log.Helper, opts ...broker.Option) broker.Broker {
 	options := broker.NewOptionsAndApply(opts...)
 
 	b := &kafkaBroker{
@@ -55,12 +55,12 @@ func NewBroker(opts ...broker.Option) broker.Broker {
 			WatchPartitionChanges: true,
 			MaxWait:               500 * time.Millisecond,
 			Logger:                nil,
-			ErrorLogger:           ErrorLogger{},
+			ErrorLogger:           &ErrorLogger{logger: logger},
 		},
 		writerConfig: WriterConfig{
 			Balancer:     &kafkaGo.LeastBytes{},
 			Logger:       nil,
-			ErrorLogger:  ErrorLogger{},
+			ErrorLogger:  &ErrorLogger{logger: logger},
 			BatchTimeout: 10 * time.Millisecond, // 内部默认为1秒，那么会造成什么情况呢？同步发送的时候，发送一次要等待1秒的时间。
 			Async:        true,                  // 默认设置为异步发送，效率比较高。
 		},
@@ -217,8 +217,8 @@ func (b *kafkaBroker) Init(opts ...broker.Option) error {
 
 	if value, ok := b.options.Context.Value(enableLoggerKey{}).(bool); ok {
 		if value {
-			b.readerConfig.Logger = Logger{}
-			b.writerConfig.Logger = Logger{}
+			b.readerConfig.Logger = &Logger{logger: b.logger}
+			b.writerConfig.Logger = &Logger{logger: b.logger}
 		} else {
 			b.readerConfig.Logger = nil
 			b.writerConfig.Logger = nil
@@ -226,8 +226,8 @@ func (b *kafkaBroker) Init(opts ...broker.Option) error {
 	}
 	if value, ok := b.options.Context.Value(enableErrorLoggerKey{}).(bool); ok {
 		if value {
-			b.readerConfig.ErrorLogger = ErrorLogger{}
-			b.writerConfig.ErrorLogger = ErrorLogger{}
+			b.readerConfig.ErrorLogger = &ErrorLogger{logger: b.logger}
+			b.writerConfig.ErrorLogger = &ErrorLogger{logger: b.logger}
 		} else {
 			b.readerConfig.ErrorLogger = nil
 			b.writerConfig.ErrorLogger = nil
@@ -437,7 +437,7 @@ func (b *kafkaBroker) publishMultipleWriter(ctx context.Context, topic string, b
 
 	err = writer.WriteMessages(options.Context, kMsg)
 	if err != nil {
-		log.Errorf("WriteMessages error: %s", err.Error())
+		b.logger.Errorf("WriteMessages error: %s", err.Error())
 		switch cached {
 		case false:
 			var kerr kafkaGo.Error
@@ -530,7 +530,7 @@ func (b *kafkaBroker) publishOneWriter(ctx context.Context, topic string, buf []
 
 	err = b.writer.Writer.WriteMessages(options.Context, kMsg)
 	if err != nil {
-		log.Errorf("WriteMessages error: %s", err.Error())
+		b.logger.Errorf("WriteMessages error: %s", err.Error())
 		switch cached {
 		case false:
 			var kerr kafkaGo.Error
@@ -577,7 +577,7 @@ func (b *kafkaBroker) Subscribe(topic string, handler broker.Handler, binder bro
 
 	if value, ok := options.Context.Value(autoSubscribeCreateTopicKey{}).(*autoSubscribeCreateTopicValue); ok {
 		if err := CreateTopic(b.Address(), value.Topic, value.NumPartitions, value.ReplicationFactor); err != nil {
-			log.Errorf("[kafka] create topic error: %s", err.Error())
+			b.logger.Errorf("[kafka] create topic error: %s", err.Error())
 		}
 	}
 
@@ -604,7 +604,7 @@ func (b *kafkaBroker) Subscribe(topic string, handler broker.Handler, binder bro
 				}
 				msg, err := sub.reader.FetchMessage(options.Context)
 				if err != nil {
-					log.Errorf("[kafka] FetchMessage error: %s", err.Error())
+					b.logger.Errorf("[kafka] FetchMessage error: %s", err.Error())
 					continue
 				}
 
@@ -625,20 +625,20 @@ func (b *kafkaBroker) Subscribe(topic string, handler broker.Handler, binder bro
 
 				if err = broker.Unmarshal(b.options.Codec, msg.Value, &m.Body); err != nil {
 					p.err = err
-					log.Errorf("[kafka] unmarshal message failed: %v", err)
+					b.logger.Errorf("[kafka] unmarshal message failed: %v", err)
 					b.finishConsumerSpan(span, err)
 					continue
 				}
 
 				if err = sub.handler(ctx, p); err != nil {
-					log.Errorf("[kafka] handle message failed: %v", err)
+					b.logger.Errorf("[kafka] handle message failed: %v", err)
 					b.finishConsumerSpan(span, err)
 					continue
 				}
 
 				if sub.options.AutoAck {
 					if err = p.Ack(); err != nil {
-						log.Errorf("[kafka] unable to commit msg: %v", err)
+						b.logger.Errorf("[kafka] unable to commit msg: %v", err)
 					}
 				}
 
