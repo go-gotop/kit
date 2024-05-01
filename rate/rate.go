@@ -71,8 +71,6 @@ type Limiter struct {
 	firstActTime time.Time
 	// 单位时间内消费token数统计
 	actTokensCount float64
-	// uniq id
-	uniqId string
 	// redis client
 	rdb redis.Client
 }
@@ -135,9 +133,8 @@ func NewLimiter(r Limit, b int) *Limiter {
 }
 
 // 有限时周期的限流器
-func NewLimiterWithPeriod(uniqId string, rdb redis.Client, r Limit, b int, lp time.Duration) *Limiter {
+func NewLimiterWithPeriod(rdb redis.Client, r Limit, b int, lp time.Duration) *Limiter {
 	l := &Limiter{
-		uniqId:         uniqId,
 		rdb:            rdb,
 		limit:          r,
 		burst:          b,
@@ -145,20 +142,6 @@ func NewLimiterWithPeriod(uniqId string, rdb redis.Client, r Limit, b int, lp ti
 		firstActTime:   time.Time{},
 		actTokensCount: 0,
 	}
-
-	// 判断是否存在uniqId，不存在则设置为0，存在则获取
-	val, err := rdb.Get(context.Background(), uniqId).Float64()
-	if err == redis.Nil {
-		rdb.Set(context.Background(), uniqId, float64(0), time.Hour*24)
-	} else {
-		l.actTokensCount = val
-	}
-
-	timeStr, err := rdb.Get(context.Background(), uniqId+"_time").Result()
-	if err != redis.Nil {
-		l.firstActTime, _ = time.Parse(time.RFC3339, timeStr)
-	}
-
 	return l
 }
 
@@ -167,8 +150,8 @@ func (lim *Limiter) Allow() bool {
 	return lim.AllowN(time.Now(), 1)
 }
 
-func (lim *Limiter) AllowC() bool {
-	return lim.AllowNC(time.Now(), 1)
+func (lim *Limiter) AllowC(uniqId string) bool {
+	return lim.AllowNC(uniqId, time.Now(), 1)
 }
 
 // AllowN reports whether n events may happen at time t.
@@ -178,8 +161,8 @@ func (lim *Limiter) AllowN(t time.Time, n int) bool {
 	return lim.reserveN(t, n, 0).ok
 }
 
-func (lim *Limiter) AllowNC(t time.Time, n int) bool {
-	return lim.reserveNC(t, n, 0).ok
+func (lim *Limiter) AllowNC(uniqId string, t time.Time, n int) bool {
+	return lim.reserveNC(uniqId, t, n, 0).ok
 }
 
 // A Reservation holds information about events that are permitted by a Limiter to happen after a delay.
@@ -294,8 +277,8 @@ func (lim *Limiter) ReserveN(t time.Time, n int) *Reservation {
 	return &r
 }
 
-func (lim *Limiter) ReserveNC(t time.Time, n int) *Reservation {
-	r := lim.reserveNC(t, n, InfDuration)
+func (lim *Limiter) ReserveNC(uniqId string, t time.Time, n int) *Reservation {
+	r := lim.reserveNC(uniqId, t, n, InfDuration)
 	return &r
 }
 
@@ -462,30 +445,38 @@ func (lim *Limiter) reserveN(t time.Time, n int, maxFutureReserve time.Duration)
 }
 
 // 自定义 reserveN 函数，支持超过单位时间内限制的话，再次消费需要等待
-func (lim *Limiter) reserveNC(t time.Time, n int, maxFutureReserve time.Duration) Reservation {
+func (lim *Limiter) reserveNC(uniqId string, t time.Time, n int, maxFutureReserve time.Duration) Reservation {
 	lim.mu.Lock()
 	defer lim.mu.Unlock()
 
-	timeStr, err := lim.rdb.Get(context.Background(), lim.uniqId+"_time").Result()
+	// 判断缓存是否存在该 key，存在则赋值
+	val, err := lim.rdb.Get(context.Background(), uniqId).Float64()
+	if err != redis.Nil {
+		lim.actTokensCount = val
+	}
+	fmt.Printf("key %v\n", val)
+
+	// 判断缓存是否存在该 key，存在则赋值
+	timeStr, err := lim.rdb.Get(context.Background(), uniqId+"_time").Result()
 	if err != redis.Nil {
 		lim.firstActTime, _ = time.Parse(time.RFC3339, timeStr)
 	}
 
-	// 如果 t 是空时间，则赋值firstActTime
+	// 如果是空时间，则赋值firstActTime
 	if lim.firstActTime.IsZero() {
 		lim.firstActTime = t
-		lim.rdb.Set(context.Background(), lim.uniqId+"_time", lim.firstActTime.Format(time.RFC3339), time.Hour*24)
+		lim.rdb.Set(context.Background(), uniqId+"_time", lim.firstActTime.Format(time.RFC3339), time.Hour*24)
 	}
 
 	// 如果t减去firstActTime 大于等于限制周期，则重置单位时间内消费token数统计
 	if t.Sub(lim.firstActTime) >= lim.limitPeriod {
 		lim.actTokensCount = 0
 		lim.firstActTime = t
-		err := lim.rdb.Set(context.Background(), lim.uniqId, float64(0), time.Hour*24).Err()
+		err := lim.rdb.Set(context.Background(), uniqId, float64(0), time.Hour*24).Err()
 		if err != nil {
 			println("set actTokensCount error: ", err.Error())
 		}
-		err = lim.rdb.Set(context.Background(), lim.uniqId+"_time", lim.firstActTime.Format(time.RFC3339), time.Hour*24).Err()
+		err = lim.rdb.Set(context.Background(), uniqId+"_time", lim.firstActTime.Format(time.RFC3339), time.Hour*24).Err()
 		if err != nil {
 			println("set firstActTime error: ", err.Error())
 		}
@@ -525,9 +516,10 @@ func (lim *Limiter) reserveNC(t time.Time, n int, maxFutureReserve time.Duration
 
 	// Decide result
 	ok := n <= lim.burst && waitDuration <= maxFutureReserve
-
 	// 如果tokens充足，但是单位时间内消费token数超过限制，则需要等待
 	if ok && lim.actTokensCount+float64(n) > float64(lim.burst) {
+		fmt.Printf("actTokensCount: %v, n: %v\n", lim.actTokensCount, n)
+		fmt.Printf("总计（actTokensCount + n）: %v, burst: %v\n", lim.actTokensCount+float64(n), lim.burst)
 		ok = false
 	}
 	// Prepare reservation
@@ -545,7 +537,7 @@ func (lim *Limiter) reserveNC(t time.Time, n int, maxFutureReserve time.Duration
 		lim.tokens = tokens
 		lim.lastEvent = r.timeToAct
 		lim.actTokensCount += float64(n)
-		lim.rdb.Set(context.Background(), lim.uniqId, lim.actTokensCount, time.Hour*24)
+		lim.rdb.Set(context.Background(), uniqId, lim.actTokensCount, time.Hour*24)
 	}
 	return r
 }

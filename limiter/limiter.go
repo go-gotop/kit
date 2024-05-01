@@ -11,8 +11,13 @@ const (
 	NormalRequestLimit  LimitType = "NORMAL_REQUEST"         // 普通请求
 )
 
+type LimiterReq struct {
+	AccountId   string //  交易账户用户ID
+	LimiterType LimitType
+}
+
 type Limiter interface {
 	WsAllow() bool
-	SpotAllow(t LimitType) bool
-	FutureAllow(t LimitType) bool
+	SpotAllow(t *LimiterReq) bool
+	FutureAllow(t *LimiterReq) bool
 }

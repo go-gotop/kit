@@ -2,6 +2,7 @@ package ofbinance
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -18,11 +19,18 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+var _ ofmanager.OrderFeedManager = (*of)(nil)
+
+var (
+	ErrLimitExceed = errors.New("websocket request too frequent, please try again later")
+)
+
 const (
 	bnSpotWsEndpoint    = "wss://stream.binance.com:9443/ws"
 	bnFuturesWsEndpoint = "wss://fstream.binance.com/ws"
 )
 
+// TODO: 限流器放在 ofbinance 做调用，不传入 wsmanager
 func NewBinanceOrderFeed(cli *bnhttp.Client, limiter limiter.Limiter, opts ...Option) ofmanager.OrderFeedManager {
 	// 默认配置
 	o := &options{
@@ -40,10 +48,11 @@ func NewBinanceOrderFeed(cli *bnhttp.Client, limiter limiter.Limiter, opts ...Op
 		name:          "Binance",
 		opts:          o,
 		client:        cli,
+		limiter:       limiter,
 		listenKeySets: make(map[string]*listenKey),
 		wsm: manager.NewManager(
 			manager.WithMaxConnDuration(o.maxConnDuration),
-			manager.WithConnLimiter(limiter),
+			// manager.WithConnLimiter(limiter),
 		),
 		exitChan: make(chan struct{}),
 	}
@@ -54,10 +63,13 @@ func NewBinanceOrderFeed(cli *bnhttp.Client, limiter limiter.Limiter, opts ...Op
 }
 
 type listenKey struct {
+	accountId      string
 	uniq           string
 	key            string
 	createTime     time.Time
 	instrumentType exchange.InstrumentType
+	apikey         string
+	secretkey      string
 }
 
 type of struct {
@@ -65,6 +77,7 @@ type of struct {
 	name          string
 	opts          *options
 	client        *bnhttp.Client
+	limiter       limiter.Limiter
 	wsm           wsmanager.WebsocketManager
 	listenKeySets map[string]*listenKey // listenKey 集合, 合约一个，现货一个
 	mux           sync.Mutex
@@ -78,12 +91,16 @@ func (o *of) AddOrderFeed(req *ofmanager.OrderFeedRequest) error {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 
+	if !o.limiter.WsAllow() {
+		return ErrLimitExceed
+	}
+
 	conf := &wsmanager.WebsocketConfig{
 		PingHandler: pingHandler,
 		PongHandler: pongHandler,
 	}
 	// 生成 listenKey
-	key, err := o.generateListenKey(req.Instrument)
+	key, err := o.generateListenKey(req)
 
 	if err != nil {
 		return err
@@ -136,10 +153,13 @@ func (o *of) AddOrderFeed(req *ofmanager.OrderFeedRequest) error {
 	}, conf)
 
 	o.listenKeySets[uniq] = &listenKey{
+		accountId:      req.AccountId,
 		uniq:           uniq,
 		key:            key,
 		createTime:     generateTime,
 		instrumentType: req.Instrument,
+		apikey:         req.APIKey,
+		secretkey:      req.SecretKey,
 	}
 
 	if err != nil {
@@ -210,15 +230,24 @@ func (o *of) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.Webso
 	return uniq, nil
 }
 
-func (o *of) generateListenKey(instrumentType exchange.InstrumentType) (string, error) {
-	r := &bnhttp.Request{
-		Method:  http.MethodPost,
-		SecType: bnhttp.SecTypeAPIKey,
+func (o *of) generateListenKey(req *ofmanager.OrderFeedRequest) (string, error) {
+
+	for _, lk := range o.listenKeySets {
+		if lk.accountId == req.AccountId && lk.instrumentType == req.Instrument {
+			return lk.key, nil
+		}
 	}
 
-	if instrumentType == exchange.InstrumentTypeSpot {
+	r := &bnhttp.Request{
+		APIKey:    req.APIKey,
+		SecretKey: req.SecretKey,
+		Method:    http.MethodPost,
+		SecType:   bnhttp.SecTypeAPIKey,
+	}
+
+	if req.Instrument == exchange.InstrumentTypeSpot {
 		r.Endpoint = "/api/v3/userDataStream"
-	} else if instrumentType == exchange.InstrumentTypeFutures {
+	} else if req.Instrument == exchange.InstrumentTypeFutures {
 		r.Endpoint = "/fapi/v1/listenKey"
 	}
 
@@ -241,8 +270,10 @@ func (o *of) generateListenKey(instrumentType exchange.InstrumentType) (string, 
 
 func (o *of) updateListenKey(lk *listenKey) error {
 	r := &bnhttp.Request{
-		Method:  http.MethodPut,
-		SecType: bnhttp.SecTypeAPIKey,
+		APIKey:    lk.apikey,
+		SecretKey: lk.secretkey,
+		Method:    http.MethodPut,
+		SecType:   bnhttp.SecTypeAPIKey,
 	}
 
 	if lk.instrumentType == exchange.InstrumentTypeSpot {
@@ -265,8 +296,10 @@ func (o *of) updateListenKey(lk *listenKey) error {
 
 func (o *of) closeListenKey(lk *listenKey) error {
 	r := &bnhttp.Request{
-		Method:  http.MethodDelete,
-		SecType: bnhttp.SecTypeAPIKey,
+		Method:    http.MethodDelete,
+		SecType:   bnhttp.SecTypeAPIKey,
+		APIKey:    lk.apikey,
+		SecretKey: lk.secretkey,
 	}
 
 	if lk.instrumentType == exchange.InstrumentTypeSpot {

@@ -5,6 +5,9 @@ import (
 )
 
 type OrderFeedRequest struct {
+	AccountId	 string
+	APIKey     string
+	SecretKey  string
 	Instrument exchange.InstrumentType
 	Event      func(data *exchange.OrderEvent)
 }

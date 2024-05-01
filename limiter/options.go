@@ -1,15 +1,16 @@
 package limiter
 
 const (
-	WsConnectLimit         = "WS_CONNECT"
-	SpotCreateOrderLimit   = "SPOT_CREATE_ORDER"
-	SpotNormalRequestLimit = "SPOT_NORMAL_REQUEST"
-	FutureCreateOrderLimit = "FUTURE_CREATE_ORDER"
+	WsConnectLimit           = "WS_CONNECT"
+	SpotCreateOrderLimit     = "SPOT_CREATE_ORDER"
+	SpotNormalRequestLimit   = "SPOT_NORMAL_REQUEST"
+	FutureNormalRequestLimit = "FUTURE_NORMAL_REQUEST"
+	FutureCreateOrderLimit   = "FUTURE_CREATE_ORDER"
 
 	// redis key
-	SpotWeight = "SPOT_WEIGHT"
-	FutureWeight = "FUTURE_WEIGHT"
-	SpotLastRestTime = "SPOT_LAST_RESET_TIME"
+	SpotWeight         = "SPOT_WEIGHT"
+	FutureWeight       = "FUTURE_WEIGHT"
+	SpotLastRestTime   = "SPOT_LAST_RESET_TIME"
 	FutureLastRestTime = "FUTURE_LAST_RESET_TIME"
 )
 

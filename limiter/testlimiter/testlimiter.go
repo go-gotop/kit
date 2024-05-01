@@ -6,7 +6,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func NewTestLimiter(accountId string, redisClient redis.Client, opts ...limiter.Option) *TestLimiter {
+func NewTestLimiter(redisClient redis.Client, opts ...limiter.Option) *TestLimiter {
 	o := &limiter.Options{
 		PeriodLimitArray: []limiter.PeriodLimit{
 			{
@@ -41,7 +41,7 @@ func NewTestLimiter(accountId string, redisClient redis.Client, opts ...limiter.
 
 	return &TestLimiter{
 		opts:       o,
-		limiterMap: limiter.SetAllLimiters(accountId, redisClient, "test", o.PeriodLimitArray),
+		limiterMap: limiter.SetAllLimiters(redisClient, "test", o.PeriodLimitArray),
 	}
 }
 
@@ -52,13 +52,13 @@ type TestLimiter struct {
 }
 
 func (t *TestLimiter) WsAllow() bool {
-	return limiter.LimiterAllow(t.limiterMap[limiter.WsConnectLimit])
-}
-
-func (t *TestLimiter) SpotAllow(limiterType limiter.LimitType) bool {
 	return true
 }
 
-func (t *TestLimiter) FutureAllow(limiterType limiter.LimitType) bool {
+func (t *TestLimiter) SpotAllow(limiterType limiter.LimiterReq) bool {
+	return true
+}
+
+func (t *TestLimiter) FutureAllow(limiterType limiter.LimiterReq) bool {
 	return true
 }

@@ -19,7 +19,7 @@ func TestRoutineCreateSpotOrderAllow(t *testing.T) {
 		// Password: "123456",
 		DB: 0, // 使用的数据库编号
 	})
-	b := bnlimiter.NewBinanceLimiter("mambaji", rdb)
+	b := bnlimiter.NewBinanceLimiter(rdb)
 	// 使用 WaitGroup 等待所有 goroutine 结束
 	var wg sync.WaitGroup
 	// 设置并发数量
@@ -35,11 +35,15 @@ func TestRoutineCreateSpotOrderAllow(t *testing.T) {
 			defer wg.Done()
 			for j := 0; j < cycle; j++ {
 				// 执行 SpotAllow 函数
+				req := &limiter.LimiterReq{
+					AccountId:   "manbasji",
+					LimiterType: limiter.CreateOrderLimit,
+				}
 				if i == 1 {
 					// 一个 goroutine 执行 Oco 下单
-					allowed = b.SpotAllow(limiter.CreateOrderLimit)
+					allowed = b.SpotAllow(req)
 				} else {
-					allowed = b.SpotAllow(limiter.CreateOcoOrderLimit)
+					allowed = b.SpotAllow(req)
 				}
 				if !allowed {
 					notAllowedNum++
@@ -60,9 +64,13 @@ func TestCreateSpotOrderAllow(t *testing.T) {
 		Addr: "localhost:6379", // Redis 服务器地址
 		DB:   0,                // 使用的数据库编号
 	})
-	b := bnlimiter.NewBinanceLimiter("mambaji", rdb)
+	b := bnlimiter.NewBinanceLimiter(rdb)
+	req := &limiter.LimiterReq{
+		AccountId:   "manbasji",
+		LimiterType: limiter.CreateOrderLimit,
+	}
 	for i := 1; i <= 101; i++ {
-		allowed := b.SpotAllow(limiter.CreateOrderLimit)
+		allowed := b.SpotAllow(req)
 		if i < 101 {
 			assert.True(t, allowed, "Expected spot order creation within rate limit at %dth attempt", i)
 		} else {
@@ -78,15 +86,19 @@ func TestCancelFutureOrderAllow(t *testing.T) {
 		Addr: "localhost:6379", // Redis 服务器地址
 		DB:   0,                // 使用的数据库编号
 	})
-	b := bnlimiter.NewBinanceLimiter("mambaji", rdb)
+	b := bnlimiter.NewBinanceLimiter(rdb)
+	req := &limiter.LimiterReq{
+		AccountId:   "manbasji",
+		LimiterType: limiter.CancelOrderLimit,
+	}
 	// 测试通过情况：10秒内取消现货订单不超过100次
 	for i := 0; i < 2400; i++ {
-		allowed := b.FutureAllow(limiter.CancelOrderLimit)
+		allowed := b.FutureAllow(req)
 		assert.True(t, allowed, "Expected spot order cancellation within rate limit at %dth attempt", i+1)
 	}
-	assert.False(t, b.FutureAllow(limiter.CancelOrderLimit), "Expected spot order cancellation beyond rate limit at 2401th attempt")
+	assert.False(t, b.FutureAllow(req), "Expected spot order cancellation beyond rate limit at 2401th attempt")
 	time.Sleep(time.Minute)
-	assert.True(t, b.FutureAllow(limiter.CancelOrderLimit), "Expected spot order cancellation within rate limit after 60 seconds")
+	assert.True(t, b.FutureAllow(req), "Expected spot order cancellation within rate limit after 60 seconds")
 	defer rdb.Close()
 }
 
@@ -96,9 +108,13 @@ func TestCreateFutureOrderAllow(t *testing.T) {
 		Addr: "localhost:6379", // Redis 服务器地址
 		DB:   0,                // 使用的数据库编号
 	})
-	b := bnlimiter.NewBinanceLimiter("mambaji", rdb)
-	for i := 1; i <= 301; i++ {
-		allowed := b.FutureAllow(limiter.CreateOrderLimit)
+	b := bnlimiter.NewBinanceLimiter(rdb)
+	req := &limiter.LimiterReq{
+		AccountId:   "manbasji",
+		LimiterType: limiter.CreateOrderLimit,
+	}
+	for i := 1; i <= 152; i++ {
+		allowed := b.FutureAllow(req)
 		if i < 301 {
 			assert.True(t, allowed, "Expected future order creation within rate limit at %dth attempt", i)
 		} else {
@@ -106,7 +122,7 @@ func TestCreateFutureOrderAllow(t *testing.T) {
 		}
 	}
 	time.Sleep(time.Second * 11)
-	allowed := b.FutureAllow(limiter.CreateOrderLimit)
+	allowed := b.FutureAllow(req)
 	assert.True(t, allowed, "Expected future order creation within rate limit after 10 seconds")
 	defer rdb.Close()
 }
@@ -117,11 +133,15 @@ func TestCreateFutureOrderAllow1(t *testing.T) {
 		Addr: "localhost:6379", // Redis 服务器地址
 		DB:   0,                // 使用的数据库编号
 	})
-	b := bnlimiter.NewBinanceLimiter("mambaji", rdb)
+	b := bnlimiter.NewBinanceLimiter(rdb)
 	initTime := time.Now()
+	req := &limiter.LimiterReq{
+		AccountId:   "manbasji",
+		LimiterType: limiter.CreateOrderLimit,
+	}
 	for g := 1; g <= 4; g++ {
 		for i := 1; i <= 301; i++ {
-			allowed := b.FutureAllow(limiter.CreateOrderLimit)
+			allowed := b.FutureAllow(req)
 			if i < 301 {
 				assert.True(t, allowed, "Expected future order creation within rate limit at %dth attempt", i)
 			} else {
@@ -132,9 +152,9 @@ func TestCreateFutureOrderAllow1(t *testing.T) {
 	}
 	secondTime := time.Now()
 	// 超过1200次
-	allowed := b.FutureAllow(limiter.CreateOrderLimit)
+	allowed := b.FutureAllow(req)
 	assert.False(t, allowed, "Expected future order creation beyond rate limit at %dth attempt", 1201)
 	time.Sleep(time.Minute - secondTime.Sub(initTime))
-	assert.True(t, b.FutureAllow(limiter.CreateOrderLimit), "Expected future order creation beyond rate limit at %dth attempt", 1201)
+	assert.True(t, b.FutureAllow(req), "Expected future order creation beyond rate limit at %dth attempt", 1201)
 	defer rdb.Close()
 }

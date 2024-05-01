@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -54,22 +55,18 @@ func ParsePeriod(period string) (time.Duration, int, error) {
 }
 
 // 动态添加所有限流器
-func SetAllLimiters(accountId string, redis redis.Client, exchange string, periodLimitArray []PeriodLimit) map[string][]*rate.Limiter {
-	ip, err := GetOutBoundIP()
-	if err != nil {
-		log.Printf("get out bound ip error: %v", err)
-	}
+func SetAllLimiters(redis redis.Client, exchange string, periodLimitArray []PeriodLimit) map[string][]*rate.Limiter {
 	limiterMap := make(map[string][]*rate.Limiter)
 	// 限流器唯一标识用于 redis key，对于websocket只对ip限制，其他请求对accountId限制
-	limiterMap[WsConnectLimit] = SetLimiterMap(exchange+"_"+WsConnectLimit+"_"+ip, redis, periodLimitArray, "WsConnectPeriod", "WsConnectTimes")
-	limiterMap[SpotCreateOrderLimit] = SetLimiterMap(exchange+"_"+SpotCreateOrderLimit+"_"+accountId, redis, periodLimitArray, "SpotCreateOrderPeriod", "SpotCreateOrderTimes")
-	limiterMap[FutureCreateOrderLimit] = SetLimiterMap(exchange+"_"+FutureCreateOrderLimit+"_"+accountId, redis, periodLimitArray, "FutureCreateOrderPeriod", "FutureCreateOrderTimes")
-	limiterMap[SpotNormalRequestLimit] = SetLimiterMap(exchange+"_"+SpotNormalRequestLimit+"_"+accountId, redis, periodLimitArray, "SpotNormalRequestPeriod", "SpotNormalRequestTimes")
+	limiterMap[WsConnectLimit] = SetLimiterMap(redis, periodLimitArray, "WsConnectPeriod", "WsConnectTimes")
+	limiterMap[SpotCreateOrderLimit] = SetLimiterMap(redis, periodLimitArray, "SpotCreateOrderPeriod", "SpotCreateOrderTimes")
+	limiterMap[FutureCreateOrderLimit] = SetLimiterMap(redis, periodLimitArray, "FutureCreateOrderPeriod", "FutureCreateOrderTimes")
+	limiterMap[SpotNormalRequestLimit] = SetLimiterMap(redis, periodLimitArray, "SpotNormalRequestPeriod", "SpotNormalRequestTimes")
 	return limiterMap
 }
 
 // 动态添加限流器通用函数
-func SetLimiterMap(uniq string, redis redis.Client, periodLimitArray []PeriodLimit, periodField string, timesField string) []*rate.Limiter {
+func SetLimiterMap(redis redis.Client, periodLimitArray []PeriodLimit, periodField string, timesField string) []*rate.Limiter {
 	if periodField == "" || timesField == "" {
 		return nil
 	}
@@ -90,15 +87,15 @@ func SetLimiterMap(uniq string, redis redis.Client, periodLimitArray []PeriodLim
 				every = time.Millisecond
 			}
 			// 每种请求的限流可能不同周期限制不一样，所以唯一标识需要再拼接上周期
-			limiterGroup = append(limiterGroup, rate.NewLimiterWithPeriod(uniq+"_"+periodFieldValue, redis, rate.Every(every), int(timesFieldValue), timeUnit*time.Duration(duration)))
+			limiterGroup = append(limiterGroup, rate.NewLimiterWithPeriod(redis, rate.Every(every), int(timesFieldValue), timeUnit*time.Duration(duration)))
 		}
 	}
 	return limiterGroup
 }
 
-func LimiterAllow(l []*rate.Limiter) bool {
+func LimiterAllow(l []*rate.Limiter, uniqId string) bool {
 	for _, limiter := range l {
-		if !limiter.AllowC() {
+		if !limiter.AllowC(uniqId) {
 			return false
 		}
 	}
@@ -106,6 +103,11 @@ func LimiterAllow(l []*rate.Limiter) bool {
 }
 
 func GetOutBoundIP() (ip string, err error) {
+	hostIP := os.Getenv("HOST_IP")
+	if hostIP != "" {
+		ip = hostIP
+		return
+	}
 	conn, err := net.Dial("udp", "8.8.8.8:53")
 	if err != nil {
 		fmt.Println(err)

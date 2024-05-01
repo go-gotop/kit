@@ -2,6 +2,7 @@ package dfbinance
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -18,6 +19,10 @@ import (
 )
 
 var _ dfmanager.DataFeedManager = (*df)(nil)
+
+var (
+	ErrLimitExceed = errors.New("websocket request too frequent, please try again later")
+)
 
 const (
 	bnSpotWsEndpoint    = "wss://stream.binance.com:9443/ws"
@@ -36,20 +41,21 @@ func NewBinanceDataFeed(limiter limiter.Limiter, opts ...Option) dfmanager.DataF
 	}
 
 	return &df{
-		name: "Binance",
-		opts: o,
+		name:    "Binance",
+		opts:    o,
+		limiter: limiter,
 		wsm: manager.NewManager(
 			manager.WithMaxConnDuration(o.maxConnDuration),
-			manager.WithConnLimiter(limiter),
 		),
 	}
 }
 
 type df struct {
-	name     string
-	opts     *options
-	wsm      wsmanager.WebsocketManager
-	mux      sync.Mutex
+	name    string
+	opts    *options
+	limiter limiter.Limiter
+	wsm     wsmanager.WebsocketManager
+	mux     sync.Mutex
 }
 
 func (d *df) Name() string {
@@ -64,6 +70,10 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 	)
 	d.mux.Lock()
 	defer d.mux.Unlock()
+
+	if !d.limiter.WsAllow() {
+		return ErrLimitExceed
+	}
 
 	symbol = strings.ToLower(exchange.ReverseBinanceSymbols[req.Symbol])
 	conf := &wsmanager.WebsocketConfig{

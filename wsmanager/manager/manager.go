@@ -14,7 +14,6 @@ var (
 	// 错误定义
 	ErrMaxConnReached = errors.New("max connection reached")
 	ErrWSNotFound     = errors.New("websocket not found")
-	ErrLimitExceed    = errors.New("websocket request too frequent, please try again later")
 )
 
 type Manager struct {
@@ -29,7 +28,7 @@ func NewManager(opts ...ConnConfig) *Manager {
 	config := &connConfig{
 		maxConn:         1000,
 		maxConnDuration: 24 * time.Hour,
-		connLimiter:     nil,
+		// connLimiter:     nil,
 		isCheckReConn:   true,
 	}
 
@@ -62,9 +61,9 @@ func (b *Manager) AddWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.
 	}
 
 	// websocket连接频率限制
-	if b.config.connLimiter != nil && !b.config.connLimiter.WsAllow() {
-		return "", ErrLimitExceed
-	}
+	// if b.config.connLimiter != nil && !b.config.connLimiter.WsAllow() {
+	// 	return "", ErrLimitExceed
+	// }
 
 	conn := gorilla.NewGorillaWebSocketConn()
 
