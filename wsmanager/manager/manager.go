@@ -54,16 +54,11 @@ func NewManager(opts ...ConnConfig) *Manager {
 func (b *Manager) AddWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.WebsocketConfig) (string, error) {
 	b.mux.Lock()
 	defer b.mux.Unlock()
-
+	
 	// 最大连接数限制
 	if b.currentConnCount >= b.config.maxConn {
 		return "", ErrMaxConnReached
 	}
-
-	// websocket连接频率限制
-	// if b.config.connLimiter != nil && !b.config.connLimiter.WsAllow() {
-	// 	return "", ErrLimitExceed
-	// }
 
 	conn := gorilla.NewGorillaWebSocketConn()
 
