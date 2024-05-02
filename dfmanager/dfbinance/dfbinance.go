@@ -161,9 +161,11 @@ func spotToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
 	}
 
 	te := &exchange.TradeEvent{
-		TradeID:  uint64(e.TradeID),
+		TradeID:  fmt.Sprintf("%d", e.TradeID),
 		Symbol:   e.Symbol,
 		TradedAt: e.TradeTime,
+		Exchange: exchange.BinanceExchange,
+		Instrument: exchange.InstrumentTypeSpot,
 	}
 	size, err := decimal.NewFromString(e.Quantity)
 	if err != nil {
@@ -176,8 +178,9 @@ func spotToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
 		return nil, err
 	}
 	te.Price = p
+	te.Side = exchange.SideTypeBuy
 	if e.IsBuyerMaker {
-		te.Side = true
+		te.Side = exchange.SideTypeSell
 	}
 	return te, nil
 }
@@ -189,9 +192,11 @@ func futuresToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
 		return nil, err
 	}
 	te := &exchange.TradeEvent{
-		TradeID:  uint64(e.AggregateTradeID),
+		TradeID:  fmt.Sprintf("%d", e.AggregateTradeID),
 		Symbol:   e.Symbol,
 		TradedAt: e.TradeTime,
+		Exchange: exchange.BinanceExchange,
+		Instrument: exchange.InstrumentTypeFutures,
 	}
 	size, err := decimal.NewFromString(e.Quantity)
 	if err != nil {
@@ -204,9 +209,9 @@ func futuresToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
 		return nil, err
 	}
 	te.Price = p
-
+	te.Side = exchange.SideTypeBuy
 	if e.Maker {
-		te.Side = true
+		te.Side = exchange.SideTypeSell
 	}
 	return te, nil
 }

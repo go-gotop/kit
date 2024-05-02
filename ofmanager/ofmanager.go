@@ -9,7 +9,7 @@ type OrderFeedRequest struct {
 	APIKey     string
 	SecretKey  string
 	Instrument exchange.InstrumentType
-	Event      func(data *exchange.OrderEvent)
+	Event      func(evt *exchange.OrderResultEvent)
 }
 
 type OrderFeedManager interface {

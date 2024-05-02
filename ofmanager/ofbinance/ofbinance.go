@@ -346,7 +346,7 @@ func pongHandler(appData string, conn websocket.WebSocketConn) error {
 	return conn.WriteMessage(9, []byte(appData))
 }
 
-func swoueToOrderEvent(event *bnSpotWsOrderUpdateEvent) (*exchange.OrderEvent, error) {
+func swoueToOrderEvent(event *bnSpotWsOrderUpdateEvent) (*exchange.OrderResultEvent, error) {
 	price, err := decimal.NewFromString(event.Price)
 	if err != nil {
 		return nil, err
@@ -383,13 +383,13 @@ func swoueToOrderEvent(event *bnSpotWsOrderUpdateEvent) (*exchange.OrderEvent, e
 	if filledQuoteVolume.GreaterThan(decimal.Zero) && filledVolume.GreaterThan(decimal.Zero) {
 		avgPrice = filledQuoteVolume.Div(filledVolume)
 	}
-	return &exchange.OrderEvent{
+	return &exchange.OrderResultEvent{
 		PositionSide:    ps,
 		Exchange:        exchange.BinanceExchange,
 		Symbol:          event.Symbol,
 		ClientOrderID:   event.ClientOrderId,
-		ExecutionType:   event.ExecutionType,
-		Status:          event.Status,
+		ExecutionType:   exchange.OrderState(event.ExecutionType),
+		Status:          exchange.PositionStatus(event.Status),
 		OrderID:         fmt.Sprintf("%d", event.Id),
 		TransactionTime: event.TransactionTime,
 		IsMaker:         event.IsMaker,
@@ -407,7 +407,7 @@ func swoueToOrderEvent(event *bnSpotWsOrderUpdateEvent) (*exchange.OrderEvent, e
 	}, nil
 }
 
-func fwoueToOrderEvent(event *bnFuturesWsOrderUpdateEvent) (*exchange.OrderEvent, error) {
+func fwoueToOrderEvent(event *bnFuturesWsOrderUpdateEvent) (*exchange.OrderResultEvent, error) {
 	price, err := decimal.NewFromString(event.OriginalPrice)
 	if err != nil {
 		return nil, err
@@ -440,13 +440,13 @@ func fwoueToOrderEvent(event *bnFuturesWsOrderUpdateEvent) (*exchange.OrderEvent
 	if event.PositionSide == "SHORT" {
 		ps = exchange.PositionSideShort
 	}
-	return &exchange.OrderEvent{
+	return &exchange.OrderResultEvent{
 		PositionSide:    ps,
 		Exchange:        exchange.BinanceExchange,
 		Symbol:          event.Symbol,
 		ClientOrderID:   event.ClientOrderID,
-		ExecutionType:   event.ExecutionType,
-		Status:          event.Status,
+		ExecutionType:   exchange.OrderState(event.ExecutionType),
+		Status:          exchange.PositionStatus(event.Status),
 		OrderID:         fmt.Sprintf("%d", event.ID),
 		TransactionTime: event.TradeTime,
 		IsMaker:         event.IsMaker,
