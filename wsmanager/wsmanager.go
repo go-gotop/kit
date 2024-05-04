@@ -11,7 +11,7 @@ type WebsocketConfig struct {
 
 // WebsocketManager 是 websocket 管理接口
 type WebsocketManager interface {
-	AddWebsocket(req *websocket.WebsocketRequest, conf *WebsocketConfig) (string, error)
+	AddWebsocket(req *websocket.WebsocketRequest, conf *WebsocketConfig) error
 	CloseWebsocket(uniq string) error
 	GetWebsocket(uniq string) websocket.Websocket
 	GetWebsockets() map[string]websocket.Websocket

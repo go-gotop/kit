@@ -5,7 +5,7 @@ import (
 )
 
 type OrderFeedRequest struct {
-	AccountId	 string
+	AccountId  string
 	APIKey     string
 	SecretKey  string
 	Instrument exchange.InstrumentType

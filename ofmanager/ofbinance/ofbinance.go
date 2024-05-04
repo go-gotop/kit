@@ -45,11 +45,11 @@ func NewBinanceOrderFeed(cli *bnhttp.Client, limiter limiter.Limiter, opts ...Op
 	}
 
 	of := &of{
-		name:          "Binance",
+		name:          exchange.BinanceExchange,
 		opts:          o,
 		client:        cli,
 		limiter:       limiter,
-		listenKeySets: make(map[string]*listenKey),
+		listenKeySets: make(map[string]*ListenKey),
 		wsm: manager.NewManager(
 			manager.WithMaxConnDuration(o.maxConnDuration),
 			// manager.WithConnLimiter(limiter),
@@ -62,14 +62,13 @@ func NewBinanceOrderFeed(cli *bnhttp.Client, limiter limiter.Limiter, opts ...Op
 	return of
 }
 
-type listenKey struct {
-	accountId      string
-	uniq           string
-	key            string
-	createTime     time.Time
-	instrumentType exchange.InstrumentType
-	apikey         string
-	secretkey      string
+type ListenKey struct {
+	AccountID   string
+	Key         string
+	APIKey      string
+	SecretKey   string
+	CreatedTime time.Time
+	Instrument  exchange.InstrumentType
 }
 
 type of struct {
@@ -79,7 +78,7 @@ type of struct {
 	client        *bnhttp.Client
 	limiter       limiter.Limiter
 	wsm           wsmanager.WebsocketManager
-	listenKeySets map[string]*listenKey // listenKey 集合, 合约一个，现货一个
+	listenKeySets map[string]*ListenKey // listenKey 集合, 合约一个，现货一个
 	mux           sync.Mutex
 }
 
@@ -146,24 +145,22 @@ func (o *of) AddOrderFeed(req *ofmanager.OrderFeedRequest) error {
 			req.Event(oe)
 		}
 	}
-	uniq, err := o.addWebsocket(&websocket.WebsocketRequest{
+	err = o.addWebsocket(&websocket.WebsocketRequest{
 		Endpoint:       endpoint,
-		ID:             fmt.Sprintf("binance.order.%s", req.Instrument),
+		ID:             req.AccountId,
 		MessageHandler: wsHandler,
 	}, conf)
 
-	o.listenKeySets[uniq] = &listenKey{
-		accountId:      req.AccountId,
-		uniq:           uniq,
-		key:            key,
-		createTime:     generateTime,
-		instrumentType: req.Instrument,
-		apikey:         req.APIKey,
-		secretkey:      req.SecretKey,
-	}
-
 	if err != nil {
 		return err
+	}
+	o.listenKeySets[req.AccountId] = &ListenKey{
+		AccountID:   req.AccountId,
+		Key:         key,
+		CreatedTime: generateTime,
+		Instrument:  req.Instrument,
+		APIKey:      req.APIKey,
+		SecretKey:   req.SecretKey,
 	}
 
 	return nil
@@ -203,9 +200,9 @@ func (o *of) OrderFeedList() []string {
 }
 
 func (o *of) Shutdown() error {
-	close(o.exitChan)
 	o.mux.Lock()
 	defer o.mux.Unlock()
+	close(o.exitChan)
 
 	for _, lk := range o.listenKeySets {
 		err := o.closeListenKey(lk)
@@ -222,19 +219,18 @@ func (o *of) Shutdown() error {
 	return nil
 }
 
-func (o *of) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.WebsocketConfig) (string, error) {
-	uniq, err := o.wsm.AddWebsocket(req, conf)
+func (o *of) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.WebsocketConfig) error {
+	err := o.wsm.AddWebsocket(req, conf)
 	if err != nil {
-		return "", err
+		return err
 	}
-	return uniq, nil
+	return nil
 }
 
 func (o *of) generateListenKey(req *ofmanager.OrderFeedRequest) (string, error) {
-
 	for _, lk := range o.listenKeySets {
-		if lk.accountId == req.AccountId && lk.instrumentType == req.Instrument {
-			return lk.key, nil
+		if lk.AccountID == req.AccountId && lk.Instrument == req.Instrument {
+			return lk.Key, nil
 		}
 	}
 
@@ -245,9 +241,8 @@ func (o *of) generateListenKey(req *ofmanager.OrderFeedRequest) (string, error) 
 		SecType:   bnhttp.SecTypeAPIKey,
 	}
 
-	if req.Instrument == exchange.InstrumentTypeSpot {
-		r.Endpoint = "/api/v3/userDataStream"
-	} else if req.Instrument == exchange.InstrumentTypeFutures {
+	r.Endpoint = "/api/v3/userDataStream"
+	if req.Instrument == exchange.InstrumentTypeFutures {
 		r.Endpoint = "/fapi/v1/listenKey"
 	}
 
@@ -268,18 +263,18 @@ func (o *of) generateListenKey(req *ofmanager.OrderFeedRequest) (string, error) 
 	return res.ListenKey, nil
 }
 
-func (o *of) updateListenKey(lk *listenKey) error {
+func (o *of) updateListenKey(lk *ListenKey) error {
 	r := &bnhttp.Request{
-		APIKey:    lk.apikey,
-		SecretKey: lk.secretkey,
+		APIKey:    lk.APIKey,
+		SecretKey: lk.SecretKey,
 		Method:    http.MethodPut,
 		SecType:   bnhttp.SecTypeAPIKey,
 	}
 
-	if lk.instrumentType == exchange.InstrumentTypeSpot {
+	if lk.Instrument == exchange.InstrumentTypeSpot {
 		r.Endpoint = "/api/v3/userDataStream"
-		r.SetFormParam("listenKey", lk.key)
-	} else if lk.instrumentType == exchange.InstrumentTypeFutures {
+		r.SetFormParam("listenKey", lk.Key)
+	} else if lk.Instrument == exchange.InstrumentTypeFutures {
 		r.Endpoint = "/fapi/v1/listenKey"
 	}
 
@@ -289,22 +284,21 @@ func (o *of) updateListenKey(lk *listenKey) error {
 	}
 
 	// 更新listenKey createTime
-	lk.createTime = time.Now()
+	lk.CreatedTime = time.Now()
 
 	return nil
 }
 
-func (o *of) closeListenKey(lk *listenKey) error {
+func (o *of) closeListenKey(lk *ListenKey) error {
 	r := &bnhttp.Request{
 		Method:    http.MethodDelete,
 		SecType:   bnhttp.SecTypeAPIKey,
-		APIKey:    lk.apikey,
-		SecretKey: lk.secretkey,
+		APIKey:    lk.APIKey,
+		SecretKey: lk.SecretKey,
 	}
 
-	if lk.instrumentType == exchange.InstrumentTypeSpot {
-		r.Endpoint = "/api/v3/userDataStream"
-	} else if lk.instrumentType == exchange.InstrumentTypeFutures {
+	r.Endpoint = "/api/v3/userDataStream"
+	if lk.Instrument == exchange.InstrumentTypeFutures {
 		r.Endpoint = "/fapi/v1/listenKey"
 	}
 
@@ -312,10 +306,10 @@ func (o *of) closeListenKey(lk *listenKey) error {
 	if err != nil {
 		return err
 	}
-
+	o.mux.Lock()
 	// 删除 listenKey
-	delete(o.listenKeySets, lk.uniq)
-
+	delete(o.listenKeySets, lk.AccountID)
+	o.mux.Unlock()
 	return nil
 }
 
@@ -328,7 +322,7 @@ func (o *of) CheckListenKey() {
 		default:
 			o.mux.Lock()
 			for _, lk := range o.listenKeySets {
-				if time.Since(lk.createTime) >= o.opts.listenKeyExpire {
+				if time.Since(lk.CreatedTime) >= o.opts.listenKeyExpire {
 					o.updateListenKey(lk)
 				}
 			}

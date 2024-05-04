@@ -96,7 +96,7 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 		}
 		req.Event(te)
 	}
-	_, err := d.addWebsocket(&websocket.WebsocketRequest{
+	err := d.addWebsocket(&websocket.WebsocketRequest{
 		ID:             req.ID,
 		Endpoint:       endpoint,
 		MessageHandler: wsHandler,
@@ -137,12 +137,12 @@ func (d *df) Shutdown() error {
 	return nil
 }
 
-func (d *df) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.WebsocketConfig) (string, error) {
-	uniq, err := d.wsm.AddWebsocket(req, conf)
+func (d *df) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.WebsocketConfig) error {
+	err := d.wsm.AddWebsocket(req, conf)
 	if err != nil {
-		return "", err
+		return err
 	}
-	return uniq, nil
+	return nil
 }
 
 func pingHandler(appData string, conn websocket.WebSocketConn) error {
