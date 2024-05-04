@@ -49,7 +49,7 @@ func NewBinanceOrderFeed(cli *bnhttp.Client, limiter limiter.Limiter, opts ...Op
 		opts:          o,
 		client:        cli,
 		limiter:       limiter,
-		listenKeySets: make(map[string]*ListenKey),
+		listenKeySets: make(map[string]*listenKey),
 		wsm: manager.NewManager(
 			manager.WithMaxConnDuration(o.maxConnDuration),
 			// manager.WithConnLimiter(limiter),
@@ -62,7 +62,7 @@ func NewBinanceOrderFeed(cli *bnhttp.Client, limiter limiter.Limiter, opts ...Op
 	return of
 }
 
-type ListenKey struct {
+type listenKey struct {
 	AccountID   string
 	Key         string
 	APIKey      string
@@ -78,7 +78,7 @@ type of struct {
 	client        *bnhttp.Client
 	limiter       limiter.Limiter
 	wsm           wsmanager.WebsocketManager
-	listenKeySets map[string]*ListenKey // listenKey 集合, 合约一个，现货一个
+	listenKeySets map[string]*listenKey // listenKey 集合, 合约一个，现货一个
 	mux           sync.Mutex
 }
 
@@ -154,7 +154,7 @@ func (o *of) AddOrderFeed(req *ofmanager.OrderFeedRequest) error {
 	if err != nil {
 		return err
 	}
-	o.listenKeySets[req.AccountId] = &ListenKey{
+	o.listenKeySets[req.AccountId] = &listenKey{
 		AccountID:   req.AccountId,
 		Key:         key,
 		CreatedTime: generateTime,
@@ -188,13 +188,18 @@ func (o *of) CloseOrderFeed(id string) error {
 	return nil
 }
 
-func (o *of) OrderFeedList() []string {
+func (o *of) OrderFeedList() []ofmanager.OrderFeed {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 
-	list := make([]string, 0, len(o.listenKeySets))
-	for k := range o.listenKeySets {
-		list = append(list, k)
+	list := make([]ofmanager.OrderFeed, 0, len(o.listenKeySets))
+	for _, v := range o.listenKeySets {
+		list = append(list, ofmanager.OrderFeed{
+			AccountId:  v.AccountID,
+			APIKey:     v.APIKey,
+			Exchange:   o.name,
+			Instrument: v.Instrument,
+		})
 	}
 	return list
 }
@@ -263,7 +268,7 @@ func (o *of) generateListenKey(req *ofmanager.OrderFeedRequest) (string, error) 
 	return res.ListenKey, nil
 }
 
-func (o *of) updateListenKey(lk *ListenKey) error {
+func (o *of) updateListenKey(lk *listenKey) error {
 	r := &bnhttp.Request{
 		APIKey:    lk.APIKey,
 		SecretKey: lk.SecretKey,
@@ -289,7 +294,7 @@ func (o *of) updateListenKey(lk *ListenKey) error {
 	return nil
 }
 
-func (o *of) closeListenKey(lk *ListenKey) error {
+func (o *of) closeListenKey(lk *listenKey) error {
 	r := &bnhttp.Request{
 		Method:    http.MethodDelete,
 		SecType:   bnhttp.SecTypeAPIKey,
