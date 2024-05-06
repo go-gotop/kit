@@ -71,8 +71,10 @@ type OrderResultEvent struct {
 }
 
 type StrategySignalEvent struct {
-	// ID 事件ID
+	// ID 策略ID
 	ID            string
+	// AccountID 账户ID
+	AccountID     string
 	// Timestamp 当前时间戳
 	Timestamp     int64
 	// ClientOrderID 自定义客户端订单号
