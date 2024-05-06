@@ -57,7 +57,6 @@ func ParsePeriod(period string) (time.Duration, int, error) {
 // 动态添加所有限流器
 func SetAllLimiters(redis redis.Client, exchange string, periodLimitArray []PeriodLimit) map[string][]*rate.Limiter {
 	limiterMap := make(map[string][]*rate.Limiter)
-	// 限流器唯一标识用于 redis key，对于websocket只对ip限制，其他请求对accountId限制
 	limiterMap[WsConnectLimit] = SetLimiterMap(redis, periodLimitArray, "WsConnectPeriod", "WsConnectTimes")
 	limiterMap[SpotCreateOrderLimit] = SetLimiterMap(redis, periodLimitArray, "SpotCreateOrderPeriod", "SpotCreateOrderTimes")
 	limiterMap[FutureCreateOrderLimit] = SetLimiterMap(redis, periodLimitArray, "FutureCreateOrderPeriod", "FutureCreateOrderTimes")
@@ -87,8 +86,8 @@ func SetLimiterMap(redis redis.Client, periodLimitArray []PeriodLimit, periodFie
 				every = time.Millisecond
 			}
 
-			// TOFIX: 对周期和次数进行判断，确保同种类型的限流器周期和次数唯一
-			// 如果同个类型的两个限流器周期和次数相同，那么唯一标识就会相同，这样就会导致覆盖
+			// TODO: 对周期和次数进行判断，确保同种类型的限流器周期和次数唯一
+			// 限流器的唯一标识是周期和次数，如果两个限流器周期和次数相同，那么唯一标识就会相同，这样就会导致覆盖
 			limiterGroup = append(limiterGroup, rate.NewLimiterWithPeriod(redis, rate.Every(every), int(timesFieldValue), timeUnit*time.Duration(duration)))
 		}
 	}
