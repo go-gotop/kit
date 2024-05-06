@@ -86,7 +86,9 @@ func SetLimiterMap(redis redis.Client, periodLimitArray []PeriodLimit, periodFie
 			if every > time.Millisecond {
 				every = time.Millisecond
 			}
-			// 每种请求的限流可能不同周期限制不一样，所以唯一标识需要再拼接上周期
+
+			// TOFIX: 对周期和次数进行判断，确保同种类型的限流器周期和次数唯一
+			// 如果同个类型的两个限流器周期和次数相同，那么唯一标识就会相同，这样就会导致覆盖
 			limiterGroup = append(limiterGroup, rate.NewLimiterWithPeriod(redis, rate.Every(every), int(timesFieldValue), timeUnit*time.Duration(duration)))
 		}
 	}
@@ -94,7 +96,11 @@ func SetLimiterMap(redis redis.Client, periodLimitArray []PeriodLimit, periodFie
 }
 
 func LimiterAllow(l []*rate.Limiter, uniqId string) bool {
+	// 每种请求的限流可能不同周期限制不一样，所以唯一标识需要再拼接上周期
 	for _, limiter := range l {
+		burst := limiter.Burst()
+		period := limiter.LimitPeriod()
+		uniqId := uniqId + "_" + strconv.Itoa(burst) + "_" + period.String()
 		if !limiter.AllowC(uniqId) {
 			return false
 		}

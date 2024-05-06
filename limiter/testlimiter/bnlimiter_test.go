@@ -113,7 +113,7 @@ func TestCreateFutureOrderAllow(t *testing.T) {
 		AccountId:   "manbasji",
 		LimiterType: limiter.CreateOrderLimit,
 	}
-	for i := 1; i <= 152; i++ {
+	for i := 1; i <= 301; i++ {
 		allowed := b.FutureAllow(req)
 		if i < 301 {
 			assert.True(t, allowed, "Expected future order creation within rate limit at %dth attempt", i)
@@ -121,7 +121,7 @@ func TestCreateFutureOrderAllow(t *testing.T) {
 			assert.False(t, allowed, "Expected future order creation beyond rate limit at %dth attempt", i)
 		}
 	}
-	time.Sleep(time.Second * 11)
+	time.Sleep(time.Second * 10)
 	allowed := b.FutureAllow(req)
 	assert.True(t, allowed, "Expected future order creation within rate limit after 10 seconds")
 	defer rdb.Close()

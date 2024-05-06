@@ -92,6 +92,12 @@ func (lim *Limiter) Burst() int {
 	return lim.burst
 }
 
+func (lim *Limiter) LimitPeriod() time.Duration {
+	lim.mu.Lock()
+	defer lim.mu.Unlock()
+	return lim.limitPeriod
+}
+
 // TokensAt returns the number of tokens available at time t.
 func (lim *Limiter) TokensAt(t time.Time) float64 {
 	lim.mu.Lock()
@@ -103,12 +109,6 @@ func (lim *Limiter) TokensAt(t time.Time) float64 {
 // Tokens returns the number of tokens available now.
 func (lim *Limiter) Tokens() float64 {
 	return lim.TokensAt(time.Now())
-}
-
-func (lim *Limiter) LimitPeriod() time.Duration {
-	lim.mu.Lock()
-	defer lim.mu.Unlock()
-	return lim.limitPeriod
 }
 
 func (lim *Limiter) FirstActTime() time.Time {
