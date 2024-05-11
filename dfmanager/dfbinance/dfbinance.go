@@ -41,7 +41,7 @@ func NewBinanceDataFeed(limiter limiter.Limiter, opts ...Option) dfmanager.DataF
 	}
 
 	return &df{
-		name:    "Binance",
+		name:    exchange.BinanceExchange,
 		opts:    o,
 		limiter: limiter,
 		wsm: manager.NewManager(
