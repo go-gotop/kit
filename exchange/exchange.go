@@ -160,14 +160,69 @@ type Symbol struct {
 }
 
 type Position struct {
+	// 客户端订单ID
 	ClientOrderID string
-	Status        PositionStatus
-	// FILLED, PARTIALLY_FILLED, CANCELED
-	State            OrderState
-	Price            decimal.Decimal
-	OriginalQuantity decimal.Decimal
+	// 交易所
+	Exchange string
+	// 交易对
+	Symbol string
+	// 策略ID
+	StrategyID string
+	// 账户ID
+	AccountID string
+	// 头寸
+	Size decimal.Decimal
+	// 已成交数量
 	ExecutedQuantity decimal.Decimal
-	FeeCost          decimal.Decimal
+	// 手续费
+	FeeCost decimal.Decimal
+	// 入场价格
+	EntryPrice decimal.Decimal
+	// 退出价格
+	ExitPrice decimal.Decimal
+	// 止损价格
+	StopPrice decimal.Decimal
+	// 订单状态
+	State OrderState
+	// 仓位状态
+	Status PositionStatus
+	// 种类
+	Instrument InstrumentType
+	// 仓位方向
+	PositionSide PositionSide
+}
+
+type Order struct {
+	// 帐号ID
+	AccountID string
+	// 客户端订单ID
+	ClientOrderID string
+	// 策略ID
+	StrategyID string
+	// 交易所
+	Exchange string
+	// 交易对
+	Symbol string
+	// 仓位侧
+	Side SideType
+	// 头寸
+	Size decimal.Decimal
+	// 价格
+	Price decimal.Decimal
+	// 金额
+	Amount decimal.Decimal
+	// 费用资产
+	FeeAsset string
+	// 费用
+	Fee decimal.Decimal
+	// 状态
+	State OrderState
+	// 种类
+	Instrument InstrumentType
+	// 仓位方向
+	PositionSide PositionSide
+	// 成交时间
+	TransactionTime int64
 }
 
 type Exchange interface {
@@ -178,10 +233,3 @@ type Exchange interface {
 	CancelOrder(ctx context.Context, o *CancelOrderRequest) error
 }
 
-type PositionManager interface {
-	Save(ctx context.Context, p *Position) error
-	Delete(ctx context.Context, orderID string) error
-	UpdateStatus(ctx context.Context, orderID string, status PositionStatus) error
-	ListOpenPositions(ctx context.Context, strategyID string) ([]*Position, error)
-	ListClosePositions(ctx context.Context, strategyID string) ([]*Position, error)
-}
