@@ -390,6 +390,11 @@ func (b *kafkaBroker) publishMultipleWriter(ctx context.Context, topic string, b
 		Value: buf,
 	}
 
+	// 从上下文中获取分区。
+	if value, ok := options.Context.Value(partitionKey{}).(int); ok {
+		kMsg.Partition = value
+	}
+
 	if headers, ok := options.Context.Value(messageHeadersKey{}).(map[string]interface{}); ok {
 		for k, v := range headers {
 			header := kafkaGo.Header{Key: k}
@@ -483,6 +488,11 @@ func (b *kafkaBroker) publishOneWriter(ctx context.Context, topic string, buf []
 	kMsg := kafkaGo.Message{
 		Topic: topic,
 		Value: buf,
+	}
+
+	// 从上下文中获取分区。
+	if value, ok := options.Context.Value(partitionKey{}).(int); ok {
+		kMsg.Partition = value
 	}
 
 	if headers, ok := options.Context.Value(messageHeadersKey{}).(map[string]interface{}); ok {
@@ -584,6 +594,11 @@ func (b *kafkaBroker) Subscribe(topic string, handler broker.Handler, binder bro
 	readerConfig := b.readerConfig
 	readerConfig.Topic = topic
 	readerConfig.GroupID = options.Queue
+
+	// 从上下文中获取分区。
+	if value, ok := options.Context.Value(partitionKey{}).(int); ok {
+		readerConfig.Partition = value
+	}
 
 	sub := &subscriber{
 		options: options,

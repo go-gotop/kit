@@ -349,7 +349,7 @@ func WithMurmur2Balancer(consistent bool) broker.PublishOption {
 ///
 /// SubscribeOption
 ///
-
+type partitionKey struct{}
 type autoSubscribeCreateTopicKey struct{}
 type autoSubscribeCreateTopicValue struct {
 	Topic             string
