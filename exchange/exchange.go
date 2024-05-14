@@ -7,28 +7,28 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// SideType BUY，SELL
+// SideType BUY, SELL
 type SideType string
 
-// OrderType LIMIT，MARKET
+// OrderType LIMIT, MARKET
 type OrderType string
 
-// OrderState NEW，FILLED，CANCELED，REJECTED，EXPIRED
+// OrderState NEW, FILLED, CANCELED, REJECTED, EXPIRED
 type OrderState string
 
-// PositionSide LONG，SHORT
+// PositionSide LONG, SHORT
 type PositionSide string
 
-// PositionStatus OpenPosition，HoldingPosition，ClosingPosition，PositionClosed
+// PositionStatus OpeningPosition, HoldingPosition, ClosingPosition, ClosedPosition
 type PositionStatus string
 
 // InstrumentType SPOT，FUTURES
 type InstrumentType string
 
-// SymbolStatus SYMBOL_TRADING，SYMBOL_SUSPEND，SYMBOL_CLOSE，SYMBOL_FINISH
+// SymbolStatus SYMBOL_TRADING, SYMBOL_SUSPEND, SYMBOL_CLOSE, SYMBOL_FINISH
 type SymbolStatus string
 
-// TimeInForce GTC，IOC，FOK，GTX，GTD
+// TimeInForce GTC, IOC, FOK, GTX, GTD
 type TimeInForce string
 
 type StrategyStatus string
