@@ -182,6 +182,8 @@ type Position struct {
 	ExitPrice decimal.Decimal
 	// 止损价格
 	StopPrice decimal.Decimal
+	// 平均价格
+	AvgPrice decimal.Decimal
 	// 订单状态
 	State OrderState
 	// 仓位状态
