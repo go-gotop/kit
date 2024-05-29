@@ -8,6 +8,7 @@ const (
 	OrderResultTopicType    string = "ORDER.RESULT"
 	StrategySignalTopicType string = "STRATEGY.SIGNAL"
 	StrategyStatusTopicType string = "STRATEGY.STATUS"
+	NotifyTopicType         string = "NOTIFY"
 )
 
 type Event interface {
