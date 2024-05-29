@@ -4,6 +4,22 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+const (
+	OrderServiceType = "OderService"
+	CapitalServiceType = "CapitalService"
+)
+
+type DeadLetterEvent struct {
+
+}
+
+type NotifyEvent struct {
+	// Type 通知类型
+	Type string
+	// AccountID 账户ID
+	AccountID string
+}
+
 type CreateOrderEvent struct {
 	ID             string
 	Timestamp      int64
