@@ -168,8 +168,6 @@ type Position struct {
 	Exchange string
 	// 交易对
 	Symbol string
-	// 策略ID
-	StrategyID string
 	// 账户ID
 	AccountID string
 	// 头寸
