@@ -160,6 +160,8 @@ type Symbol struct {
 }
 
 type Position struct {
+	// 交易id
+	TransactionID string
 	// 客户端订单ID
 	ClientOrderID string
 	// 交易所
