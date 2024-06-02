@@ -40,6 +40,9 @@ const (
 	CoinBaseExchange = "COINBASE"
 	MockExchange     = "MOCK"
 
+	StrategyTypeGrid = "GRID"
+	StrategyTypeDynamic = "DYNAMIC"
+	
 	InstrumentTypeSpot    InstrumentType = "SPOT"
 	InstrumentTypeFutures InstrumentType = "FUTURES"
 
