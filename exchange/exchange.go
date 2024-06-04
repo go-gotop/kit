@@ -43,6 +43,9 @@ const (
 	StrategyTypeGrid = "GRID"
 	StrategyTypeDynamic = "DYNAMIC"
 	
+	ByMaker = "MAKER"
+	ByTaker = "TAKER"
+
 	InstrumentTypeSpot    InstrumentType = "SPOT"
 	InstrumentTypeFutures InstrumentType = "FUTURES"
 
