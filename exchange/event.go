@@ -56,8 +56,6 @@ type OrderResultEvent struct {
 	ExecutionType OrderState
 	// State 当前订单执行类型:NEW，FILLED，CANCELED，REJECTED，EXPIRED
 	State OrderState
-	// PositionStatus 仓位状态: OpenPosition，HoldingPosition，ClosingPosition，PositionClosed
-	Status PositionStatus
 	// PositionSide LONG，SHORT
 	PositionSide PositionSide
 	// SideType BUY，SELL
