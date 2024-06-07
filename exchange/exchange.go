@@ -46,6 +46,9 @@ const (
 	ByMaker = "MAKER"
 	ByTaker = "TAKER"
 
+	CreatedByUser = "USER"
+	CreatedBySystem = "SYSTEM"
+
 	InstrumentTypeSpot    InstrumentType = "SPOT"
 	InstrumentTypeFutures InstrumentType = "FUTURES"
 
