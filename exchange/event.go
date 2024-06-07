@@ -109,6 +109,8 @@ type StrategySignalEvent struct {
 	Size decimal.Decimal
 	// Price 交易价格
 	Price decimal.Decimal
+	// CreatedBy 创建者
+	CreatedBy string
 }
 
 type StrategyStatusEvent struct {
