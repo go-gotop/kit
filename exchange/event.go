@@ -20,6 +20,8 @@ type NotifyEvent struct {
 }
 
 type CreateOrderEvent struct {
+	// AccountID 账户ID
+	AccountID string
 	// ID 交易ID
 	TransactionID  string
 	Timestamp      int64
@@ -34,6 +36,8 @@ type CreateOrderEvent struct {
 }
 
 type OrderResultEvent struct {
+	// AccountID 账户ID
+	AccountID string
 	// ID 交易ID
 	TransactionID string
 	// Exchange 交易所
@@ -114,6 +118,8 @@ type StrategySignalEvent struct {
 }
 
 type StrategyStatusEvent struct {
+	// AccountID 账户ID
+	AccountID string
 	// ID 交易ID
 	TransactionID string
 	Symbol        Symbol
