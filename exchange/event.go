@@ -52,6 +52,8 @@ type OrderResultEvent struct {
 	IsMaker bool
 	// Instrument 种类
 	Instrument InstrumentType
+	// Status 订单状态
+	Status PositionStatus
 	// ExecutionType 本次订单执行类型:NEW，FILLED，CANCELED，REJECTED，EXPIRED
 	ExecutionType OrderState
 	// State 当前订单执行类型:NEW，FILLED，CANCELED，REJECTED，EXPIRED
