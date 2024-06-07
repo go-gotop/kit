@@ -151,19 +151,48 @@ type Asset struct {
 }
 
 type Symbol struct {
-	AssetName      string
-	SymbolName     string
-	Exchange       string
-	AutoAllocation bool
+	// 原标的物名称
+	OriginalSymbol string
+	// 统一标的物名称
+	UnifiedSymbol string
+	// 原资产名称
+	OriginalAsset string
+	// 统一资产名称
+	UnifiedAsset string
+	// 交易所
+	Exchange string
+	// 种类: SPOT, FUTURES
+	Instrument InstrumentType
+	// 状态: ENABLED, DISABLED
+	Status string
+	// 最小头寸
+	MinSize decimal.Decimal
+	// 最大头寸
+	MaxSize decimal.Decimal
+	// 最小价格
+	MinPrice decimal.Decimal
+	// 最大价格
+	MaxPrice decimal.Decimal
+	// 价格精度
 	PricePrecision int32
-	SizePrecision  int32
-	MinSize        decimal.Decimal
-	MaxSize        decimal.Decimal
-	MinPrice       decimal.Decimal
-	MaxPrice       decimal.Decimal
-	Status         SymbolStatus
-	Instrument     InstrumentType
+	// 头寸精度
+	SizePrecision int32
 }
+
+// type Symbol struct {
+// 	AssetName      string
+// 	SymbolName     string
+// 	Exchange       string
+// 	AutoAllocation bool
+// 	PricePrecision int32
+// 	SizePrecision  int32
+// 	MinSize        decimal.Decimal
+// 	MaxSize        decimal.Decimal
+// 	MinPrice       decimal.Decimal
+// 	MaxPrice       decimal.Decimal
+// 	Status         SymbolStatus
+// 	Instrument     InstrumentType
+// }
 
 type Position struct {
 	// 交易id
@@ -236,7 +265,7 @@ type Order struct {
 type Exchange interface {
 	Name() string
 	Assets(ctx context.Context, it InstrumentType) ([]Asset, error)
-	Symbols(ctx context.Context, it InstrumentType) ([]Symbol, error)
+	// Symbols(ctx context.Context, it InstrumentType) ([]Symbol, error)
 	CreateOrder(ctx context.Context, o *CreateOrderRequest) error
 	CancelOrder(ctx context.Context, o *CancelOrderRequest) error
 }

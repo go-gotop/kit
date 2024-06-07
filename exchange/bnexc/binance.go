@@ -91,28 +91,28 @@ func (b *binance) Name() string {
 	return exchange.BinanceExchange
 }
 
-func (b *binance) Symbols(ctx context.Context, it exchange.InstrumentType) ([]exchange.Symbol, error) {
-	if it == exchange.InstrumentTypeSpot {
-		result, err := b.spotSymbol(ctx)
-		if err != nil {
-			return nil, err
-		}
-		data, err := bnSpotSymbolsToSymbols(result)
-		if err != nil {
-			return nil, err
-		}
-		return data, nil
-	}
-	result, err := b.futuresSymbol(ctx)
-	if err != nil {
-		return nil, err
-	}
-	data, err := bnFuturesSymbolsToSymbols(result)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
-}
+// func (b *binance) Symbols(ctx context.Context, it exchange.InstrumentType) ([]exchange.Symbol, error) {
+// 	if it == exchange.InstrumentTypeSpot {
+// 		result, err := b.spotSymbol(ctx)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		data, err := bnSpotSymbolsToSymbols(result)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		return data, nil
+// 	}
+// 	result, err := b.futuresSymbol(ctx)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	data, err := bnFuturesSymbolsToSymbols(result)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return data, nil
+// }
 
 func (b *binance) futuresSymbol(ctx context.Context) (*bnFuturesExchangeInfo, error) {
 	var res bnFuturesExchangeInfo
@@ -274,103 +274,103 @@ func bnSpotAssetsToAssets(s *bnSpotAccount) ([]exchange.Asset, error) {
 	return result, nil
 }
 
-func bnSpotSymbolsToSymbols(s *bnSpotExchangeInfo) ([]exchange.Symbol, error) {
-	result := make([]exchange.Symbol, 0)
-	for _, v := range s.Symbols {
-		if s, exist := exchange.ReverseBinanceSymbols[v.Symbol]; exist {
-			lotSizeFilter := v.LotSizeFilter()
-			maxSize, err := decimal.NewFromString(lotSizeFilter.MaxQuantity)
-			if err != nil {
-				return nil, err
-			}
-			minSize, err := decimal.NewFromString(lotSizeFilter.MinQuantity)
-			if err != nil {
-				return nil, err
-			}
-			priceFilter := v.PriceFilter()
-			minPrice, err := decimal.NewFromString(priceFilter.MinPrice)
-			if err != nil {
-				return nil, err
-			}
-			maxPrice, err := decimal.NewFromString(priceFilter.MaxPrice)
-			if err != nil {
-				return nil, err
-			}
-			pp, err := findFirstNonZeroDigitAfterDecimal(priceFilter.TickSize)
-			if err != nil {
-				return nil, err
-			}
-			sp, err := findFirstNonZeroDigitAfterDecimal(lotSizeFilter.MinQuantity)
-			if err != nil {
-				return nil, err
-			}
-			// 字段补全
-			result = append(result, exchange.Symbol{
-				SymbolName:     s,
-				MaxSize:        maxSize,
-				MinSize:        minSize,
-				MinPrice:       minPrice,
-				MaxPrice:       maxPrice,
-				SizePrecision:  int32(sp),
-				PricePrecision: int32(pp),
-				Status:         exchange.SymbolStatusTrading,
-				Exchange:       exchange.BinanceExchange,
-				Instrument:     exchange.InstrumentTypeSpot,
-				AssetName:      v.QuoteAsset,
-			})
-		}
-	}
-	return result, nil
-}
+// func bnSpotSymbolsToSymbols(s *bnSpotExchangeInfo) ([]exchange.Symbol, error) {
+// 	result := make([]exchange.Symbol, 0)
+// 	for _, v := range s.Symbols {
+// 		if s, exist := exchange.ReverseBinanceSymbols[v.Symbol]; exist {
+// 			lotSizeFilter := v.LotSizeFilter()
+// 			maxSize, err := decimal.NewFromString(lotSizeFilter.MaxQuantity)
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			minSize, err := decimal.NewFromString(lotSizeFilter.MinQuantity)
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			priceFilter := v.PriceFilter()
+// 			minPrice, err := decimal.NewFromString(priceFilter.MinPrice)
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			maxPrice, err := decimal.NewFromString(priceFilter.MaxPrice)
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			pp, err := findFirstNonZeroDigitAfterDecimal(priceFilter.TickSize)
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			sp, err := findFirstNonZeroDigitAfterDecimal(lotSizeFilter.MinQuantity)
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			// 字段补全
+// 			result = append(result, exchange.Symbol{
+// 				SymbolName:     s,
+// 				MaxSize:        maxSize,
+// 				MinSize:        minSize,
+// 				MinPrice:       minPrice,
+// 				MaxPrice:       maxPrice,
+// 				SizePrecision:  int32(sp),
+// 				PricePrecision: int32(pp),
+// 				Status:         exchange.SymbolStatusTrading,
+// 				Exchange:       exchange.BinanceExchange,
+// 				Instrument:     exchange.InstrumentTypeSpot,
+// 				AssetName:      v.QuoteAsset,
+// 			})
+// 		}
+// 	}
+// 	return result, nil
+// }
 
-func bnFuturesSymbolsToSymbols(s *bnFuturesExchangeInfo) ([]exchange.Symbol, error) {
-	result := make([]exchange.Symbol, 0)
-	for _, v := range s.Symbols {
-		if s, exist := exchange.ReverseBinanceSymbols[v.Symbol]; exist {
-			lotSizeFilter := v.LotSizeFilter()
-			maxSize, err := decimal.NewFromString(lotSizeFilter.MaxQuantity)
-			if err != nil {
-				return nil, err
-			}
-			minSize, err := decimal.NewFromString(lotSizeFilter.MinQuantity)
-			if err != nil {
-				return nil, err
-			}
-			priceFilter := v.PriceFilter()
-			minPrice, err := decimal.NewFromString(priceFilter.MinPrice)
-			if err != nil {
-				return nil, err
-			}
-			maxPrice, err := decimal.NewFromString(priceFilter.MaxPrice)
-			if err != nil {
-				return nil, err
-			}
-			pp, err := findFirstNonZeroDigitAfterDecimal(priceFilter.TickSize)
-			if err != nil {
-				return nil, err
-			}
-			sp, err := findFirstNonZeroDigitAfterDecimal(lotSizeFilter.MinQuantity)
-			if err != nil {
-				return nil, err
-			}
-			// TOFIX: 字段补全
-			result = append(result, exchange.Symbol{
-				SymbolName:     s,
-				MaxSize:        maxSize,
-				MinSize:        minSize,
-				MinPrice:       minPrice,
-				MaxPrice:       maxPrice,
-				SizePrecision:  int32(sp),
-				PricePrecision: int32(pp),
-				Status:         exchange.SymbolStatusTrading,
-				Exchange:       exchange.BinanceExchange,
-				Instrument:     exchange.InstrumentTypeFutures,
-				AssetName:      v.QuoteAsset,
-			})
-		}
-	}
-	return result, nil
-}
+// func bnFuturesSymbolsToSymbols(s *bnFuturesExchangeInfo) ([]exchange.Symbol, error) {
+// 	result := make([]exchange.Symbol, 0)
+// 	for _, v := range s.Symbols {
+// 		if s, exist := exchange.ReverseBinanceSymbols[v.Symbol]; exist {
+// 			lotSizeFilter := v.LotSizeFilter()
+// 			maxSize, err := decimal.NewFromString(lotSizeFilter.MaxQuantity)
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			minSize, err := decimal.NewFromString(lotSizeFilter.MinQuantity)
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			priceFilter := v.PriceFilter()
+// 			minPrice, err := decimal.NewFromString(priceFilter.MinPrice)
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			maxPrice, err := decimal.NewFromString(priceFilter.MaxPrice)
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			pp, err := findFirstNonZeroDigitAfterDecimal(priceFilter.TickSize)
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			sp, err := findFirstNonZeroDigitAfterDecimal(lotSizeFilter.MinQuantity)
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			// TOFIX: 字段补全
+// 			result = append(result, exchange.Symbol{
+// 				SymbolName:     s,
+// 				MaxSize:        maxSize,
+// 				MinSize:        minSize,
+// 				MinPrice:       minPrice,
+// 				MaxPrice:       maxPrice,
+// 				SizePrecision:  int32(sp),
+// 				PricePrecision: int32(pp),
+// 				Status:         exchange.SymbolStatusTrading,
+// 				Exchange:       exchange.BinanceExchange,
+// 				Instrument:     exchange.InstrumentTypeFutures,
+// 				AssetName:      v.QuoteAsset,
+// 			})
+// 		}
+// 	}
+// 	return result, nil
+// }
 
 func toBnFuturesOrderParams(o *exchange.CreateOrderRequest) bnhttp.Params {
 	m := bnhttp.Params{
