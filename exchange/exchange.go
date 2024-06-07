@@ -163,8 +163,8 @@ type Symbol struct {
 	Exchange string
 	// 种类: SPOT, FUTURES
 	Instrument InstrumentType
-	// 状态: ENABLED, DISABLED
-	Status string
+	// 状态: SYMBOL_TRADING, SYMBOL_SUSPEND, SYMBOL_CLOSE, SYMBOL_FINISH
+	Status SymbolStatus
 	// 最小头寸
 	MinSize decimal.Decimal
 	// 最大头寸
