@@ -27,7 +27,7 @@ type MultiLogger struct {
 	loggers []log.Logger
 }
 
-func NewMultiLogger(loggers ...log.Logger) *MultiLogger {
+func newMultiLogger(loggers ...log.Logger) *MultiLogger {
 	return &MultiLogger{
 		loggers: loggers,
 	}
@@ -40,18 +40,6 @@ func (m *MultiLogger) Log(level log.Level, keyvals ...interface{}) error {
 		}
 	}
 	return nil
-}
-
-func NewStdoutHandler() log.Logger {
-	return log.NewStdLogger(os.Stdout)
-}
-
-// NewRedisHandler 创建一个新的RedisHandler实例。
-func NewRedisHandler(client *redis.Client, name string) *RedisHandler {
-	return &RedisHandler{
-		client:      client,
-		serviceName: name,
-	}
 }
 
 // Log 实现了log.Logger接口。
@@ -89,6 +77,42 @@ func (h *RedisHandler) Log(level log.Level, keyvals ...interface{}) error {
 		log.Error(err)
 	}
 	return nil
+}
+
+func newStdoutHandler() log.Logger {
+	return log.NewStdLogger(os.Stdout)
+}
+
+// NewRedisHandler 创建一个新的RedisHandler实例。
+func newRedisHandler(client *redis.Client, name string) *RedisHandler {
+	return &RedisHandler{
+		client:      client,
+		serviceName: name,
+	}
+}
+
+// NewRedisClient
+
+func newRedisClient(addr, passwd string, db int32) *redis.Client {
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     addr,
+		Password: passwd,  // no password set
+		DB:       int(db), // use default DB
+	})
+	return rdb
+}
+
+func NewLogger(env, svcName, addr, passwd string, db int32) *MultiLogger {
+	var multi *MultiLogger
+	if env == "PRD" {
+		stdout := newStdoutHandler()
+		handler := newRedisHandler(newRedisClient(addr, passwd, db), svcName)
+		multi = newMultiLogger(stdout, handler)
+	} else {
+		stdout := newStdoutHandler()
+		multi = newMultiLogger(stdout)
+	}
+	return multi
 }
 
 // levelToString 将日志级别转换为字符串
