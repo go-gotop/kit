@@ -57,7 +57,7 @@ func NewBinanceOrderFeed(cli *bnhttp.Client, limiter limiter.Limiter, opts ...Op
 		exitChan: make(chan struct{}),
 	}
 
-	of.CheckListenKey()
+	go of.CheckListenKey()
 
 	return of
 }
