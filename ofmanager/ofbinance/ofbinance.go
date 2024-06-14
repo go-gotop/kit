@@ -28,6 +28,8 @@ var (
 const (
 	bnSpotWsEndpoint    = "wss://stream.binance.com:9443/ws"
 	bnFuturesWsEndpoint = "wss://fstream.binance.com/ws"
+	bnSpotEndpoint      = "https://api.binance.com"
+	bnFuturesEndpoint   = "https://fapi.binance.com"
 )
 
 // TODO: 限流器放在 ofbinance 做调用，不传入 wsmanager
@@ -57,7 +59,7 @@ func NewBinanceOrderFeed(cli *bnhttp.Client, limiter limiter.Limiter, opts ...Op
 		exitChan: make(chan struct{}),
 	}
 
-	of.CheckListenKey()
+	go of.CheckListenKey()
 
 	return of
 }
@@ -246,9 +248,12 @@ func (o *of) generateListenKey(req *ofmanager.OrderFeedRequest) (string, error) 
 		SecType:   bnhttp.SecTypeAPIKey,
 	}
 
-	r.Endpoint = "/api/v3/userDataStream"
 	if req.Instrument == exchange.InstrumentTypeFutures {
 		r.Endpoint = "/fapi/v1/listenKey"
+		o.client.SetApiEndpoint(bnFuturesEndpoint)
+	} else {
+		r.Endpoint = "/api/v3/userDataStream"
+		o.client.SetApiEndpoint(bnSpotEndpoint)
 	}
 
 	data, err := o.client.CallAPI(context.Background(), r)
@@ -279,8 +284,10 @@ func (o *of) updateListenKey(lk *listenKey) error {
 	if lk.Instrument == exchange.InstrumentTypeSpot {
 		r.Endpoint = "/api/v3/userDataStream"
 		r.SetFormParam("listenKey", lk.Key)
+		o.client.SetApiEndpoint(bnSpotEndpoint)
 	} else if lk.Instrument == exchange.InstrumentTypeFutures {
 		r.Endpoint = "/fapi/v1/listenKey"
+		o.client.SetApiEndpoint(bnFuturesEndpoint)
 	}
 
 	_, err := o.client.CallAPI(context.Background(), r)
@@ -302,9 +309,13 @@ func (o *of) closeListenKey(lk *listenKey) error {
 		SecretKey: lk.SecretKey,
 	}
 
-	r.Endpoint = "/api/v3/userDataStream"
+	
 	if lk.Instrument == exchange.InstrumentTypeFutures {
 		r.Endpoint = "/fapi/v1/listenKey"
+		o.client.SetApiEndpoint(bnFuturesEndpoint)
+	}else{
+		r.Endpoint = "/api/v3/userDataStream"
+		o.client.SetApiEndpoint(bnSpotEndpoint)
 	}
 
 	_, err := o.client.CallAPI(context.Background(), r)
