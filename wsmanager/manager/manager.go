@@ -71,13 +71,13 @@ func (b *Manager) AddWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.
 	}
 
 	// ping pong 处理函数
-	if conf != nil && conf.PingHandler == nil {
+	if conf != nil && conf.PingHandler != nil {
 		pingh = func(appData string) error {
 			return conf.PingHandler(appData, conn)
 		}
 	}
 
-	if conf != nil && conf.PongHandler == nil {
+	if conf != nil && conf.PongHandler != nil {
 		pongh = func(appData string) error {
 			return conf.PongHandler(appData, conn)
 		}
