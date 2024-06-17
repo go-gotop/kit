@@ -56,31 +56,31 @@ var (
 		XRP:  "XRP",
 	}
 
-	ReverseBinanceSymbols = map[string]string{
-		"BTCUSDT":  BTCUSDT,
-		"BNBUSDT":  BNBUSDT,
-		"DOGEUSDT": DOGEUSDT,
-		"FETUSDT":  FETUSDT,
-		"LINKUSDT": LINKUSDT,
-		"ORDIUSDT": ORDIUSDT,
-		"CKBUSDT":  CKBUSDT,
-		"SOLUSDT":  SOLUSDT,
-		"ETHUSDT":  ETHUSDT,
-		"AGIXUSDT": AGIXUSDT,
-		"XRPUSDT":  XRPUSDT,
-	}
-	ReverseBinanceAssets = map[string]string{
-		"BTC":  BTC,
-		"BNB":  BNB,
-		"DOGE": DOGE,
-		"FET":  FET,
-		"LINK": LINK,
-		"ORDI": ORDI,
-		"USDT": USDT,
-		"CKB":  CKB,
-		"SOL":  SOL,
-		"ETH":  ETH,
-		"AGIX": AGIX,
-		"XRP":  XRP,
-	}
+	// ReverseBinanceSymbols = map[string]string{
+	// 	"BTCUSDT":  BTCUSDT,
+	// 	"BNBUSDT":  BNBUSDT,
+	// 	"DOGEUSDT": DOGEUSDT,
+	// 	"FETUSDT":  FETUSDT,
+	// 	"LINKUSDT": LINKUSDT,
+	// 	"ORDIUSDT": ORDIUSDT,
+	// 	"CKBUSDT":  CKBUSDT,
+	// 	"SOLUSDT":  SOLUSDT,
+	// 	"ETHUSDT":  ETHUSDT,
+	// 	"AGIXUSDT": AGIXUSDT,
+	// 	"XRPUSDT":  XRPUSDT,
+	// }
+	// ReverseBinanceAssets = map[string]string{
+	// 	"BTC":  BTC,
+	// 	"BNB":  BNB,
+	// 	"DOGE": DOGE,
+	// 	"FET":  FET,
+	// 	"LINK": LINK,
+	// 	"ORDI": ORDI,
+	// 	"USDT": USDT,
+	// 	"CKB":  CKB,
+	// 	"SOL":  SOL,
+	// 	"ETH":  ETH,
+	// 	"AGIX": AGIX,
+	// 	"XRP":  XRP,
+	// }
 )
