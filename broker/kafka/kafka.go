@@ -599,9 +599,6 @@ func (b *kafkaBroker) Subscribe(topic string, handler broker.Handler, binder bro
 			case <-options.Context.Done():
 				return
 			default:
-				if _, ok := <-options.Context.Done(); ok {
-					return
-				}
 				msg, err := sub.reader.FetchMessage(options.Context)
 				if err != nil {
 					b.logger.Errorf("[kafka] FetchMessage error: %s", err.Error())
