@@ -31,6 +31,7 @@ type SymbolStatus string
 // TimeInForce GTC, IOC, FOK, GTX, GTD
 type TimeInForce string
 
+// StrategyStatus NEW, START, STOP, DELETE
 type StrategyStatus string
 
 // Global enums
@@ -82,6 +83,8 @@ const (
 	PositionSideShort PositionSide = "SHORT"
 
 	StrategyStatusNew    StrategyStatus = "NEW"
+	StrategyStatusStart  StrategyStatus = "START"
+	StrategyStatusStop   StrategyStatus = "STOP"
 	StrategyStatusDelete StrategyStatus = "DELETE"
 
 	// Good Till Cancel 成交为止, 一直有效直到被取消
