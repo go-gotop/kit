@@ -64,6 +64,7 @@ func NewBroker(logger *log.Helper, opts ...broker.Option) broker.Broker {
 			BatchTimeout: 10 * time.Millisecond, // 内部默认为1秒，那么会造成什么情况呢？同步发送的时候，发送一次要等待1秒的时间。
 			Async:        true,                  // 默认设置为异步发送，效率比较高。
 		},
+		logger:       logger,
 		options:      options,
 		retriesCount: 1,
 		subscribers:  broker.NewSubscriberSyncMap(),
