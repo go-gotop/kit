@@ -100,7 +100,6 @@ func (w *GorillaWebsocket) Reconnect() error {
 	if err := w.Disconnect(); err != nil {
 		return err
 	}
-
 	// 等待读循环完全停止
 	<-w.doneCh
 

@@ -29,7 +29,7 @@ func NewManager(opts ...ConnConfig) *Manager {
 		maxConn:         1000,
 		maxConnDuration: 24 * time.Hour,
 		// connLimiter:     nil,
-		isCheckReConn:   true,
+		isCheckReConn: true,
 	}
 
 	for _, opt := range opts {
@@ -54,7 +54,7 @@ func NewManager(opts ...ConnConfig) *Manager {
 func (b *Manager) AddWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.WebsocketConfig) error {
 	b.mux.Lock()
 	defer b.mux.Unlock()
-	
+
 	// 最大连接数限制
 	if b.currentConnCount >= b.config.maxConn {
 		return ErrMaxConnReached
@@ -147,9 +147,10 @@ func (b *Manager) Shutdown() error {
 
 	var err error
 
-	for _, ws := range b.wsSets {
+	for key, ws := range b.wsSets {
 		err = ws.Disconnect()
 		if err == nil {
+			delete(b.wsSets, key) // 删除映射中的连接
 			b.currentConnCount--
 		}
 	}

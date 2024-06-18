@@ -15,6 +15,7 @@ import (
 	"github.com/go-gotop/kit/wsmanager"
 	"github.com/go-gotop/kit/wsmanager/manager"
 	"github.com/go-kratos/kratos/v2/log"
+	gwebsocket "github.com/gorilla/websocket"
 	"github.com/shopspring/decimal"
 )
 
@@ -146,11 +147,11 @@ func (d *df) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.Webso
 }
 
 func pingHandler(appData string, conn websocket.WebSocketConn) error {
-	return conn.WriteMessage(10, []byte(appData))
+	return conn.WriteMessage(gwebsocket.PongMessage, []byte(appData))
 }
 
 func pongHandler(appData string, conn websocket.WebSocketConn) error {
-	return conn.WriteMessage(9, []byte(appData))
+	return conn.WriteMessage(gwebsocket.PingMessage, []byte(appData))
 }
 
 func spotToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
@@ -161,10 +162,10 @@ func spotToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
 	}
 
 	te := &exchange.TradeEvent{
-		TradeID:  fmt.Sprintf("%d", e.TradeID),
-		Symbol:   e.Symbol,
-		TradedAt: e.TradeTime,
-		Exchange: exchange.BinanceExchange,
+		TradeID:    fmt.Sprintf("%d", e.TradeID),
+		Symbol:     e.Symbol,
+		TradedAt:   e.TradeTime,
+		Exchange:   exchange.BinanceExchange,
 		Instrument: exchange.InstrumentTypeSpot,
 	}
 	size, err := decimal.NewFromString(e.Quantity)
@@ -192,10 +193,10 @@ func futuresToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
 		return nil, err
 	}
 	te := &exchange.TradeEvent{
-		TradeID:  fmt.Sprintf("%d", e.AggregateTradeID),
-		Symbol:   e.Symbol,
-		TradedAt: e.TradeTime,
-		Exchange: exchange.BinanceExchange,
+		TradeID:    fmt.Sprintf("%d", e.AggregateTradeID),
+		Symbol:     e.Symbol,
+		TradedAt:   e.TradeTime,
+		Exchange:   exchange.BinanceExchange,
 		Instrument: exchange.InstrumentTypeFutures,
 	}
 	size, err := decimal.NewFromString(e.Quantity)
