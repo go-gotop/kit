@@ -17,6 +17,36 @@ type LogEntry struct {
 	Message   string `json:"message"`
 }
 
+// customLogger 是一个自定义的日志记录器，用于格式化日志时间戳。
+type customLogger struct {
+	logger log.Logger
+}
+
+func (c *customLogger) Log(level log.Level, keyvals ...interface{}) error {
+	var timestamp string
+	for i := 0; i < len(keyvals); i += 2 {
+		if keyvals[i] == "ts" {
+			if ts, ok := keyvals[i+1].(time.Time); ok {
+				// 转换时间为上海时间
+				loc, _ := time.LoadLocation("Asia/Shanghai")
+				timestamp = ts.In(loc).Format("2006-01-02T15:04:05Z07:00")
+				keyvals[i+1] = timestamp
+			}
+		}
+	}
+	err := c.logger.Log(level, keyvals...)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func newCustomLogger() log.Logger {
+	return &customLogger{
+		logger: log.NewStdLogger(os.Stdout),
+	}
+}
+
 // RedisHandler 是一个log.Logger，将日志存储到Redis。
 type RedisHandler struct {
 	client      *redis.Client
@@ -50,6 +80,12 @@ func (h *RedisHandler) Log(level log.Level, keyvals ...interface{}) error {
 	// 遍历键值对，构造日志内容
 	for i := 0; i < len(keyvals); i += 2 {
 		if i+1 < len(keyvals) {
+			if keyvals[i] == "ts" {
+				if ts, ok := keyvals[i+1].(time.Time); ok {
+					loc, _ := time.LoadLocation("Asia/Shanghai")
+					keyvals[i+1] = ts.In(loc).Format("2006-01-02T15:04:05Z07:00")
+				}
+			}
 			logStr += fmt.Sprintf("%s=%v ", keyvals[i], keyvals[i+1])
 		} else {
 			logStr += fmt.Sprintf("%s=MISSING_VALUE ", keyvals[i]) // 处理键没有值的情况
@@ -79,10 +115,6 @@ func (h *RedisHandler) Log(level log.Level, keyvals ...interface{}) error {
 	return nil
 }
 
-func newStdoutHandler() log.Logger {
-	return log.NewStdLogger(os.Stdout)
-}
-
 // NewRedisHandler 创建一个新的RedisHandler实例。
 func newRedisHandler(client *redis.Client, name string) *RedisHandler {
 	return &RedisHandler{
@@ -105,11 +137,11 @@ func newRedisClient(addr, passwd string, db int32) *redis.Client {
 func NewLogger(env, svcName, addr, passwd string, db int32) *MultiLogger {
 	var multi *MultiLogger
 	if env == "PRD" {
-		stdout := newStdoutHandler()
+		stdout := newCustomLogger()
 		handler := newRedisHandler(newRedisClient(addr, passwd, db), svcName)
 		multi = newMultiLogger(stdout, handler)
 	} else {
-		stdout := newStdoutHandler()
+		stdout := newCustomLogger()
 		multi = newMultiLogger(stdout)
 	}
 	return multi
