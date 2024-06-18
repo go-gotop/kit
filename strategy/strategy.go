@@ -10,7 +10,7 @@ type Strategy interface {
 	Type() string
 	ErrHandler(err error)
 	Next(data *exchange.TradeEvent) error
-	State() exchange.SymbolStatus
-	SetState(s exchange.SymbolStatus)
+	State() exchange.TransactionStatus
+	SetState(s exchange.TransactionStatus)
 	SetConfig(config any) error
 }

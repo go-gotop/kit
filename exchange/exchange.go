@@ -25,12 +25,13 @@ type PositionStatus string
 // InstrumentType SPOT，FUTURES
 type InstrumentType string
 
-// SymbolStatus SYMBOL_TRADING, SYMBOL_SUSPEND, SYMBOL_CLOSE, SYMBOL_FINISH
-type SymbolStatus string
+// TransactionStatus TRANSACTION_TRADING, TRANSACTION_SUSPEND, TRANSACTION_CLOSE, TRANSACTION_FINISH
+type TransactionStatus string
 
 // TimeInForce GTC, IOC, FOK, GTX, GTD
 type TimeInForce string
 
+// StrategyStatus NEW, START, STOP, DELETE
 type StrategyStatus string
 
 // Global enums
@@ -52,10 +53,10 @@ const (
 	InstrumentTypeSpot    InstrumentType = "SPOT"
 	InstrumentTypeFutures InstrumentType = "FUTURES"
 
-	SymbolStatusTrading SymbolStatus = "SYMBOL_TRADING"
-	SymbolStatusSuspend SymbolStatus = "SYMBOL_SUSPEND"
-	SymbolStatusClose   SymbolStatus = "SYMBOL_CLOSE"
-	SymbolStatusFinish  SymbolStatus = "SYMBOL_FINISH"
+	TransactionStatusTrading TransactionStatus = "TRANSACTION_TRADING"
+	TransactionStatusSuspend TransactionStatus = "TRANSACTION_SUSPEND"
+	TransactionStatusClose   TransactionStatus = "TRANSACTION_CLOSE"
+	TransactionStatusFinish  TransactionStatus = "TRANSACTION_FINISH"
 
 	SideTypeBuy  SideType = "BUY"
 	SideTypeSell SideType = "SELL"
@@ -82,6 +83,8 @@ const (
 	PositionSideShort PositionSide = "SHORT"
 
 	StrategyStatusNew    StrategyStatus = "NEW"
+	StrategyStatusStart  StrategyStatus = "START"
+	StrategyStatusStop   StrategyStatus = "STOP"
 	StrategyStatusDelete StrategyStatus = "DELETE"
 
 	// Good Till Cancel 成交为止, 一直有效直到被取消
@@ -166,8 +169,8 @@ type Symbol struct {
 	Exchange string
 	// 种类: SPOT, FUTURES
 	Instrument InstrumentType
-	// 状态: SYMBOL_TRADING, SYMBOL_SUSPEND, SYMBOL_CLOSE, SYMBOL_FINISH
-	Status SymbolStatus
+	// 状态: TRANSACTION_TRADING, TRANSACTION_SUSPEND, TRANSACTION_CLOSE, TRANSACTION_FINISH
+	Status TransactionStatus
 	// 最小头寸
 	MinSize decimal.Decimal
 	// 最大头寸
