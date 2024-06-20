@@ -1,11 +1,11 @@
 package kafka
 
 import (
-	"encoding/gob"
+	"bytes"
 	"context"
+	"encoding/gob"
 	"errors"
 	"strconv"
-	"bytes"
 	"sync"
 	"time"
 
@@ -41,8 +41,8 @@ type kafkaBroker struct {
 	options      broker.Options
 	retriesCount int
 
-	subscribers *broker.SubscriberSyncMap
-	logger *log.Helper
+	subscribers    *broker.SubscriberSyncMap
+	logger         *log.Helper
 	producerTracer *tracing.Tracer
 	consumerTracer *tracing.Tracer
 }
