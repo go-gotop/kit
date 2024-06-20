@@ -75,7 +75,7 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 		return ErrLimitExceed
 	}
 
-	symbol = strings.ToLower(exchange.ReverseBinanceSymbols[req.Symbol])
+	symbol = strings.ToLower(req.Symbol)
 	conf := &wsmanager.WebsocketConfig{
 		PingHandler: pingHandler,
 		PongHandler: pongHandler,
