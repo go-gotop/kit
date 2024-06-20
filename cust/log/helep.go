@@ -18,34 +18,34 @@ type LogEntry struct {
 }
 
 // customLogger 是一个自定义的日志记录器，用于格式化日志时间戳。
-//type customLogger struct {
-//	logger log.Logger
-//}
-//
-//func (c *customLogger) Log(level log.Level, keyvals ...interface{}) error {
-//	var timestamp string
-//	for i := 0; i < len(keyvals); i += 2 {
-//		if keyvals[i] == "ts" {
-//			if ts, ok := keyvals[i+1].(time.Time); ok {
-//				// 转换时间为上海时间
-//				loc, _ := time.LoadLocation("Asia/Shanghai")
-//				timestamp = ts.In(loc).Format("2006-01-02T15:04:05Z07:00")
-//				keyvals[i+1] = timestamp
-//			}
-//		}
-//	}
-//	err := c.logger.Log(level, keyvals...)
-//	if err != nil {
-//		return err
-//	}
-//	return nil
-//}
-//
-//func newCustomLogger() log.Logger {
-//	return &customLogger{
-//		logger: log.NewStdLogger(os.Stdout),
-//	}
-//}
+type customLogger struct {
+	logger log.Logger
+}
+
+func (c *customLogger) Log(level log.Level, keyvals ...interface{}) error {
+	var timestamp string
+	for i := 0; i < len(keyvals); i += 2 {
+		if keyvals[i] == "ts" {
+			if ts, ok := keyvals[i+1].(time.Time); ok {
+				// 转换时间为上海时间
+				loc, _ := time.LoadLocation("Asia/Shanghai")
+				timestamp = ts.In(loc).Format("2006-01-02T15:04:05Z07:00")
+				keyvals[i+1] = timestamp
+			}
+		}
+	}
+	err := c.logger.Log(level, keyvals...)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func newCustomLogger() log.Logger {
+	return &customLogger{
+		logger: log.NewStdLogger(os.Stdout),
+	}
+}
 
 // RedisHandler 是一个log.Logger，将日志存储到Redis。
 type RedisHandler struct {
