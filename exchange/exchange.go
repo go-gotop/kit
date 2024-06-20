@@ -41,13 +41,13 @@ const (
 	CoinBaseExchange = "COINBASE"
 	MockExchange     = "MOCK"
 
-	StrategyTypeGrid = "GRID"
+	StrategyTypeGrid    = "GRID"
 	StrategyTypeDynamic = "DYNAMIC"
-	
+
 	ByMaker = "MAKER"
 	ByTaker = "TAKER"
 
-	CreatedByUser = "USER"
+	CreatedByUser   = "USER"
 	CreatedBySystem = "SYSTEM"
 
 	InstrumentTypeSpot    InstrumentType = "SPOT"
@@ -115,6 +115,8 @@ var (
 )
 
 type CreateOrderRequest struct {
+	APIKey        string
+	SecretKey     string
 	OrderTime     int64
 	Symbol        string
 	ClientOrderID string
@@ -141,6 +143,8 @@ type CreateOrderResponse struct {
 }
 
 type CancelOrderRequest struct {
+	APIKey           string
+	SecretKey        string
 	ClientOrderID string
 	Symbol        string
 }
@@ -184,21 +188,6 @@ type Symbol struct {
 	// 头寸精度
 	SizePrecision int32
 }
-
-// type Symbol struct {
-// 	AssetName      string
-// 	SymbolName     string
-// 	Exchange       string
-// 	AutoAllocation bool
-// 	PricePrecision int32
-// 	SizePrecision  int32
-// 	MinSize        decimal.Decimal
-// 	MaxSize        decimal.Decimal
-// 	MinPrice       decimal.Decimal
-// 	MaxPrice       decimal.Decimal
-// 	Status         SymbolStatus
-// 	Instrument     InstrumentType
-// }
 
 type Position struct {
 	// 交易id
@@ -275,4 +264,3 @@ type Exchange interface {
 	CreateOrder(ctx context.Context, o *CreateOrderRequest) error
 	CancelOrder(ctx context.Context, o *CancelOrderRequest) error
 }
-
