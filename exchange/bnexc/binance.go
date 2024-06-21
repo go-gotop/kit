@@ -217,7 +217,9 @@ func toBnSpotOrderParams(o *exchange.CreateOrderRequest) bnhttp.Params {
 		"symbol":      o.Symbol,
 		"side":        o.Side,
 		"type":        o.OrderType,
-		"timeInForce": o.TimeInForce,
+	}
+	if o.TimeInForce != "" {
+		m["timeInForce"] = o.TimeInForce
 	}
 	if !o.Size.IsZero() {
 		m["quantity"] = o.Size.String()
