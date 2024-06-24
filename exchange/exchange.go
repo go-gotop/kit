@@ -34,6 +34,9 @@ type TimeInForce string
 // StrategyStatus NEW, START, STOP, DELETE
 type StrategyStatus string
 
+// StrategySide LONG, SHORT, BOTH
+type StrategySide string
+
 // Global enums
 const (
 	BinanceExchange  = "BINANCE"
@@ -50,6 +53,9 @@ const (
 	CreatedByUser   = "USER"
 	CreatedBySystem = "SYSTEM"
 
+	TransactionByUser   = "USER"
+	TransactionBySystem = "SYSTEM"
+	
 	InstrumentTypeSpot    InstrumentType = "SPOT"
 	InstrumentTypeFutures InstrumentType = "FUTURES"
 
@@ -81,6 +87,10 @@ const (
 
 	PositionSideLong  PositionSide = "LONG"
 	PositionSideShort PositionSide = "SHORT"
+
+	StrategySideLong  StrategySide = "LONG"
+	StrategySideShort StrategySide = "SHORT"
+	StrategySideBoth  StrategySide = "BOTH"
 
 	StrategyStatusNew    StrategyStatus = "NEW"
 	StrategyStatusStart  StrategyStatus = "START"
