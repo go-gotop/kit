@@ -52,8 +52,10 @@ type OrderResultEvent struct {
 	FeeAsset string
 	// TransactionTime 交易时间
 	TransactionTime int64
-	// IsTaker 是否是挂单方
-	IsMaker bool
+	// By 是否是挂单方 USER，SYSTEM
+	By string
+	// CreatedBy 创建者 USER，SYSTEM
+	CreatedBy string
 	// Instrument 种类
 	Instrument InstrumentType
 	// Status 订单状态

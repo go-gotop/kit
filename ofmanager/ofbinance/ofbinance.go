@@ -395,7 +395,7 @@ func swoueToOrderEvent(event *bnSpotWsOrderUpdateEvent) (*exchange.OrderResultEv
 	if filledQuoteVolume.GreaterThan(decimal.Zero) && filledVolume.GreaterThan(decimal.Zero) {
 		avgPrice = filledQuoteVolume.Div(filledVolume)
 	}
-	return &exchange.OrderResultEvent{
+	ore := &exchange.OrderResultEvent{
 		PositionSide:    ps,
 		Exchange:        exchange.BinanceExchange,
 		Symbol:          event.Symbol,
@@ -404,11 +404,11 @@ func swoueToOrderEvent(event *bnSpotWsOrderUpdateEvent) (*exchange.OrderResultEv
 		State:           exchange.OrderState(event.Status),
 		OrderID:         fmt.Sprintf("%d", event.Id),
 		TransactionTime: event.TransactionTime,
-		IsMaker:         event.IsMaker,
 		Side:            exchange.SideType(event.Side),
 		Type:            exchange.OrderType(event.Type),
 		Instrument:      exchange.InstrumentTypeSpot,
 		Volume:          volume,
+		By:              exchange.ByTaker,
 		Price:           price,
 		LatestVolume:    latestVolume,
 		FilledVolume:    filledVolume,
@@ -416,7 +416,11 @@ func swoueToOrderEvent(event *bnSpotWsOrderUpdateEvent) (*exchange.OrderResultEv
 		FeeAsset:        event.FeeAsset,
 		FeeCost:         feeCost,
 		AvgPrice:        avgPrice,
-	}, nil
+	}
+	if event.IsMaker {
+		ore.By = exchange.ByMaker
+	}
+	return ore, nil
 }
 
 func fwoueToOrderEvent(event *bnFuturesWsOrderUpdateEvent) (*exchange.OrderResultEvent, error) {
@@ -452,7 +456,7 @@ func fwoueToOrderEvent(event *bnFuturesWsOrderUpdateEvent) (*exchange.OrderResul
 	if event.PositionSide == "SHORT" {
 		ps = exchange.PositionSideShort
 	}
-	return &exchange.OrderResultEvent{
+	ore := &exchange.OrderResultEvent{
 		PositionSide:    ps,
 		Exchange:        exchange.BinanceExchange,
 		Symbol:          event.Symbol,
@@ -461,7 +465,7 @@ func fwoueToOrderEvent(event *bnFuturesWsOrderUpdateEvent) (*exchange.OrderResul
 		State:           exchange.OrderState(event.Status),
 		OrderID:         fmt.Sprintf("%d", event.ID),
 		TransactionTime: event.TradeTime,
-		IsMaker:         event.IsMaker,
+		By:         exchange.ByTaker,
 		Side:            exchange.SideType(event.Side),
 		Type:            exchange.OrderType(event.Type),
 		Instrument:      exchange.InstrumentTypeFutures,
@@ -473,5 +477,9 @@ func fwoueToOrderEvent(event *bnFuturesWsOrderUpdateEvent) (*exchange.OrderResul
 		FeeAsset:        event.CommissionAsset,
 		FeeCost:         feeCost,
 		AvgPrice:        avg,
-	}, nil
+	}
+	if event.IsMaker {
+		ore.By = exchange.ByMaker
+	}
+	return ore, nil
 }
