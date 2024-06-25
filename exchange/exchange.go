@@ -13,7 +13,10 @@ type SideType string
 // OrderType LIMIT, MARKET
 type OrderType string
 
-// OrderState NEW, FILLED, CANCELED, REJECTED, EXPIRED
+// NEW, TRADE, CANCELED, REJECTED, EXPIRED
+type ExecutionState string
+
+// OrderState NEW, PARTIALLY_FILLED, FILLED, CANCELED, REJECTED, EXPIRED
 type OrderState string
 
 // PositionSide LONG, SHORT

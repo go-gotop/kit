@@ -60,9 +60,9 @@ type OrderResultEvent struct {
 	Instrument InstrumentType
 	// Status 订单状态
 	Status PositionStatus
-	// ExecutionType 本次订单执行类型:NEW，FILLED，CANCELED，REJECTED，EXPIRED
-	ExecutionType OrderState
-	// State 当前订单执行类型:NEW，FILLED，CANCELED，REJECTED，EXPIRED
+	// ExecutionType 本次订单执行类型:NEW, TRADE, CANCELED, REJECTED, EXPIRED
+	ExecutionType ExecutionState
+	// State 当前订单执行类型:NEW, PARTIALLY_FILLED, FILLED, CANCELED, REJECTED, EXPIRED
 	State OrderState
 	// PositionSide LONG，SHORT
 	PositionSide PositionSide
