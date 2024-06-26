@@ -52,7 +52,7 @@ type OrderResultEvent struct {
 	FeeAsset string
 	// TransactionTime 交易时间
 	TransactionTime int64
-	// By 是否是挂单方 USER，SYSTEM
+	// By 是否是挂单方 MAKER, TAKER
 	By string
 	// CreatedBy 创建者 USER，SYSTEM
 	CreatedBy string
