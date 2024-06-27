@@ -126,6 +126,7 @@ func (b *binance) createFuturesOrder(ctx context.Context, o *exchange.CreateOrde
 		Endpoint: "/fapi/v1/order",
 		SecType:  bnhttp.SecTypeSigned,
 	}
+	b.client.SetApiEndpoint(bnFuturesEndpoint)
 	r = r.SetFormParams(toBnFuturesOrderParams(o))
 	data, err := b.client.CallAPI(ctx, r)
 	if err != nil {
