@@ -388,9 +388,6 @@ func swoueToOrderEvent(event *bnSpotWsOrderUpdateEvent) (*exchange.OrderResultEv
 		return nil, err
 	}
 	ps := exchange.PositionSideLong
-	if event.Side == "SELL" {
-		ps = exchange.PositionSideShort
-	}
 	avgPrice := decimal.Zero
 	if filledQuoteVolume.GreaterThan(decimal.Zero) && filledVolume.GreaterThan(decimal.Zero) {
 		avgPrice = filledQuoteVolume.Div(filledVolume)
