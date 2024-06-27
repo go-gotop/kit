@@ -64,6 +64,8 @@ type OrderResultEvent struct {
 }
 
 type StrategySignalEvent struct {
+	// PositionID 仓位ID
+	PositionID string
 	// ID 交易ID
 	TransactionID string
 	// AccountID 账户ID
