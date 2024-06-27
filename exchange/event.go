@@ -4,37 +4,6 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-const (
-	OrderServiceType   = "OderService"
-	CapitalServiceType = "CapitalService"
-)
-
-type DeadLetterEvent struct {
-}
-
-type NotifyEvent struct {
-	// Type 通知类型
-	Type string
-	// AccountID 账户ID
-	AccountID string
-}
-
-type CreateOrderEvent struct {
-	// AccountID 账户ID
-	AccountID string
-	// ID 交易ID
-	TransactionID  string
-	Timestamp      int64
-	ClientOrderID  string
-	Symbol         string
-	Side           SideType
-	OrderType      OrderType
-	PositionSide   PositionSide
-	QuoteOrderSize decimal.Decimal
-	Size           decimal.Decimal
-	Price          decimal.Decimal
-}
-
 type OrderResultEvent struct {
 	// AccountID 账户ID
 	AccountID string
@@ -42,6 +11,8 @@ type OrderResultEvent struct {
 	TransactionID string
 	// Exchange 交易所
 	Exchange string
+	// PositionID 仓位ID
+	PositionID string
 	// ClientOrderID 自定义客户端订单号
 	ClientOrderID string
 	// Symbol 交易对
@@ -56,9 +27,9 @@ type OrderResultEvent struct {
 	By string
 	// CreatedBy 创建者 USER，SYSTEM
 	CreatedBy string
-	// Instrument 种类
+	// Instrument 种类 SPOT, FUTURES
 	Instrument InstrumentType
-	// Status 订单状态
+	// Status 订单状态: OpeningPosition, HoldingPosition, ClosingPosition, ClosedPosition
 	Status PositionStatus
 	// ExecutionType 本次订单执行类型:NEW, TRADE, CANCELED, REJECTED, EXPIRED
 	ExecutionType ExecutionState
@@ -115,7 +86,7 @@ type StrategySignalEvent struct {
 	Size decimal.Decimal
 	// Price 交易价格
 	Price decimal.Decimal
-	// CreatedBy 创建者
+	// CreatedBy 创建者 USER, SYSTEM
 	CreatedBy string
 }
 
@@ -125,6 +96,7 @@ type StrategyStatusEvent struct {
 	// ID 交易ID
 	TransactionID string
 	Symbol        Symbol
+	// Status 策略状态: NEW, START, STOP, DELETE
 	Status        StrategyStatus
 }
 
