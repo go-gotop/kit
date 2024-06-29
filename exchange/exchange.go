@@ -13,7 +13,10 @@ type SideType string
 // OrderType LIMIT, MARKET
 type OrderType string
 
-// OrderState NEW, FILLED, CANCELED, REJECTED, EXPIRED
+// NEW, TRADE, CANCELED, REJECTED, EXPIRED
+type ExecutionState string
+
+// OrderState NEW, PARTIALLY_FILLED, FILLED, CANCELED, REJECTED, EXPIRED
 type OrderState string
 
 // PositionSide LONG, SHORT
@@ -25,13 +28,17 @@ type PositionStatus string
 // InstrumentType SPOT，FUTURES
 type InstrumentType string
 
-// SymbolStatus SYMBOL_TRADING, SYMBOL_SUSPEND, SYMBOL_CLOSE, SYMBOL_FINISH
-type SymbolStatus string
+// TransactionStatus TRANSACTION_TRADING, TRANSACTION_SUSPEND, TRANSACTION_CLOSE, TRANSACTION_FINISH
+type TransactionStatus string
 
 // TimeInForce GTC, IOC, FOK, GTX, GTD
 type TimeInForce string
 
+// StrategyStatus NEW, START, STOP, DELETE
 type StrategyStatus string
+
+// StrategySide LONG, SHORT, BOTH
+type StrategySide string
 
 // Global enums
 const (
@@ -40,22 +47,25 @@ const (
 	CoinBaseExchange = "COINBASE"
 	MockExchange     = "MOCK"
 
-	StrategyTypeGrid = "GRID"
+	StrategyTypeGrid    = "GRID"
 	StrategyTypeDynamic = "DYNAMIC"
-	
+
 	ByMaker = "MAKER"
 	ByTaker = "TAKER"
 
-	CreatedByUser = "USER"
+	CreatedByUser   = "USER"
 	CreatedBySystem = "SYSTEM"
 
+	TransactionByUser   = "USER"
+	TransactionBySystem = "SYSTEM"
+	
 	InstrumentTypeSpot    InstrumentType = "SPOT"
 	InstrumentTypeFutures InstrumentType = "FUTURES"
 
-	SymbolStatusTrading SymbolStatus = "SYMBOL_TRADING"
-	SymbolStatusSuspend SymbolStatus = "SYMBOL_SUSPEND"
-	SymbolStatusClose   SymbolStatus = "SYMBOL_CLOSE"
-	SymbolStatusFinish  SymbolStatus = "SYMBOL_FINISH"
+	TransactionStatusTrading TransactionStatus = "TRANSACTION_TRADING"
+	TransactionStatusSuspend TransactionStatus = "TRANSACTION_SUSPEND"
+	TransactionStatusClose   TransactionStatus = "TRANSACTION_CLOSE"
+	TransactionStatusFinish  TransactionStatus = "TRANSACTION_FINISH"
 
 	SideTypeBuy  SideType = "BUY"
 	SideTypeSell SideType = "SELL"
@@ -81,7 +91,13 @@ const (
 	PositionSideLong  PositionSide = "LONG"
 	PositionSideShort PositionSide = "SHORT"
 
+	StrategySideLong  StrategySide = "LONG"
+	StrategySideShort StrategySide = "SHORT"
+	StrategySideBoth  StrategySide = "BOTH"
+
 	StrategyStatusNew    StrategyStatus = "NEW"
+	StrategyStatusStart  StrategyStatus = "START"
+	StrategyStatusStop   StrategyStatus = "STOP"
 	StrategyStatusDelete StrategyStatus = "DELETE"
 
 	// Good Till Cancel 成交为止, 一直有效直到被取消
@@ -112,6 +128,8 @@ var (
 )
 
 type CreateOrderRequest struct {
+	APIKey        string
+	SecretKey     string
 	OrderTime     int64
 	Symbol        string
 	ClientOrderID string
@@ -138,6 +156,8 @@ type CreateOrderResponse struct {
 }
 
 type CancelOrderRequest struct {
+	APIKey           string
+	SecretKey        string
 	ClientOrderID string
 	Symbol        string
 }
@@ -166,8 +186,8 @@ type Symbol struct {
 	Exchange string
 	// 种类: SPOT, FUTURES
 	Instrument InstrumentType
-	// 状态: SYMBOL_TRADING, SYMBOL_SUSPEND, SYMBOL_CLOSE, SYMBOL_FINISH
-	Status SymbolStatus
+	// 状态: TRANSACTION_TRADING, TRANSACTION_SUSPEND, TRANSACTION_CLOSE, TRANSACTION_FINISH
+	Status TransactionStatus
 	// 最小头寸
 	MinSize decimal.Decimal
 	// 最大头寸
@@ -182,89 +202,6 @@ type Symbol struct {
 	SizePrecision int32
 }
 
-// type Symbol struct {
-// 	AssetName      string
-// 	SymbolName     string
-// 	Exchange       string
-// 	AutoAllocation bool
-// 	PricePrecision int32
-// 	SizePrecision  int32
-// 	MinSize        decimal.Decimal
-// 	MaxSize        decimal.Decimal
-// 	MinPrice       decimal.Decimal
-// 	MaxPrice       decimal.Decimal
-// 	Status         SymbolStatus
-// 	Instrument     InstrumentType
-// }
-
-type Position struct {
-	// 交易id
-	TransactionID string
-	// 客户端订单ID
-	ClientOrderID string
-	// 交易所
-	Exchange string
-	// 交易对
-	Symbol string
-	// 账户ID
-	AccountID string
-	// 头寸
-	Size decimal.Decimal
-	// 已成交数量
-	ExecutedQuantity decimal.Decimal
-	// 手续费
-	FeeCost decimal.Decimal
-	// 入场价格
-	EntryPrice decimal.Decimal
-	// 退出价格
-	ExitPrice decimal.Decimal
-	// 止损价格
-	StopPrice decimal.Decimal
-	// 平均价格
-	AvgPrice decimal.Decimal
-	// 订单状态
-	State OrderState
-	// 仓位状态
-	Status PositionStatus
-	// 种类
-	Instrument InstrumentType
-	// 仓位方向
-	PositionSide PositionSide
-}
-
-type Order struct {
-	// 帐号ID
-	AccountID string
-	// 客户端订单ID
-	ClientOrderID string
-	// 策略ID
-	StrategyID string
-	// 交易所
-	Exchange string
-	// 交易对
-	Symbol string
-	// 仓位侧
-	Side SideType
-	// 头寸
-	Size decimal.Decimal
-	// 价格
-	Price decimal.Decimal
-	// 金额
-	Amount decimal.Decimal
-	// 费用资产
-	FeeAsset string
-	// 费用
-	Fee decimal.Decimal
-	// 状态
-	State OrderState
-	// 种类
-	Instrument InstrumentType
-	// 仓位方向
-	PositionSide PositionSide
-	// 成交时间
-	TransactionTime int64
-}
-
 type Exchange interface {
 	Name() string
 	Assets(ctx context.Context, it InstrumentType) ([]Asset, error)
@@ -272,4 +209,3 @@ type Exchange interface {
 	CreateOrder(ctx context.Context, o *CreateOrderRequest) error
 	CancelOrder(ctx context.Context, o *CancelOrderRequest) error
 }
-

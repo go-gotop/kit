@@ -64,6 +64,7 @@ func NewBroker(logger *log.Helper, opts ...broker.Option) broker.Broker {
 			BatchTimeout: 10 * time.Millisecond, // 内部默认为1秒，那么会造成什么情况呢？同步发送的时候，发送一次要等待1秒的时间。
 			Async:        true,                  // 默认设置为异步发送，效率比较高。
 		},
+		logger:       logger,
 		options:      options,
 		retriesCount: 1,
 		subscribers:  broker.NewSubscriberSyncMap(),
@@ -599,9 +600,6 @@ func (b *kafkaBroker) Subscribe(topic string, handler broker.Handler, binder bro
 			case <-options.Context.Done():
 				return
 			default:
-				if _, ok := <-options.Context.Done(); ok {
-					return
-				}
 				msg, err := sub.reader.FetchMessage(options.Context)
 				if err != nil {
 					b.logger.Errorf("[kafka] FetchMessage error: %s", err.Error())

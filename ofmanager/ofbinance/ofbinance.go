@@ -16,6 +16,7 @@ import (
 	"github.com/go-gotop/kit/wsmanager"
 	"github.com/go-gotop/kit/wsmanager/manager"
 	"github.com/go-kratos/kratos/v2/log"
+	gwebsocket "github.com/gorilla/websocket"
 	"github.com/shopspring/decimal"
 )
 
@@ -309,11 +310,10 @@ func (o *of) closeListenKey(lk *listenKey) error {
 		SecretKey: lk.SecretKey,
 	}
 
-	
 	if lk.Instrument == exchange.InstrumentTypeFutures {
 		r.Endpoint = "/fapi/v1/listenKey"
 		o.client.SetApiEndpoint(bnFuturesEndpoint)
-	}else{
+	} else {
 		r.Endpoint = "/api/v3/userDataStream"
 		o.client.SetApiEndpoint(bnSpotEndpoint)
 	}
@@ -349,11 +349,13 @@ func (o *of) CheckListenKey() {
 }
 
 func pingHandler(appData string, conn websocket.WebSocketConn) error {
-	return conn.WriteMessage(10, []byte(appData))
+	fmt.Printf("pingHandler: %s\n", appData)
+	return conn.WriteMessage(gwebsocket.PongMessage, []byte(appData))
 }
 
 func pongHandler(appData string, conn websocket.WebSocketConn) error {
-	return conn.WriteMessage(9, []byte(appData))
+	fmt.Printf("pongHandler: %s\n", appData)
+	return conn.WriteMessage(gwebsocket.PingMessage, []byte(appData))
 }
 
 func swoueToOrderEvent(event *bnSpotWsOrderUpdateEvent) (*exchange.OrderResultEvent, error) {
@@ -386,27 +388,24 @@ func swoueToOrderEvent(event *bnSpotWsOrderUpdateEvent) (*exchange.OrderResultEv
 		return nil, err
 	}
 	ps := exchange.PositionSideLong
-	if event.Side == "SELL" {
-		ps = exchange.PositionSideShort
-	}
 	avgPrice := decimal.Zero
 	if filledQuoteVolume.GreaterThan(decimal.Zero) && filledVolume.GreaterThan(decimal.Zero) {
 		avgPrice = filledQuoteVolume.Div(filledVolume)
 	}
-	return &exchange.OrderResultEvent{
+	ore := &exchange.OrderResultEvent{
 		PositionSide:    ps,
 		Exchange:        exchange.BinanceExchange,
 		Symbol:          event.Symbol,
 		ClientOrderID:   event.ClientOrderId,
-		ExecutionType:   exchange.OrderState(event.ExecutionType),
+		ExecutionType:   exchange.ExecutionState(event.ExecutionType),
 		State:           exchange.OrderState(event.Status),
 		OrderID:         fmt.Sprintf("%d", event.Id),
 		TransactionTime: event.TransactionTime,
-		IsMaker:         event.IsMaker,
 		Side:            exchange.SideType(event.Side),
 		Type:            exchange.OrderType(event.Type),
 		Instrument:      exchange.InstrumentTypeSpot,
 		Volume:          volume,
+		By:              exchange.ByTaker,
 		Price:           price,
 		LatestVolume:    latestVolume,
 		FilledVolume:    filledVolume,
@@ -414,7 +413,11 @@ func swoueToOrderEvent(event *bnSpotWsOrderUpdateEvent) (*exchange.OrderResultEv
 		FeeAsset:        event.FeeAsset,
 		FeeCost:         feeCost,
 		AvgPrice:        avgPrice,
-	}, nil
+	}
+	if event.IsMaker {
+		ore.By = exchange.ByMaker
+	}
+	return ore, nil
 }
 
 func fwoueToOrderEvent(event *bnFuturesWsOrderUpdateEvent) (*exchange.OrderResultEvent, error) {
@@ -450,16 +453,16 @@ func fwoueToOrderEvent(event *bnFuturesWsOrderUpdateEvent) (*exchange.OrderResul
 	if event.PositionSide == "SHORT" {
 		ps = exchange.PositionSideShort
 	}
-	return &exchange.OrderResultEvent{
+	ore := &exchange.OrderResultEvent{
 		PositionSide:    ps,
 		Exchange:        exchange.BinanceExchange,
 		Symbol:          event.Symbol,
 		ClientOrderID:   event.ClientOrderID,
-		ExecutionType:   exchange.OrderState(event.ExecutionType),
+		ExecutionType:   exchange.ExecutionState(event.ExecutionType),
 		State:           exchange.OrderState(event.Status),
 		OrderID:         fmt.Sprintf("%d", event.ID),
 		TransactionTime: event.TradeTime,
-		IsMaker:         event.IsMaker,
+		By:         exchange.ByTaker,
 		Side:            exchange.SideType(event.Side),
 		Type:            exchange.OrderType(event.Type),
 		Instrument:      exchange.InstrumentTypeFutures,
@@ -471,5 +474,9 @@ func fwoueToOrderEvent(event *bnFuturesWsOrderUpdateEvent) (*exchange.OrderResul
 		FeeAsset:        event.CommissionAsset,
 		FeeCost:         feeCost,
 		AvgPrice:        avg,
-	}, nil
+	}
+	if event.IsMaker {
+		ore.By = exchange.ByMaker
+	}
+	return ore, nil
 }

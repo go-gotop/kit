@@ -1,7 +1,6 @@
 package gorilla
 
 import (
-	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -65,7 +64,6 @@ func (w *GorillaWebsocket) readMessages(req *websocket.WebsocketRequest) {
 			return
 		default:
 			_, message, err := w.conn.ReadMessage()
-			log.Printf("开始读取消息: %s", message)
 			if err != nil {
 				// 当遇到错误时，首先检查是否因为连接已关闭
 				select {
@@ -102,7 +100,6 @@ func (w *GorillaWebsocket) Reconnect() error {
 	if err := w.Disconnect(); err != nil {
 		return err
 	}
-
 	// 等待读循环完全停止
 	<-w.doneCh
 
