@@ -25,7 +25,7 @@ var (
 )
 
 const (
-	wsEndpoint = "wss://localhost:9443/ws"
+	wsEndpoint = "ws://127.0.0.1:8081/ws/data"
 )
 
 func NewMockDataFeed(limiter limiter.Limiter, opts ...Option) dfmanager.DataFeedManager {
@@ -70,21 +70,18 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 	d.mux.Lock()
 	defer d.mux.Unlock()
 
-	symbol = strings.ToLower(exchange.ReverseBinanceSymbols[req.Symbol])
+	symbol = strings.ToLower(req.Symbol)
 	conf := &wsmanager.WebsocketConfig{
 		PingHandler: pingHandler,
 		PongHandler: pongHandler,
 	}
-	endpoint = fmt.Sprintf("%s?symbol=%s", wsEndpoint, symbol)
+	endpoint = fmt.Sprintf("%s?instrument=%s&symbol=%s&startTime=%v&endTime=%v", wsEndpoint, req.Instrument, symbol, req.StartTime, req.EndTime)
+
 	fn = spotToTradeEvent
-	// switch req.Instrument {
-	// case exchange.InstrumentTypeSpot:
-	// 	endpoint = fmt.Sprintf("%s/%s@trade", bnSpotWsEndpoint, symbol)
-	// 	fn = spotToTradeEvent
-	// case exchange.InstrumentTypeFutures:
-	// 	endpoint = fmt.Sprintf("%s/%s@aggTrade", bnFuturesWsEndpoint, symbol)
-	// 	fn = futuresToTradeEvent
-	// }
+	if req.Instrument == exchange.InstrumentTypeFutures {
+		fn = funturesToTradeEvent
+	}
+
 	wsHandler := func(message []byte) {
 		te, err := fn(message)
 		if err != nil {
@@ -161,8 +158,37 @@ func spotToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
 		TradeID:    fmt.Sprintf("%d", e.TradeID),
 		Symbol:     e.Symbol,
 		TradedAt:   e.TradeTime,
-		Exchange:   exchange.BinanceExchange,
+		Exchange:   exchange.MockExchange,
 		Instrument: exchange.InstrumentTypeSpot,
+	}
+	size, err := decimal.NewFromString(e.Size)
+	if err != nil {
+		return nil, err
+	}
+	te.Size = size
+
+	p, err := decimal.NewFromString(e.Price)
+	if err != nil {
+		return nil, err
+	}
+	te.Price = p
+	te.Side = exchange.SideTypeBuy
+	return te, nil
+}
+
+func funturesToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
+	e := &tradeEvent{}
+	err := json.Unmarshal(message, e)
+	if err != nil {
+		return nil, err
+	}
+
+	te := &exchange.TradeEvent{
+		TradeID:    fmt.Sprintf("%d", e.TradeID),
+		Symbol:     e.Symbol,
+		TradedAt:   e.TradeTime,
+		Exchange:   exchange.MockExchange,
+		Instrument: exchange.InstrumentTypeFutures,
 	}
 	size, err := decimal.NewFromString(e.Size)
 	if err != nil {

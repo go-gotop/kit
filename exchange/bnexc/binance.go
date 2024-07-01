@@ -4,14 +4,14 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/shopspring/decimal"
 	"github.com/go-gotop/kit/exchange"
 	"github.com/go-gotop/kit/requests/bnhttp"
+	"github.com/shopspring/decimal"
 )
 
 const (
-	bnSpotEndpoint      = "https://api.binance.com"
-	bnFuturesEndpoint   = "https://fapi.binance.com"
+	bnSpotEndpoint    = "https://api.binance.com"
+	bnFuturesEndpoint = "https://fapi.binance.com"
 )
 
 func NewBinance(cli *bnhttp.Client) exchange.Exchange {
@@ -24,9 +24,9 @@ type binance struct {
 	client *bnhttp.Client
 }
 
-func (b *binance) Assets(ctx context.Context, it exchange.InstrumentType) ([]exchange.Asset, error) {
-	if it == exchange.InstrumentTypeSpot {
-		result, err := b.spotAssets(ctx)
+func (b *binance) Assets(ctx context.Context, req *exchange.GetAssetsRequest) ([]exchange.Asset, error) {
+	if req.InstrumentType == exchange.InstrumentTypeSpot {
+		result, err := b.spotAssets(ctx, req)
 		if err != nil {
 			return nil, err
 		}
@@ -36,7 +36,7 @@ func (b *binance) Assets(ctx context.Context, it exchange.InstrumentType) ([]exc
 		}
 		return data, nil
 	}
-	result, err := b.futuresAssets(ctx)
+	result, err := b.futuresAssets(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -47,12 +47,14 @@ func (b *binance) Assets(ctx context.Context, it exchange.InstrumentType) ([]exc
 	return data, nil
 }
 
-func (b *binance) spotAssets(ctx context.Context) (*bnSpotAccount, error) {
+func (b *binance) spotAssets(ctx context.Context, req *exchange.GetAssetsRequest) (*bnSpotAccount, error) {
 	var res bnSpotAccount
 	r := &bnhttp.Request{
-		Method:   http.MethodGet,
-		Endpoint: "/api/v3/account",
-		SecType:  bnhttp.SecTypeSigned,
+		Method:    http.MethodGet,
+		Endpoint:  "/api/v3/account",
+		APIKey:    req.APIKey,
+		SecretKey: req.SecretKey,
+		SecType:   bnhttp.SecTypeSigned,
 	}
 	b.client.SetApiEndpoint(bnSpotEndpoint)
 	data, err := b.client.CallAPI(ctx, r)
@@ -66,11 +68,13 @@ func (b *binance) spotAssets(ctx context.Context) (*bnSpotAccount, error) {
 	return &res, nil
 }
 
-func (b *binance) futuresAssets(ctx context.Context) ([]*bnFuturesBalance, error) {
+func (b *binance) futuresAssets(ctx context.Context, req *exchange.GetAssetsRequest) ([]*bnFuturesBalance, error) {
 	r := &bnhttp.Request{
-		Method:   http.MethodGet,
-		Endpoint: "/fapi/v2/balance",
-		SecType:  bnhttp.SecTypeSigned,
+		Method:    http.MethodGet,
+		Endpoint:  "/fapi/v2/balance",
+		APIKey:    req.APIKey,
+		SecretKey: req.SecretKey,
+		SecType:   bnhttp.SecTypeSigned,
 	}
 	b.client.SetApiEndpoint(bnFuturesEndpoint)
 	data, err := b.client.CallAPI(ctx, r)
@@ -98,11 +102,11 @@ func (b *binance) CreateOrder(ctx context.Context, o *exchange.CreateOrderReques
 
 func (b *binance) createSpotOrder(ctx context.Context, o *exchange.CreateOrderRequest) error {
 	r := &bnhttp.Request{
-		APIKey:  o.APIKey,
+		APIKey:    o.APIKey,
 		SecretKey: o.SecretKey,
-		Method:   http.MethodPost,
-		Endpoint: "/api/v3/order",
-		SecType:  bnhttp.SecTypeSigned,
+		Method:    http.MethodPost,
+		Endpoint:  "/api/v3/order",
+		SecType:   bnhttp.SecTypeSigned,
 	}
 	b.client.SetApiEndpoint(bnSpotEndpoint)
 	r = r.SetFormParams(toBnSpotOrderParams(o))
@@ -120,11 +124,11 @@ func (b *binance) createSpotOrder(ctx context.Context, o *exchange.CreateOrderRe
 
 func (b *binance) createFuturesOrder(ctx context.Context, o *exchange.CreateOrderRequest) error {
 	r := &bnhttp.Request{
-		APIKey:  o.APIKey,
+		APIKey:    o.APIKey,
 		SecretKey: o.SecretKey,
-		Method:   http.MethodPost,
-		Endpoint: "/fapi/v1/order",
-		SecType:  bnhttp.SecTypeSigned,
+		Method:    http.MethodPost,
+		Endpoint:  "/fapi/v1/order",
+		SecType:   bnhttp.SecTypeSigned,
 	}
 	b.client.SetApiEndpoint(bnFuturesEndpoint)
 	r = r.SetFormParams(toBnFuturesOrderParams(o))
@@ -215,9 +219,9 @@ func toBnFuturesOrderParams(o *exchange.CreateOrderRequest) bnhttp.Params {
 func toBnSpotOrderParams(o *exchange.CreateOrderRequest) bnhttp.Params {
 	// TODO: 公共参数和每个交易所的参数之间的变换，这个得后面根据具体情况再来完善
 	m := bnhttp.Params{
-		"symbol":      o.Symbol,
-		"side":        o.Side,
-		"type":        o.OrderType,
+		"symbol": o.Symbol,
+		"side":   o.Side,
+		"type":   o.OrderType,
 	}
 	if o.TimeInForce != "" {
 		m["timeInForce"] = o.TimeInForce

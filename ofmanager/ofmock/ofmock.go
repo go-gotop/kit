@@ -11,7 +11,6 @@ import (
 	"github.com/go-gotop/kit/exchange"
 	"github.com/go-gotop/kit/limiter"
 	"github.com/go-gotop/kit/ofmanager"
-	"github.com/go-gotop/kit/requests/bnhttp"
 	"github.com/go-gotop/kit/requests/mohttp"
 	"github.com/go-gotop/kit/websocket"
 	"github.com/go-gotop/kit/wsmanager"
@@ -27,7 +26,8 @@ var (
 )
 
 const (
-	wsEndpoint = "wss://localhost:9443/ws"
+	wsEndpoint          = "ws://127.0.0.1:8082/ws/order"
+	mockExchangEndpoint = "http://127.0.0.1:8000"
 )
 
 // TODO: 限流器放在 ofbinance 做调用，不传入 wsmanager
@@ -57,7 +57,7 @@ func NewMockOrderFeed(cli *mohttp.Client, limiter limiter.Limiter, opts ...Optio
 		exitChan: make(chan struct{}),
 	}
 
-	of.CheckListenKey()
+	go of.CheckListenKey()
 
 	return of
 }
@@ -105,26 +105,18 @@ func (o *of) AddOrderFeed(req *ofmanager.OrderFeedRequest) error {
 	endpoint := fmt.Sprintf("%s?listenKey=%s", wsEndpoint, key)
 
 	wsHandler := func(message []byte) {
-		j, err := bnhttp.NewJSON(message)
+		event := &wsOrderUpdateEvent{}
+		err = mohttp.Json.Unmarshal(message, event)
 		if err != nil {
 			o.opts.logger.Error("order new json error", err)
 			return
 		}
-		switch j.Get("e").MustString() {
-		case "executionReport":
-			event := &wsOrderUpdateEvent{}
-			err = bnhttp.Json.Unmarshal(message, event)
-			if err != nil {
-				o.opts.logger.Error("order unmarshal error", err)
-				return
-			}
-			oe, err := swoueToOrderEvent(event)
-			if err != nil {
-				o.opts.logger.Error("order to order event error", err)
-				return
-			}
-			req.Event(oe)
+		oe, err := swoueToOrderEvent(event)
+		if err != nil {
+			o.opts.logger.Error("order to order event error", err)
+			return
 		}
+		req.Event(oe)
 	}
 	err = o.addWebsocket(&websocket.WebsocketRequest{
 		Endpoint:       endpoint,
@@ -153,7 +145,7 @@ func (o *of) CloseOrderFeed(id string) error {
 
 	lk, ok := o.listenKeySets[id]
 	if !ok {
-		return fmt.Errorf("listenKey not found")
+		return errors.New("listenKey not found")
 	}
 
 	err := o.closeListenKey(lk)
@@ -228,22 +220,24 @@ func (o *of) generateListenKey(req *ofmanager.OrderFeedRequest) (string, error) 
 	}
 
 	r.Endpoint = "/api/exchange/listenkey"
-
+	r.SetFormParam("instrumentType", req.Instrument)
+	o.client.SetApiEndpoint(mockExchangEndpoint)
 	data, err := o.client.CallAPI(context.Background(), r)
 	if err != nil {
 		return "", err
 	}
-
 	var res struct {
-		ListenKey string `json:"listenkey"`
+		Code    int    `json:"code"`
+		Data    string `json:"data"`
+		Message string `json:"message"`
 	}
 
-	err = bnhttp.Json.Unmarshal(data, &res)
+	err = mohttp.Json.Unmarshal(data, &res)
 	if err != nil {
 		return "", err
 	}
 
-	return res.ListenKey, nil
+	return res.Data, nil
 }
 
 func (o *of) updateListenKey(lk *listenKey) error {
@@ -352,16 +346,16 @@ func swoueToOrderEvent(event *wsOrderUpdateEvent) (*exchange.OrderResultEvent, e
 	if filledQuoteVolume.GreaterThan(decimal.Zero) && filledVolume.GreaterThan(decimal.Zero) {
 		avgPrice = filledQuoteVolume.Div(filledVolume)
 	}
-	return &exchange.OrderResultEvent{
+	ore := &exchange.OrderResultEvent{
 		PositionSide:    ps,
 		Exchange:        exchange.BinanceExchange,
 		Symbol:          event.Symbol,
 		ClientOrderID:   event.ClientOrderID,
-		ExecutionType:   exchange.OrderState(event.ExecutionType),
+		ExecutionType:   exchange.ExecutionState(event.ExecutionType),
 		State:           exchange.OrderState(event.Status),
-		OrderID:         event.Id,
+		OrderID:         event.ID,
 		TransactionTime: event.TransactionTime,
-		IsMaker:         false, // TODO: 目前mock数据只有市价单，统一写死为false
+		By:              exchange.ByTaker, // 默认为吃单  mock 交易所目前只有市价单
 		Side:            exchange.SideType(event.Side),
 		Type:            exchange.OrderType(event.Type),
 		Instrument:      exchange.InstrumentTypeSpot,
@@ -373,5 +367,9 @@ func swoueToOrderEvent(event *wsOrderUpdateEvent) (*exchange.OrderResultEvent, e
 		FeeAsset:        event.FeeAsset,
 		FeeCost:         feeCost,
 		AvgPrice:        avgPrice,
-	}, nil
+	}
+	// if event.IsMaker {
+	// 	ore.By = exchange.ByMaker
+	// }
+	return ore, nil
 }

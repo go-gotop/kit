@@ -58,7 +58,7 @@ const (
 
 	TransactionByUser   = "USER"
 	TransactionBySystem = "SYSTEM"
-	
+
 	InstrumentTypeSpot    InstrumentType = "SPOT"
 	InstrumentTypeFutures InstrumentType = "FUTURES"
 
@@ -127,6 +127,12 @@ var (
 	ErrRateLimitExceeded = errors.New("rate limit exceeded, IP ban imminent")
 )
 
+type GetAssetsRequest struct {
+	APIKey         string
+	SecretKey      string
+	InstrumentType InstrumentType
+}
+
 type CreateOrderRequest struct {
 	APIKey        string
 	SecretKey     string
@@ -156,8 +162,8 @@ type CreateOrderResponse struct {
 }
 
 type CancelOrderRequest struct {
-	APIKey           string
-	SecretKey        string
+	APIKey        string
+	SecretKey     string
 	ClientOrderID string
 	Symbol        string
 }
@@ -204,7 +210,7 @@ type Symbol struct {
 
 type Exchange interface {
 	Name() string
-	Assets(ctx context.Context, it InstrumentType) ([]Asset, error)
+	Assets(ctx context.Context, req *GetAssetsRequest) ([]Asset, error)
 	// Symbols(ctx context.Context, it InstrumentType) ([]Symbol, error)
 	CreateOrder(ctx context.Context, o *CreateOrderRequest) error
 	CancelOrder(ctx context.Context, o *CancelOrderRequest) error
