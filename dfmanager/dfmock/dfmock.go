@@ -25,7 +25,7 @@ var (
 )
 
 const (
-	wsEndpoint = "ws://127.0.0.1:8081/ws/data"
+	wsEndpoint = "ws://192.168.1.105:8072/ws/data"
 )
 
 func NewMockDataFeed(limiter limiter.Limiter, opts ...Option) dfmanager.DataFeedManager {

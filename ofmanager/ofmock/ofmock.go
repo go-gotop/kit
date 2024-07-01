@@ -26,8 +26,8 @@ var (
 )
 
 const (
-	wsEndpoint          = "ws://127.0.0.1:8082/ws/order"
-	mockExchangEndpoint = "http://127.0.0.1:8000"
+	wsEndpoint          = "ws://192.168.1.105:8073/ws/order"
+	mockExchangEndpoint = "http://192.168.1.105:8070"
 )
 
 // TODO: 限流器放在 ofbinance 做调用，不传入 wsmanager
