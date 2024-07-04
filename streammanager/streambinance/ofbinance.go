@@ -130,6 +130,7 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 			return
 		}
 		switch j.Get("e").MustString() {
+		// 现货订单更新
 		case "executionReport":
 			event := &bnSpotWsOrderUpdateEvent{}
 			err = bnhttp.Json.Unmarshal(message, event)
@@ -142,7 +143,8 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 				o.opts.logger.Error("order to order event error", err)
 				return
 			}
-			req.Event(oe)
+			req.OrderEvent(oe)
+		// 合约订单更新
 		case "ORDER_TRADE_UPDATE":
 			event := &bnFuturesWsUserDataEvent{}
 			err = bnhttp.Json.Unmarshal(message, event)
@@ -155,7 +157,35 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 				o.opts.logger.Error("order to order event error", err)
 				return
 			}
-			req.Event(oe)
+			req.OrderEvent(oe)
+		// 合约余额和持仓更新
+		case "ACCOUNT_UPDATE":
+			event := &bnFuturesWsAccountUpdateEvent{}
+			err = bnhttp.Json.Unmarshal(message, event)
+			if err != nil {
+				o.opts.logger.Error("account unmarshal error", err)
+				return
+			}
+			au, err := fwaueToAccountUpdateEvent(event)
+			if err != nil {
+				o.opts.logger.Error("account to account event error", err)
+				return
+			}
+			req.AccountEvent(au)
+		// 现货账户更新
+		case "outboundAccountPosition":
+			event := &bnSpotWsAccountUpdateEvent{}
+			err = bnhttp.Json.Unmarshal(message, event)
+			if err != nil {
+				o.opts.logger.Error("account unmarshal error", err)
+				return
+			}
+			au, err := swaueToAccountUpdateEvent(event)
+			if err != nil {
+				o.opts.logger.Error("account to account event error", err)
+				return
+			}
+			req.AccountEvent(au)
 		}
 	}
 	err = o.addWebsocket(&websocket.WebsocketRequest{
@@ -512,4 +542,38 @@ func fwoueToOrderEvent(event *bnFuturesWsOrderUpdateEvent) (*exchange.OrderResul
 		ore.By = exchange.ByMaker
 	}
 	return ore, nil
+}
+
+func swaueToAccountUpdateEvent(event *bnSpotWsAccountUpdateEvent) ([]*exchange.AccountUpdateEvent, error) {
+	result := make([]*exchange.AccountUpdateEvent, 0)
+
+	for _, b := range event.Balances {
+		amount, err := decimal.NewFromString(b.Free)
+		if err != nil {
+			return nil, err
+		}
+		au := &exchange.AccountUpdateEvent{
+			Asset:   b.Asset,
+			Balance: amount,
+		}
+		result = append(result, au)
+	}
+	return result, nil
+}
+
+func fwaueToAccountUpdateEvent(event *bnFuturesWsAccountUpdateEvent) ([]*exchange.AccountUpdateEvent, error) {
+	result := make([]*exchange.AccountUpdateEvent, 0)
+	balance := event.EventDetail.Balances
+	for _, b := range balance {
+		amount, err := decimal.NewFromString(b.CrossWalletBalance)
+		if err != nil {
+			return nil, err
+		}
+		au := &exchange.AccountUpdateEvent{
+			Asset:   b.Asset,
+			Balance: amount,
+		}
+		result = append(result, au)
+	}
+	return result, nil
 }

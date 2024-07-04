@@ -119,7 +119,7 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 			o.opts.logger.Error("order to order event error", err)
 			return
 		}
-		req.Event(oe)
+		req.OrderEvent(oe)
 	}
 	err = o.addWebsocket(&websocket.WebsocketRequest{
 		Endpoint:       endpoint,

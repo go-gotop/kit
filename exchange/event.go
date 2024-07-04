@@ -112,3 +112,8 @@ type TradeEvent struct {
 	Side       SideType
 	Instrument InstrumentType
 }
+
+type AccountUpdateEvent struct {
+	Asset 	string
+	Balance decimal.Decimal
+}

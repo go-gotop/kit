@@ -77,3 +77,38 @@ type bnFuturesWsOrderUpdateEvent struct {
 	CallbackRate         string `json:"cr"`
 	RealizedPnL          string `json:"rp"`
 }
+
+// 现货账户更新事件
+type bnSpotWsAccountUpdateEvent struct {
+	Event          string            `json:"e"`
+	Time           int64             `json:"E"`
+	LastUpdateTime int64             `json:"u"`
+	Balances       []bnSpotWsBalance `json:"B"`
+}
+
+type bnSpotWsBalance struct {
+	Asset  string `json:"a"` // 资产名称
+	Free   string `json:"f"` // 可用余额
+	Locked string `json:"l"` // 冻结余额
+}
+
+// 合约账户更新事件
+type bnFuturesWsAccountUpdateEvent struct {
+	Event           string                 `json:"e"`
+	Time            int64                  `json:"E"`
+	TransactionTime int64                  `json:"T"` // 撮合时间
+	EventDetail     bnFuturesWsEventDetail `json:"a"`
+}
+
+type bnFuturesWsEventDetail struct {
+	Reason   string                `json:"m"` // 事件类型
+	Balances []bnFunturesWsBalance `json:"B"` // 账户余额
+
+}
+
+type bnFunturesWsBalance struct {
+	Asset              string `json:"a"`  // 资产名称
+	Balance            string `json:"wb"` // 账户余额
+	CrossWalletBalance string `json:"cw"` // 全仓余额(除去逐仓仓位保证金的钱包余额)
+	BalanceChange      string `json:"bc"` // 余额变化（除去盈亏与交易手续费以外的钱包余额改变量）
+}

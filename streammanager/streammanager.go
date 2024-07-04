@@ -5,20 +5,13 @@ import (
 )
 
 type StreamRequest struct {
-	AccountId  string
-	APIKey     string
-	SecretKey  string
-	Instrument exchange.InstrumentType
-	Event      func(evt *exchange.OrderResultEvent)
+	AccountId    string
+	APIKey       string
+	SecretKey    string
+	Instrument   exchange.InstrumentType
+	OrderEvent   func(evt *exchange.OrderResultEvent)
+	AccountEvent func(evt []*exchange.AccountUpdateEvent)
 }
-
-// type AccountFeedRequest struct {
-// 	AccountId  string
-// 	APIKey     string
-// 	SecretKey  string
-// 	Instrument exchange.InstrumentType
-// 	Event      func(evt *exchange.OrderResultEvent)
-// }
 
 type Stream struct {
 	UUID       string
