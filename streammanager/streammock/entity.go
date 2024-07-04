@@ -1,4 +1,4 @@
-package ofmock
+package streammock
 
 type wsOrderUpdateEvent struct {
 	ID                string `json:"ID"`

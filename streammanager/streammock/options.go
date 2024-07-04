@@ -1,4 +1,4 @@
-package ofmock
+package streammock
 
 import (
 	"time"

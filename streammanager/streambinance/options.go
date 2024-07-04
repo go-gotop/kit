@@ -1,4 +1,4 @@
-package ofbinance
+package streambinance
 
 import (
 	"time"

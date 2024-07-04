@@ -1,4 +1,4 @@
-package ofmock
+package streammock
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 
 	"github.com/go-gotop/kit/exchange"
 	"github.com/go-gotop/kit/limiter"
-	"github.com/go-gotop/kit/ofmanager"
 	"github.com/go-gotop/kit/requests/mohttp"
+	"github.com/go-gotop/kit/streammanager"
 	"github.com/go-gotop/kit/websocket"
 	"github.com/go-gotop/kit/wsmanager"
 	"github.com/go-gotop/kit/wsmanager/manager"
@@ -20,7 +20,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-var _ ofmanager.OrderFeedManager = (*of)(nil)
+var _ streammanager.StreamManager = (*of)(nil)
 
 var (
 	ErrLimitExceed = errors.New("websocket request too frequent, please try again later")
@@ -32,7 +32,7 @@ const (
 )
 
 // TODO: 限流器放在 ofbinance 做调用，不传入 wsmanager
-func NewMockOrderFeed(cli *mohttp.Client, limiter limiter.Limiter, opts ...Option) ofmanager.OrderFeedManager {
+func NewMockStream(cli *mohttp.Client, limiter limiter.Limiter, opts ...Option) streammanager.StreamManager {
 	// 默认配置
 	o := &options{
 		logger:               log.NewHelper(log.DefaultLogger),
@@ -88,7 +88,7 @@ func (o *of) Name() string {
 	return o.name
 }
 
-func (o *of) AddOrderFeed(req *ofmanager.OrderFeedRequest) (string, error) {
+func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 
@@ -148,7 +148,7 @@ func (o *of) AddOrderFeed(req *ofmanager.OrderFeedRequest) (string, error) {
 	return uuid, nil
 }
 
-func (o *of) CloseOrderFeed(accountId string, uuid string) error {
+func (o *of) CloseStream(accountId string, uuid string) error {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 
@@ -184,14 +184,14 @@ func (o *of) CloseOrderFeed(accountId string, uuid string) error {
 	return nil
 }
 
-func (o *of) OrderFeedList() []ofmanager.OrderFeed {
+func (o *of) StreamList() []streammanager.Stream {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 
-	list := make([]ofmanager.OrderFeed, 0, len(o.listenKeySets))
+	list := make([]streammanager.Stream, 0, len(o.listenKeySets))
 	for _, v := range o.listenKeySets {
 		for _, uuid := range v.uuidList {
-			list = append(list, ofmanager.OrderFeed{
+			list = append(list, streammanager.Stream{
 				UUID:       uuid,
 				AccountId:  v.AccountID,
 				APIKey:     v.APIKey,
@@ -231,7 +231,7 @@ func (o *of) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.Webso
 	return nil
 }
 
-func (o *of) generateListenKey(req *ofmanager.OrderFeedRequest) (string, error) {
+func (o *of) generateListenKey(req *streammanager.StreamRequest) (string, error) {
 	for _, lk := range o.listenKeySets {
 		if lk.AccountID == req.AccountId && lk.Instrument == req.Instrument {
 			return lk.Key, nil

@@ -1,4 +1,4 @@
-package ofbinance
+package streambinance
 
 type bnSpotWsOrderUpdateEvent struct {
 	Symbol                  string `json:"s"`
