@@ -116,11 +116,11 @@ func (b *BinanceLimiter) FutureAllow(t *limiter.LimiterReq) bool {
 	case limiter.CreateOrderLimit:
 		return b.allowCreateFutureOrder(Exchange + "_" + limiter.FutureCreateOrderLimit + "_" + t.AccountId)
 	case limiter.CancelOrderLimit:
-		return b.allCancelFutureOrder(Exchange + "_" + limiter.FutureNormalRequestLimit + "_" + t.AccountId)
+		return b.allCancelFutureOrder()
 	case limiter.SearchOrderLimit:
-		return b.allSearchFutureOrder(Exchange + "_" + limiter.FutureNormalRequestLimit + "_" + b.ip)
+		return b.allSearchFutureOrder()
 	case limiter.NormalRequestLimit:
-		return b.allFutureNormalRequest(Exchange + "_" + limiter.FutureNormalRequestLimit + "_" + b.ip)
+		return b.allFutureNormalRequest()
 	default:
 		return true
 	}
@@ -157,17 +157,17 @@ func (b *BinanceLimiter) allowCreateFutureOrder(uniq string) bool {
 }
 
 // 允许取消合约订单
-func (b *BinanceLimiter) allCancelFutureOrder(uniq string) bool {
+func (b *BinanceLimiter) allCancelFutureOrder() bool {
 	return b.allowFutureWeights(b.opts.CancelFutureOrderWeights)
 }
 
 // 允许查询合约订单
-func (b *BinanceLimiter) allSearchFutureOrder(uniq string) bool {
+func (b *BinanceLimiter) allSearchFutureOrder() bool {
 	return b.allowFutureWeights(b.opts.SearchFutureOrderWeights)
 }
 
 // 允许合约其他普通请求
-func (b *BinanceLimiter) allFutureNormalRequest(uniq string) bool {
+func (b *BinanceLimiter) allFutureNormalRequest() bool {
 	return b.allowFutureWeights(b.opts.OtherWeights)
 }
 

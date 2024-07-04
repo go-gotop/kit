@@ -12,7 +12,16 @@ type OrderFeedRequest struct {
 	Event      func(evt *exchange.OrderResultEvent)
 }
 
+type AccountFeedRequest struct {
+	AccountId  string
+	APIKey     string
+	SecretKey  string
+	Instrument exchange.InstrumentType
+	Event      func(evt *exchange.OrderResultEvent)
+}
+
 type OrderFeed struct {
+	UUID       string
 	AccountId  string
 	APIKey     string
 	Exchange   string
@@ -21,8 +30,8 @@ type OrderFeed struct {
 
 type OrderFeedManager interface {
 	Name() string
-	AddOrderFeed(req *OrderFeedRequest) error
-	CloseOrderFeed(id string) error
+	AddOrderFeed(req *OrderFeedRequest) (string, error)
+	CloseOrderFeed(accountId string, uuid string) error
 	OrderFeedList() []OrderFeed
 	Shutdown() error
 }

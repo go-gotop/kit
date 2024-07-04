@@ -1,3 +1,8 @@
+// Description: Binance OrderFeed Manager
+// listenkey 对于现货和合约是不一样的，所以需要分开处理
+// 一个账户类型只会对应一个 listenkey
+// 调用generateListenKey，如果交易所现存有效的listenkey，则直接返回该listenkey，并延长有效期
+
 package ofbinance
 
 import (
@@ -16,6 +21,7 @@ import (
 	"github.com/go-gotop/kit/wsmanager"
 	"github.com/go-gotop/kit/wsmanager/manager"
 	"github.com/go-kratos/kratos/v2/log"
+	"github.com/google/uuid"
 	gwebsocket "github.com/gorilla/websocket"
 	"github.com/shopspring/decimal"
 )
@@ -72,6 +78,7 @@ type listenKey struct {
 	SecretKey   string
 	CreatedTime time.Time
 	Instrument  exchange.InstrumentType
+	uuidList    []string
 }
 
 type of struct {
@@ -89,12 +96,12 @@ func (o *of) Name() string {
 	return o.name
 }
 
-func (o *of) AddOrderFeed(req *ofmanager.OrderFeedRequest) error {
+func (o *of) AddOrderFeed(req *ofmanager.OrderFeedRequest) (string, error) {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 
 	if !o.limiter.WsAllow() {
-		return ErrLimitExceed
+		return "", ErrLimitExceed
 	}
 
 	conf := &wsmanager.WebsocketConfig{
@@ -105,9 +112,12 @@ func (o *of) AddOrderFeed(req *ofmanager.OrderFeedRequest) error {
 	key, err := o.generateListenKey(req)
 
 	if err != nil {
-		return err
+		return "", err
 	}
+
 	generateTime := time.Now()
+	uuid := uuid.New().String() // 一个链接的uuid，因为一个账户可能存在多条链接，所以不能用账户ID做标识
+
 	// 拼接 listenKey 到请求地址
 	endpoint := fmt.Sprintf("%s/%s", bnSpotWsEndpoint, key)
 	if req.Instrument == exchange.InstrumentTypeFutures {
@@ -150,12 +160,17 @@ func (o *of) AddOrderFeed(req *ofmanager.OrderFeedRequest) error {
 	}
 	err = o.addWebsocket(&websocket.WebsocketRequest{
 		Endpoint:       endpoint,
-		ID:             req.AccountId,
+		ID:             uuid,
 		MessageHandler: wsHandler,
 	}, conf)
 
 	if err != nil {
-		return err
+		return "", err
+	}
+	// 判断账户id是否存在listenkey，存在则不用再次添加，只添加uuid
+	if _, ok := o.listenKeySets[req.AccountId]; ok {
+		o.listenKeySets[req.AccountId].uuidList = append(o.listenKeySets[req.AccountId].uuidList, uuid)
+		return uuid, nil
 	}
 	o.listenKeySets[req.AccountId] = &listenKey{
 		AccountID:   req.AccountId,
@@ -164,26 +179,41 @@ func (o *of) AddOrderFeed(req *ofmanager.OrderFeedRequest) error {
 		Instrument:  req.Instrument,
 		APIKey:      req.APIKey,
 		SecretKey:   req.SecretKey,
+		uuidList:    []string{uuid},
 	}
 
-	return nil
+	return uuid, nil
 }
 
-func (o *of) CloseOrderFeed(id string) error {
+func (o *of) CloseOrderFeed(accountId string, uuid string) error {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 
-	lk, ok := o.listenKeySets[id]
+	lk, ok := o.listenKeySets[accountId]
 	if !ok {
 		return fmt.Errorf("listenKey not found")
 	}
 
-	err := o.closeListenKey(lk)
+	// 删除uuid
+	for i, v := range lk.uuidList {
+		if v == uuid {
+			lk.uuidList = append(lk.uuidList[:i], lk.uuidList[i+1:]...)
+			break
+		}
+	}
+
+	// 关闭链接
+	err := o.wsm.CloseWebsocket(uuid)
 	if err != nil {
 		return err
 	}
 
-	err = o.wsm.CloseWebsocket(id)
+	if len(lk.uuidList) > 0 {
+		return nil
+	}
+
+	// 如果uuidList为空，则删除listenKey
+	err = o.closeListenKey(lk)
 	if err != nil {
 		return err
 	}
@@ -197,12 +227,15 @@ func (o *of) OrderFeedList() []ofmanager.OrderFeed {
 
 	list := make([]ofmanager.OrderFeed, 0, len(o.listenKeySets))
 	for _, v := range o.listenKeySets {
-		list = append(list, ofmanager.OrderFeed{
-			AccountId:  v.AccountID,
-			APIKey:     v.APIKey,
-			Exchange:   o.name,
-			Instrument: v.Instrument,
-		})
+		for _, uuid := range v.uuidList {
+			list = append(list, ofmanager.OrderFeed{
+				UUID:       uuid,
+				AccountId:  v.AccountID,
+				APIKey:     v.APIKey,
+				Exchange:   o.name,
+				Instrument: v.Instrument,
+			})
+		}
 	}
 	return list
 }
@@ -462,7 +495,7 @@ func fwoueToOrderEvent(event *bnFuturesWsOrderUpdateEvent) (*exchange.OrderResul
 		State:           exchange.OrderState(event.Status),
 		OrderID:         fmt.Sprintf("%d", event.ID),
 		TransactionTime: event.TradeTime,
-		By:         exchange.ByTaker,
+		By:              exchange.ByTaker,
 		Side:            exchange.SideType(event.Side),
 		Type:            exchange.OrderType(event.Type),
 		Instrument:      exchange.InstrumentTypeFutures,
