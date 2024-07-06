@@ -125,6 +125,8 @@ var (
 	ErrCreateOrderLimitExceeded = errors.New("create order limit exceeded")
 	// ErrRateLimitExceeded 访问限制
 	ErrRateLimitExceeded = errors.New("rate limit exceeded, IP ban imminent")
+	// ErrListenKeyExpired Stream listenKey 过期
+	ErrListenKeyExpired = errors.New("listen key expired")
 )
 
 type GetAssetsRequest struct {

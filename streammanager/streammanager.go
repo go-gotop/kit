@@ -11,6 +11,7 @@ type StreamRequest struct {
 	Instrument   exchange.InstrumentType
 	OrderEvent   func(evt *exchange.OrderResultEvent)
 	AccountEvent func(evt []*exchange.AccountUpdateEvent)
+	ErrorEvent   func(evt *exchange.StreamErrorEvent)
 }
 
 type Stream struct {

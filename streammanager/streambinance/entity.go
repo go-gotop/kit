@@ -103,7 +103,6 @@ type bnFuturesWsAccountUpdateEvent struct {
 type bnFuturesWsEventDetail struct {
 	Reason   string                `json:"m"` // 事件类型
 	Balances []bnFunturesWsBalance `json:"B"` // 账户余额
-
 }
 
 type bnFunturesWsBalance struct {
@@ -111,4 +110,9 @@ type bnFunturesWsBalance struct {
 	Balance            string `json:"wb"` // 账户余额
 	CrossWalletBalance string `json:"cw"` // 全仓余额(除去逐仓仓位保证金的钱包余额)
 	BalanceChange      string `json:"bc"` // 余额变化（除去盈亏与交易手续费以外的钱包余额改变量）
+}
+
+type bnListenKeyExpiredEvent struct {
+	Event     string `json:"e"`
+	EventTime int64  `json:"E"`
 }

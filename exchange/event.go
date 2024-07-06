@@ -99,7 +99,7 @@ type StrategyStatusEvent struct {
 	TransactionID string
 	Symbol        Symbol
 	// Status 策略状态: NEW, START, STOP, DELETE
-	Status        StrategyStatus
+	Status StrategyStatus
 }
 
 type TradeEvent struct {
@@ -114,6 +114,12 @@ type TradeEvent struct {
 }
 
 type AccountUpdateEvent struct {
-	Asset 	string
+	Asset   string
 	Balance decimal.Decimal
+}
+
+// TODO Code 走枚举
+type StreamErrorEvent struct {
+	Error     error
+	AccountID string
 }

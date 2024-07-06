@@ -123,75 +123,11 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 	if req.Instrument == exchange.InstrumentTypeFutures {
 		endpoint = fmt.Sprintf("%s/%s", bnFuturesWsEndpoint, key)
 	}
-	wsHandler := func(message []byte) {
-		j, err := bnhttp.NewJSON(message)
-		if err != nil {
-			o.opts.logger.Error("order new json error", err)
-			return
-		}
-		switch j.Get("e").MustString() {
-		// 现货订单更新
-		case "executionReport":
-			event := &bnSpotWsOrderUpdateEvent{}
-			err = bnhttp.Json.Unmarshal(message, event)
-			if err != nil {
-				o.opts.logger.Error("order unmarshal error", err)
-				return
-			}
-			oe, err := swoueToOrderEvent(event)
-			if err != nil {
-				o.opts.logger.Error("order to order event error", err)
-				return
-			}
-			req.OrderEvent(oe)
-		// 合约订单更新
-		case "ORDER_TRADE_UPDATE":
-			event := &bnFuturesWsUserDataEvent{}
-			err = bnhttp.Json.Unmarshal(message, event)
-			if err != nil {
-				o.opts.logger.Error("order unmarshal error", err)
-				return
-			}
-			oe, err := fwoueToOrderEvent(&event.OrderTradeUpdate)
-			if err != nil {
-				o.opts.logger.Error("order to order event error", err)
-				return
-			}
-			req.OrderEvent(oe)
-		// 合约余额和持仓更新
-		case "ACCOUNT_UPDATE":
-			event := &bnFuturesWsAccountUpdateEvent{}
-			err = bnhttp.Json.Unmarshal(message, event)
-			if err != nil {
-				o.opts.logger.Error("account unmarshal error", err)
-				return
-			}
-			au, err := fwaueToAccountUpdateEvent(event)
-			if err != nil {
-				o.opts.logger.Error("account to account event error", err)
-				return
-			}
-			req.AccountEvent(au)
-		// 现货账户更新
-		case "outboundAccountPosition":
-			event := &bnSpotWsAccountUpdateEvent{}
-			err = bnhttp.Json.Unmarshal(message, event)
-			if err != nil {
-				o.opts.logger.Error("account unmarshal error", err)
-				return
-			}
-			au, err := swaueToAccountUpdateEvent(event)
-			if err != nil {
-				o.opts.logger.Error("account to account event error", err)
-				return
-			}
-			req.AccountEvent(au)
-		}
-	}
+
 	err = o.addWebsocket(&websocket.WebsocketRequest{
 		Endpoint:       endpoint,
 		ID:             uuid,
-		MessageHandler: wsHandler,
+		MessageHandler: o.createWebsocketHandler(req.AccountId, req),
 	}, conf)
 
 	if err != nil {
@@ -288,6 +224,86 @@ func (o *of) Shutdown() error {
 	}
 
 	return nil
+}
+
+func (o *of) createWebsocketHandler(accountId string, req *streammanager.StreamRequest) func(message []byte) {
+	return func(message []byte) {
+		j, err := bnhttp.NewJSON(message)
+		if err != nil {
+			o.opts.logger.Error("order new json error", err)
+			return
+		}
+		switch j.Get("e").MustString() {
+		// 现货订单更新
+		case "executionReport":
+			event := &bnSpotWsOrderUpdateEvent{}
+			err = bnhttp.Json.Unmarshal(message, event)
+			if err != nil {
+				o.opts.logger.Error("order unmarshal error", err)
+				return
+			}
+			oe, err := swoueToOrderEvent(event)
+			if err != nil {
+				o.opts.logger.Error("order to order event error", err)
+				return
+			}
+			req.OrderEvent(oe)
+		// 合约订单更新
+		case "ORDER_TRADE_UPDATE":
+			event := &bnFuturesWsUserDataEvent{}
+			err = bnhttp.Json.Unmarshal(message, event)
+			if err != nil {
+				o.opts.logger.Error("order unmarshal error", err)
+				return
+			}
+			oe, err := fwoueToOrderEvent(&event.OrderTradeUpdate)
+			if err != nil {
+				o.opts.logger.Error("order to order event error", err)
+				return
+			}
+			req.OrderEvent(oe)
+		// 合约余额和持仓更新
+		case "ACCOUNT_UPDATE":
+			event := &bnFuturesWsAccountUpdateEvent{}
+			err = bnhttp.Json.Unmarshal(message, event)
+			if err != nil {
+				o.opts.logger.Error("account unmarshal error", err)
+				return
+			}
+			au, err := fwaueToAccountUpdateEvent(event)
+			if err != nil {
+				o.opts.logger.Error("account to account event error", err)
+				return
+			}
+			req.AccountEvent(au)
+		// 现货账户更新
+		case "outboundAccountPosition":
+			event := &bnSpotWsAccountUpdateEvent{}
+			err = bnhttp.Json.Unmarshal(message, event)
+			if err != nil {
+				o.opts.logger.Error("account unmarshal error", err)
+				return
+			}
+			au, err := swaueToAccountUpdateEvent(event)
+			if err != nil {
+				o.opts.logger.Error("account to account event error", err)
+				return
+			}
+			req.AccountEvent(au)
+		// listenKey 过期
+		case "listenKeyExpired":
+			event := &bnListenKeyExpiredEvent{}
+			err = bnhttp.Json.Unmarshal(message, event)
+			if err != nil {
+				o.opts.logger.Error("listenKey unmarshal error", err)
+				return
+			}
+			req.ErrorEvent(&exchange.StreamErrorEvent{
+				AccountID: accountId,
+				Error:     exchange.ErrListenKeyExpired,
+			})
+		}
+	}
 }
 
 func (o *of) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.WebsocketConfig) error {
