@@ -125,7 +125,7 @@ var (
 	ErrCreateOrderLimitExceeded = errors.New("create order limit exceeded")
 	// ErrRateLimitExceeded 访问限制
 	ErrRateLimitExceeded = errors.New("rate limit exceeded, IP ban imminent")
-	// ErrListenKeyExpired Stream listenKey 过期
+	// ErrListenKeyExpired Stream listenKey 过期（适用binance）
 	ErrListenKeyExpired = errors.New("listen key expired")
 )
 
