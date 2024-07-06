@@ -298,6 +298,19 @@ func (o *of) createWebsocketHandler(accountId string, req *streammanager.StreamR
 				o.opts.logger.Error("listenKey unmarshal error", err)
 				return
 			}
+
+			// 关闭accountId下所有连接
+			for _, lk := range o.listenKeySets {
+				if lk.AccountID == accountId {
+					for _, uuid := range lk.uuidList {
+						o.wsm.CloseWebsocket(uuid)
+					}
+				}
+			}
+			// 删除 listenKey
+			delete(o.listenKeySets, accountId)
+
+			// 推送事件
 			req.ErrorEvent(&exchange.StreamErrorEvent{
 				AccountID: accountId,
 				Error:     exchange.ErrListenKeyExpired,
