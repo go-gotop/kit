@@ -118,7 +118,16 @@ type AccountUpdateEvent struct {
 	Balance decimal.Decimal
 }
 
-// TODO Code 走枚举
+type FrameErrorEvent struct {
+	Error         error
+	PositionID    string
+	TransactionID string
+	AccountID     string
+	Timestamp     int64
+	ClientOrderID string
+}
+
+// WebSocket 流错误事件
 type StreamErrorEvent struct {
 	Error     error
 	AccountID string
