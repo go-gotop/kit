@@ -2,6 +2,8 @@
 // listenkey 对于现货和合约是不一样的，所以需要分开处理
 // 一个账户类型只会对应一个 listenkey
 // 调用generateListenKey，如果交易所现存有效的listenkey，则直接返回该listenkey，并延长有效期
+// TOFIX:
+// 1. listenkey 应该统一进行管理，而这里的kit包有服务引用的话，listenkey是相当于在其本地进行管理的，这里面可能有点问题，比如这里checkListenKey的时候，如果有多个服务引用，会导致listenkey的有效期不一致
 
 package streambinance
 
@@ -179,10 +181,13 @@ func (o *of) CloseStream(accountId string, uuid string) error {
 	}
 
 	// 如果uuidList为空，则删除listenKey
-	err = o.closeListenKey(lk)
-	if err != nil {
-		return err
-	}
+	delete(o.listenKeySets, lk.AccountID)
+
+	// TOFIX: 对于交易所来说一个账户下面只存在一个有效的listenkey，如果这里走close，会导致其他服务的listenkey也失效
+	// err = o.closeListenKey(lk)
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
