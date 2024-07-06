@@ -3,12 +3,13 @@
 // 一个账户类型只会对应一个 listenkey
 // 调用generateListenKey，如果交易所现存有效的listenkey，则直接返回该listenkey，并延长有效期
 // TOFIX:
-// 1. listenkey 应该统一进行管理，而这里的kit包有服务引用的话，listenkey是相当于在其本地进行管理的，这里面可能有点问题，比如这里checkListenKey的时候，如果有多个服务引用，会导致listenkey的有效期不一致
+// 1. listenkey 应该统一进行管理，而这里的kit包有服务引用的话，listenkey是相当于在其本地进行管理的，这里面可能有点问题，比如这里checkListenKey的时候，如果有多个服务引用，会导致listenkey的有效期不一致（使用redis可以解决）
 
 package streambinance
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -25,6 +26,7 @@ import (
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/google/uuid"
 	gwebsocket "github.com/gorilla/websocket"
+	"github.com/redis/go-redis/v9"
 	"github.com/shopspring/decimal"
 )
 
@@ -42,7 +44,7 @@ const (
 )
 
 // TODO: 限流器放在 ofbinance 做调用，不传入 wsmanager
-func NewBinanceStream(cli *bnhttp.Client, limiter limiter.Limiter, opts ...Option) streammanager.StreamManager {
+func NewBinanceStream(cli *bnhttp.Client, redisClient *redis.Client, limiter limiter.Limiter, opts ...Option) streammanager.StreamManager {
 	// 默认配置
 	o := &options{
 		logger:               log.NewHelper(log.DefaultLogger),
@@ -58,6 +60,7 @@ func NewBinanceStream(cli *bnhttp.Client, limiter limiter.Limiter, opts ...Optio
 	of := &of{
 		name:          exchange.BinanceExchange,
 		opts:          o,
+		rdb:           redisClient,
 		client:        cli,
 		limiter:       limiter,
 		listenKeySets: make(map[string]*listenKey),
@@ -67,6 +70,8 @@ func NewBinanceStream(cli *bnhttp.Client, limiter limiter.Limiter, opts ...Optio
 		),
 		exitChan: make(chan struct{}),
 	}
+
+	of.initListenKeySetsFromRedis()
 
 	go of.CheckListenKey()
 
@@ -87,6 +92,7 @@ type of struct {
 	exitChan      chan struct{}
 	name          string
 	opts          *options
+	rdb           *redis.Client // redis客户端
 	client        *bnhttp.Client
 	limiter       limiter.Limiter
 	wsm           wsmanager.WebsocketManager
@@ -135,12 +141,18 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	// 判断账户id是否存在listenkey，存在则不用再次添加，只添加uuid
 	if _, ok := o.listenKeySets[req.AccountId]; ok {
 		o.listenKeySets[req.AccountId].uuidList = append(o.listenKeySets[req.AccountId].uuidList, uuid)
+		err := o.saveListenKeySet(req.AccountId, o.listenKeySets[req.AccountId])
+		if err != nil {
+			return "", err
+		}
 		return uuid, nil
 	}
-	o.listenKeySets[req.AccountId] = &listenKey{
+
+	lk := &listenKey{
 		AccountID:   req.AccountId,
 		Key:         key,
 		CreatedTime: generateTime,
@@ -148,6 +160,12 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 		APIKey:      req.APIKey,
 		SecretKey:   req.SecretKey,
 		uuidList:    []string{uuid},
+	}
+	o.listenKeySets[req.AccountId] = lk
+
+	err = o.saveListenKeySet(req.AccountId, lk)
+	if err != nil {
+		return "", err
 	}
 
 	return uuid, nil
@@ -157,9 +175,10 @@ func (o *of) CloseStream(accountId string, uuid string) error {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 
-	lk, ok := o.listenKeySets[accountId]
-	if !ok {
-		return fmt.Errorf("listenKey not found")
+	lk, err := o.getListenKeySet(accountId)
+
+	if err != nil {
+		return err
 	}
 
 	// 删除uuid
@@ -171,18 +190,27 @@ func (o *of) CloseStream(accountId string, uuid string) error {
 	}
 
 	// 关闭链接
-	err := o.wsm.CloseWebsocket(uuid)
+	err = o.wsm.CloseWebsocket(uuid)
 	if err != nil {
 		return err
 	}
 
 	if len(lk.uuidList) > 0 {
+		o.listenKeySets[accountId] = lk
+
+		err := o.saveListenKeySet(accountId, lk)
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 
 	// 如果uuidList为空，则删除listenKey
 	delete(o.listenKeySets, lk.AccountID)
-
+	err = o.deleteListenKeySet(lk.AccountID)
+	if err != nil {
+		return err
+	}
 	// TOFIX: 对于交易所来说一个账户下面只存在一个有效的listenkey，如果这里走close，会导致其他服务的listenkey也失效
 	// err = o.closeListenKey(lk)
 	// if err != nil {
@@ -195,6 +223,8 @@ func (o *of) CloseStream(accountId string, uuid string) error {
 func (o *of) StreamList() []streammanager.Stream {
 	o.mux.Lock()
 	defer o.mux.Unlock()
+
+	o.initListenKeySetsFromRedis()
 
 	list := make([]streammanager.Stream, 0, len(o.listenKeySets))
 	for _, v := range o.listenKeySets {
@@ -216,12 +246,13 @@ func (o *of) Shutdown() error {
 	defer o.mux.Unlock()
 	close(o.exitChan)
 
-	for _, lk := range o.listenKeySets {
-		err := o.closeListenKey(lk)
-		if err != nil {
-			return err
-		}
-	}
+	// TOFIX: 对于交易所来说一个账户下面只存在一个有效的listenkey，如果这里走close，会导致其他服务的listenkey也失效
+	// for _, lk := range o.listenKeySets {
+	// 	err := o.closeListenKey(lk)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	err := o.wsm.Shutdown()
 	if err != nil {
@@ -315,6 +346,8 @@ func (o *of) createWebsocketHandler(accountId string, req *streammanager.StreamR
 			// 删除 listenKey
 			delete(o.listenKeySets, accountId)
 
+			o.deleteListenKeySet(accountId)
+
 			// 推送事件
 			req.ErrorEvent(&exchange.StreamErrorEvent{
 				AccountID: accountId,
@@ -399,32 +432,32 @@ func (o *of) updateListenKey(lk *listenKey) error {
 	return nil
 }
 
-func (o *of) closeListenKey(lk *listenKey) error {
-	r := &bnhttp.Request{
-		Method:    http.MethodDelete,
-		SecType:   bnhttp.SecTypeAPIKey,
-		APIKey:    lk.APIKey,
-		SecretKey: lk.SecretKey,
-	}
+// func (o *of) closeListenKey(lk *listenKey) error {
+// 	r := &bnhttp.Request{
+// 		Method:    http.MethodDelete,
+// 		SecType:   bnhttp.SecTypeAPIKey,
+// 		APIKey:    lk.APIKey,
+// 		SecretKey: lk.SecretKey,
+// 	}
 
-	if lk.Instrument == exchange.InstrumentTypeFutures {
-		r.Endpoint = "/fapi/v1/listenKey"
-		o.client.SetApiEndpoint(bnFuturesEndpoint)
-	} else {
-		r.Endpoint = "/api/v3/userDataStream"
-		o.client.SetApiEndpoint(bnSpotEndpoint)
-	}
+// 	if lk.Instrument == exchange.InstrumentTypeFutures {
+// 		r.Endpoint = "/fapi/v1/listenKey"
+// 		o.client.SetApiEndpoint(bnFuturesEndpoint)
+// 	} else {
+// 		r.Endpoint = "/api/v3/userDataStream"
+// 		o.client.SetApiEndpoint(bnSpotEndpoint)
+// 	}
 
-	_, err := o.client.CallAPI(context.Background(), r)
-	if err != nil {
-		return err
-	}
-	o.mux.Lock()
-	// 删除 listenKey
-	delete(o.listenKeySets, lk.AccountID)
-	o.mux.Unlock()
-	return nil
-}
+// 	_, err := o.client.CallAPI(context.Background(), r)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	o.mux.Lock()
+// 	// 删除 listenKey
+// 	delete(o.listenKeySets, lk.AccountID)
+// 	o.mux.Unlock()
+// 	return nil
+// }
 
 // 检查 listenKey 是否过期
 func (o *of) CheckListenKey() {
@@ -434,6 +467,7 @@ func (o *of) CheckListenKey() {
 			return
 		default:
 			o.mux.Lock()
+			o.initListenKeySetsFromRedis()
 			for _, lk := range o.listenKeySets {
 				if time.Since(lk.CreatedTime) >= o.opts.listenKeyExpire {
 					o.updateListenKey(lk)
@@ -443,6 +477,60 @@ func (o *of) CheckListenKey() {
 			time.Sleep(o.opts.checkListenKeyPeriod)
 		}
 	}
+}
+
+// saveListenKeySet saves or updates a listenKeySet in Redis.
+func (o *of) saveListenKeySet(accountId string, lk *listenKey) error {
+	data, err := json.Marshal(lk)
+	if err != nil {
+		return err
+	}
+
+	return o.rdb.Set(context.Background(), accountId, data, 0).Err()
+}
+
+// deleteListenKeySet deletes a listenKeySet from Redis.
+func (o *of) deleteListenKeySet(accountId string) error {
+	return o.rdb.Del(context.Background(), accountId).Err()
+}
+
+// getListenKeySet retrieves a listenKeySet from Redis.
+func (o *of) getListenKeySet(accountId string) (*listenKey, error) {
+	data, err := o.rdb.Get(context.Background(), accountId).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var lk listenKey
+	err = json.Unmarshal([]byte(data), &lk)
+	if err != nil {
+		return nil, err
+	}
+
+	return &lk, nil
+}
+
+func (o *of) initListenKeySetsFromRedis() error {
+	keys, err := o.rdb.Keys(context.Background(), "*").Result()
+	if err != nil {
+		return err
+	}
+
+	for _, key := range keys {
+		lk, err := o.getListenKeySet(key)
+		if err != nil {
+			o.opts.logger.Error("failed to get listenKey from redis", err)
+			continue
+		}
+		if lk != nil {
+			o.listenKeySets[lk.AccountID] = lk
+		}
+	}
+
+	return nil
 }
 
 func pingHandler(appData string, conn websocket.WebSocketConn) error {
