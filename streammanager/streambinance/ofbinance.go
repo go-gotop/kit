@@ -41,6 +41,8 @@ const (
 	bnFuturesWsEndpoint = "wss://fstream.binance.com/ws"
 	bnSpotEndpoint      = "https://api.binance.com"
 	bnFuturesEndpoint   = "https://fapi.binance.com"
+
+	redisKeyPrefix = "binance_listenkey:"
 )
 
 // TODO: 限流器放在 ofbinance 做调用，不传入 wsmanager
@@ -50,7 +52,7 @@ func NewBinanceStream(cli *bnhttp.Client, redisClient *redis.Client, limiter lim
 		logger:               log.NewHelper(log.DefaultLogger),
 		maxConnDuration:      24*time.Hour - 5*time.Minute,
 		listenKeyExpire:      58 * time.Minute,
-		checkListenKeyPeriod: 1 * time.Minute,
+		checkListenKeyPeriod: 5 * time.Second,
 	}
 
 	for _, opt := range opts {
@@ -79,13 +81,13 @@ func NewBinanceStream(cli *bnhttp.Client, redisClient *redis.Client, limiter lim
 }
 
 type listenKey struct {
-	AccountID   string
-	Key         string
-	APIKey      string
-	SecretKey   string
-	CreatedTime time.Time
-	Instrument  exchange.InstrumentType
-	uuidList    []string
+	AccountID   string                  `json:"account_id"`
+	Key         string                  `json:"key"`
+	APIKey      string                  `json:"api_key"`
+	SecretKey   string                  `json:"secret_key"`
+	CreatedTime time.Time               `json:"created_time"`
+	Instrument  exchange.InstrumentType `json:"instrument"`
+	UUIDList    []string                `json:"uuid_list"`
 }
 
 type of struct {
@@ -142,9 +144,11 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 		return "", err
 	}
 
-	// 判断账户id是否存在listenkey，存在则不用再次添加，只添加uuid
+	// 判断账户id是否存在listenkey，存在则不用再次添加，只添加uuid, 更新createTime 和 listenkey
 	if _, ok := o.listenKeySets[req.AccountId]; ok {
-		o.listenKeySets[req.AccountId].uuidList = append(o.listenKeySets[req.AccountId].uuidList, uuid)
+		o.listenKeySets[req.AccountId].UUIDList = append(o.listenKeySets[req.AccountId].UUIDList, uuid)
+		o.listenKeySets[req.AccountId].CreatedTime = generateTime
+		o.listenKeySets[req.AccountId].Key = key
 		err := o.saveListenKeySet(req.AccountId, o.listenKeySets[req.AccountId])
 		if err != nil {
 			return "", err
@@ -159,7 +163,7 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 		Instrument:  req.Instrument,
 		APIKey:      req.APIKey,
 		SecretKey:   req.SecretKey,
-		uuidList:    []string{uuid},
+		UUIDList:    []string{uuid},
 	}
 	o.listenKeySets[req.AccountId] = lk
 
@@ -182,9 +186,9 @@ func (o *of) CloseStream(accountId string, uuid string) error {
 	}
 
 	// 删除uuid
-	for i, v := range lk.uuidList {
+	for i, v := range lk.UUIDList {
 		if v == uuid {
-			lk.uuidList = append(lk.uuidList[:i], lk.uuidList[i+1:]...)
+			lk.UUIDList = append(lk.UUIDList[:i], lk.UUIDList[i+1:]...)
 			break
 		}
 	}
@@ -195,7 +199,7 @@ func (o *of) CloseStream(accountId string, uuid string) error {
 		return err
 	}
 
-	if len(lk.uuidList) > 0 {
+	if len(lk.UUIDList) > 0 {
 		o.listenKeySets[accountId] = lk
 
 		err := o.saveListenKeySet(accountId, lk)
@@ -205,7 +209,7 @@ func (o *of) CloseStream(accountId string, uuid string) error {
 		return nil
 	}
 
-	// 如果uuidList为空，则删除listenKey
+	// 如果UUIDList为空，则删除listenKey
 	delete(o.listenKeySets, lk.AccountID)
 	err = o.deleteListenKeySet(lk.AccountID)
 	if err != nil {
@@ -228,7 +232,7 @@ func (o *of) StreamList() []streammanager.Stream {
 
 	list := make([]streammanager.Stream, 0, len(o.listenKeySets))
 	for _, v := range o.listenKeySets {
-		for _, uuid := range v.uuidList {
+		for _, uuid := range v.UUIDList {
 			list = append(list, streammanager.Stream{
 				UUID:       uuid,
 				AccountId:  v.AccountID,
@@ -338,7 +342,7 @@ func (o *of) createWebsocketHandler(accountId string, req *streammanager.StreamR
 			// 关闭accountId下所有连接
 			for _, lk := range o.listenKeySets {
 				if lk.AccountID == accountId {
-					for _, uuid := range lk.uuidList {
+					for _, uuid := range lk.UUIDList {
 						o.wsm.CloseWebsocket(uuid)
 					}
 				}
@@ -366,12 +370,6 @@ func (o *of) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.Webso
 }
 
 func (o *of) generateListenKey(req *streammanager.StreamRequest) (string, error) {
-	for _, lk := range o.listenKeySets {
-		if lk.AccountID == req.AccountId && lk.Instrument == req.Instrument {
-			return lk.Key, nil
-		}
-	}
-
 	r := &bnhttp.Request{
 		APIKey:    req.APIKey,
 		SecretKey: req.SecretKey,
@@ -428,6 +426,10 @@ func (o *of) updateListenKey(lk *listenKey) error {
 
 	// 更新listenKey createTime
 	lk.CreatedTime = time.Now()
+	err = o.saveListenKeySet(lk.AccountID, lk)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -479,24 +481,37 @@ func (o *of) CheckListenKey() {
 	}
 }
 
-// saveListenKeySet saves or updates a listenKeySet in Redis.
+func (o *of) initListenKeySetsFromRedis() error {
+	keys, err := o.rdb.Keys(context.Background(), redisKeyPrefix+"*").Result()
+	if err != nil {
+		return err
+	}
+
+	for _, key := range keys {
+		lk, err := o.getListenKeySet(key[len(redisKeyPrefix):])
+		if err != nil {
+			o.opts.logger.Error("Failed to get listenKey from redis", err)
+			continue
+		}
+		if lk != nil {
+			o.listenKeySets[lk.AccountID] = lk
+		}
+	}
+
+	return nil
+}
+
 func (o *of) saveListenKeySet(accountId string, lk *listenKey) error {
 	data, err := json.Marshal(lk)
 	if err != nil {
 		return err
 	}
 
-	return o.rdb.Set(context.Background(), accountId, data, 0).Err()
+	return o.rdb.Set(context.Background(), redisKeyPrefix+accountId, data, o.opts.listenKeyExpire).Err()
 }
 
-// deleteListenKeySet deletes a listenKeySet from Redis.
-func (o *of) deleteListenKeySet(accountId string) error {
-	return o.rdb.Del(context.Background(), accountId).Err()
-}
-
-// getListenKeySet retrieves a listenKeySet from Redis.
 func (o *of) getListenKeySet(accountId string) (*listenKey, error) {
-	data, err := o.rdb.Get(context.Background(), accountId).Result()
+	data, err := o.rdb.Get(context.Background(), redisKeyPrefix+accountId).Result()
 	if err != nil {
 		if err == redis.Nil {
 			return nil, nil
@@ -513,24 +528,8 @@ func (o *of) getListenKeySet(accountId string) (*listenKey, error) {
 	return &lk, nil
 }
 
-func (o *of) initListenKeySetsFromRedis() error {
-	keys, err := o.rdb.Keys(context.Background(), "*").Result()
-	if err != nil {
-		return err
-	}
-
-	for _, key := range keys {
-		lk, err := o.getListenKeySet(key)
-		if err != nil {
-			o.opts.logger.Error("failed to get listenKey from redis", err)
-			continue
-		}
-		if lk != nil {
-			o.listenKeySets[lk.AccountID] = lk
-		}
-	}
-
-	return nil
+func (o *of) deleteListenKeySet(accountId string) error {
+	return o.rdb.Del(context.Background(), redisKeyPrefix+accountId).Err()
 }
 
 func pingHandler(appData string, conn websocket.WebSocketConn) error {
