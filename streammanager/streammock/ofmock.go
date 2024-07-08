@@ -376,7 +376,7 @@ func swoueToOrderEvent(event *wsOrderUpdateEvent) (*exchange.OrderResultEvent, e
 	}
 	ore := &exchange.OrderResultEvent{
 		PositionSide:    ps,
-		Exchange:        exchange.BinanceExchange,
+		Exchange:        exchange.MockExchange,
 		Symbol:          event.Symbol,
 		ClientOrderID:   event.ClientOrderID,
 		ExecutionType:   exchange.ExecutionState(event.ExecutionType),
