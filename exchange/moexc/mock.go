@@ -135,3 +135,11 @@ func (m *mockExchange) CreateOrder(ctx context.Context, o *exchange.CreateOrderR
 func (m *mockExchange) CancelOrder(ctx context.Context, o *exchange.CancelOrderRequest) error {
 	return nil
 }
+
+func (m *mockExchange) SearchOrder(ctx context.Context, o *exchange.SearchOrderRequest) (*exchange.SearchOrderResponse, error) {
+	return nil, nil
+}
+
+func (m *mockExchange) SearchTrades(ctx context.Context, o *exchange.SearchTradesRequest) ([]*exchange.SearchTradesResponse, error) {
+	return nil, nil
+}

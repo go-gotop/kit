@@ -294,17 +294,6 @@ type bnFuturesSearchOrderResponse struct {
 	UpdateTime        int64  `json:"updateTime"`
 }
 
-    // "symbol": "BNBBTC",
-    // "id": 28457,
-    // "orderId": 100234,
-    // "price": "4.00000100",
-    // "qty": "12.00000000",
-    // "commission": "10.10000000",
-    // "commissionAsset": "BNB",
-    // "time": 1499865549590,
-    // "isBuyer": true,
-    // "isMaker": false,
-    // "isBestMatch": true
 type bnSpotTrades struct {
 	Symbol          string `json:"symbol"`
 	ID              int64  `json:"id"`
@@ -316,5 +305,17 @@ type bnSpotTrades struct {
 	Time            int64  `json:"time"`
 	IsBuyer         bool   `json:"isBuyer"`
 	IsMaker         bool   `json:"isMaker"`
-	IsBestMatch     bool   `json:"isBestMatch"`
+}
+
+type bnFuturesTrades struct {
+	Symbol          string `json:"symbol"`
+	ID              int64  `json:"id"`
+	OrderID         int64  `json:"orderId"`
+	Price           string `json:"price"`
+	Quantity        string `json:"qty"`
+	Commission      string `json:"commission"`
+	CommissionAsset string `json:"commissionAsset"`
+	Time            int64  `json:"time"`
+	IsBuyer         bool   `json:"buyer"`
+	IsMaker         bool   `json:"maker"`
 }

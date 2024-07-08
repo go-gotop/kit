@@ -2,7 +2,9 @@ package bnexc
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-gotop/kit/exchange"
 	"github.com/go-gotop/kit/requests/bnhttp"
@@ -146,6 +148,308 @@ func (b *binance) createFuturesOrder(ctx context.Context, o *exchange.CreateOrde
 
 func (b *binance) CancelOrder(ctx context.Context, o *exchange.CancelOrderRequest) error {
 	return nil
+}
+
+func (b *binance) SearchOrder(ctx context.Context, o *exchange.SearchOrderRequest) (*exchange.SearchOrderResponse, error) {
+	if o.InstrumentType == exchange.InstrumentTypeSpot {
+		return b.searchSpotOrder(ctx, o)
+	}
+	return b.searchFuturesOrder(ctx, o)
+}
+
+func (b *binance) searchSpotOrder(ctx context.Context, o *exchange.SearchOrderRequest) (*exchange.SearchOrderResponse, error) {
+	r := &bnhttp.Request{
+		APIKey:    o.APIKey,
+		SecretKey: o.SecretKey,
+		Method:    http.MethodGet,
+		Endpoint:  "/api/v3/order",
+		SecType:   bnhttp.SecTypeSigned,
+	}
+	b.client.SetApiEndpoint(bnSpotEndpoint)
+	params := bnhttp.Params{
+		"symbol":            o.Symbol,
+		"origClientOrderId": o.ClientOrderID,
+		"timestamp":         time.Now().UnixNano() / 1e6,
+	}
+	r = r.SetParams(params)
+	data, err := b.client.CallAPI(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	res := &bnSpotSearchOrderReponse{}
+	err = bnhttp.Json.Unmarshal(data, res)
+	if err != nil {
+		return nil, err
+	}
+	volume, err := decimal.NewFromString(res.Volume)
+	if err != nil {
+		return nil, err
+	}
+	price, err := decimal.NewFromString(res.Price)
+	if err != nil {
+		return nil, err
+	}
+	filledQuoteVolume, err := decimal.NewFromString(res.FilledQuoteVolume)
+	if err != nil {
+		return nil, err
+	}
+	filledVolume, err := decimal.NewFromString(res.FilledVolume)
+	if err != nil {
+		return nil, err
+	}
+	avgPrice := filledQuoteVolume.Div(filledVolume)
+
+	result := &exchange.SearchOrderResponse{
+		ClientOrderID:     res.ClientOrderID,
+		OrderID:           fmt.Sprintf("%d", res.OrderID),
+		State:             exchange.OrderState(res.Status),
+		Symbol:            res.Symbol,
+		AvgPrice:          avgPrice,
+		Volume:            volume,
+		Price:             price,
+		FilledQuoteVolume: filledQuoteVolume,
+		FilledVolume:      filledVolume,
+		Side:              exchange.SideType(res.Side),
+		PositionSide:      exchange.PositionSideLong,
+		TimeInForce:       exchange.TimeInForce(res.TimeInForce),
+		OrderType:         exchange.OrderType(res.OrderType),
+		CreatedTime:       res.CreatedTime,
+		UpdateTime:        res.UpdateTime,
+	}
+
+	// 获取成交记录，统计手续费
+	trades, err := b.SearchTrades(ctx, &exchange.SearchTradesRequest{
+		APIKey:         o.APIKey,
+		SecretKey:      o.SecretKey,
+		Symbol:         o.Symbol,
+		OrderID:        result.OrderID,
+		InstrumentType: exchange.InstrumentTypeSpot,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(trades) == 0 {
+		return result, nil
+	}
+	feeCost := decimal.Zero
+	for _, v := range trades {
+		feeCost = feeCost.Add(v.FeeCost)
+	}
+
+	result.FeeCost = feeCost
+	result.FeeAsset = trades[0].FeeAsset
+	result.By = trades[0].By
+
+	return result, nil
+}
+
+func (b *binance) searchFuturesOrder(ctx context.Context, o *exchange.SearchOrderRequest) (*exchange.SearchOrderResponse, error) {
+	r := &bnhttp.Request{
+		APIKey:    o.APIKey,
+		SecretKey: o.SecretKey,
+		Method:    http.MethodGet,
+		Endpoint:  "/fapi/v1/order",
+		SecType:   bnhttp.SecTypeSigned,
+	}
+	b.client.SetApiEndpoint(bnSpotEndpoint)
+	params := bnhttp.Params{
+		"symbol":            o.Symbol,
+		"origClientOrderId": o.ClientOrderID,
+		"timestamp":         time.Now().UnixNano() / 1e6,
+	}
+	r = r.SetParams(params)
+	data, err := b.client.CallAPI(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	res := &bnFuturesSearchOrderResponse{}
+	err = bnhttp.Json.Unmarshal(data, res)
+	if err != nil {
+		return nil, err
+	}
+	volume, err := decimal.NewFromString(res.Volume)
+	if err != nil {
+		return nil, err
+	}
+	price, err := decimal.NewFromString(res.Price)
+	if err != nil {
+		return nil, err
+	}
+	filledQuoteVolume, err := decimal.NewFromString(res.FilledQuoteVolume)
+	if err != nil {
+		return nil, err
+	}
+	filledVolume, err := decimal.NewFromString(res.FilledVolume)
+	if err != nil {
+		return nil, err
+	}
+	avgPrice, err := decimal.NewFromString(res.AvgPrice)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &exchange.SearchOrderResponse{
+		ClientOrderID:     res.ClientOrderID,
+		OrderID:           fmt.Sprintf("%d", res.OrderID),
+		State:             exchange.OrderState(res.Status),
+		Symbol:            res.Symbol,
+		AvgPrice:          avgPrice,
+		Volume:            volume,
+		Price:             price,
+		FilledQuoteVolume: filledQuoteVolume,
+		FilledVolume:      filledVolume,
+		Side:              exchange.SideType(res.Side),
+		PositionSide:      exchange.PositionSideLong,
+		TimeInForce:       exchange.TimeInForce(res.TimeInForce),
+		OrderType:         exchange.OrderType(res.OrderType),
+		CreatedTime:       res.CreatedTime,
+		UpdateTime:        res.UpdateTime,
+	}
+
+	// 获取成交记录，统计手续费
+	trades, err := b.SearchTrades(ctx, &exchange.SearchTradesRequest{
+		APIKey:         o.APIKey,
+		SecretKey:      o.SecretKey,
+		Symbol:         o.Symbol,
+		OrderID:        result.OrderID,
+		InstrumentType: exchange.InstrumentTypeSpot,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(trades) == 0 {
+		return result, nil
+	}
+	feeCost := decimal.Zero
+	for _, v := range trades {
+		feeCost = feeCost.Add(v.FeeCost)
+	}
+
+	result.FeeCost = feeCost
+	result.FeeAsset = trades[0].FeeAsset
+	result.By = trades[0].By
+
+	return result, nil
+}
+
+func (b *binance) SearchTrades(ctx context.Context, o *exchange.SearchTradesRequest) ([]*exchange.SearchTradesResponse, error) {
+	if o.InstrumentType == exchange.InstrumentTypeSpot {
+		return b.searchSpotTrades(ctx, o)
+	}
+	return b.searchFuturesTrades(ctx, o)
+}
+
+func (b *binance) searchSpotTrades(ctx context.Context, o *exchange.SearchTradesRequest) ([]*exchange.SearchTradesResponse, error) {
+	r := &bnhttp.Request{
+		APIKey:    o.APIKey,
+		SecretKey: o.SecretKey,
+		Method:    http.MethodGet,
+		Endpoint:  "/api/v3/myTrades",
+		SecType:   bnhttp.SecTypeSigned,
+	}
+	b.client.SetApiEndpoint(bnSpotEndpoint)
+	params := bnhttp.Params{
+		"symbol":  o.Symbol,
+		"orderId": o.OrderID,
+	}
+	r = r.SetParams(params)
+	data, err := b.client.CallAPI(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*bnSpotTrades, 0)
+	err = bnhttp.Json.Unmarshal(data, &res)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*exchange.SearchTradesResponse, 0)
+	for _, v := range res {
+		quantity, err := decimal.NewFromString(v.Quantity)
+		if err != nil {
+			return nil, err
+		}
+		price, err := decimal.NewFromString(v.Price)
+		if err != nil {
+			return nil, err
+		}
+		feeCost, err := decimal.NewFromString(v.Commission)
+		if err != nil {
+			return nil, err
+		}
+		by := exchange.ByTaker
+		if v.IsMaker {
+			by = exchange.ByMaker
+		}
+		result = append(result, &exchange.SearchTradesResponse{
+			Symbol:   v.Symbol,
+			ID:       fmt.Sprintf("%d", v.ID),
+			OrderID:  fmt.Sprintf("%d", v.OrderID),
+			Price:    price,
+			Volume:   quantity,
+			FeeCost:  feeCost,
+			FeeAsset: v.CommissionAsset,
+			Time:     v.Time,
+			By:       by,
+		})
+	}
+	return result, nil
+}
+
+func (b *binance) searchFuturesTrades(ctx context.Context, o *exchange.SearchTradesRequest) ([]*exchange.SearchTradesResponse, error) {
+	r := &bnhttp.Request{
+		APIKey:    o.APIKey,
+		SecretKey: o.SecretKey,
+		Method:    http.MethodGet,
+		Endpoint:  "/fapi/v1/userTrades",
+		SecType:   bnhttp.SecTypeSigned,
+	}
+	b.client.SetApiEndpoint(bnFuturesEndpoint)
+	params := bnhttp.Params{
+		"symbol":  o.Symbol,
+		"orderId": o.OrderID,
+	}
+	r = r.SetParams(params)
+	data, err := b.client.CallAPI(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*bnFuturesTrades, 0)
+	err = bnhttp.Json.Unmarshal(data, &res)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*exchange.SearchTradesResponse, 0)
+	for _, v := range res {
+		quantity, err := decimal.NewFromString(v.Quantity)
+		if err != nil {
+			return nil, err
+		}
+		price, err := decimal.NewFromString(v.Price)
+		if err != nil {
+			return nil, err
+		}
+		feeCost, err := decimal.NewFromString(v.Commission)
+		if err != nil {
+			return nil, err
+		}
+		by := exchange.ByTaker
+		if v.IsMaker {
+			by = exchange.ByMaker
+		}
+		result = append(result, &exchange.SearchTradesResponse{
+			Symbol:   v.Symbol,
+			ID:       fmt.Sprintf("%d", v.ID),
+			OrderID:  fmt.Sprintf("%d", v.OrderID),
+			Price:    price,
+			Volume:   quantity,
+			FeeCost:  feeCost,
+			FeeAsset: v.CommissionAsset,
+			Time:     v.Time,
+			By:       by,
+		})
+	}
+
+	return result, nil
 }
 
 func bnFuturesAssetsToAssets(b []*bnFuturesBalance) ([]exchange.Asset, error) {
