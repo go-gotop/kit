@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -70,7 +69,7 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 	d.mux.Lock()
 	defer d.mux.Unlock()
 
-	symbol = strings.ToLower(req.Symbol)
+	symbol = req.Symbol
 	conf := &wsmanager.WebsocketConfig{
 		PingHandler: pingHandler,
 		PongHandler: pongHandler,
@@ -149,6 +148,7 @@ func pongHandler(appData string, conn websocket.WebSocketConn) error {
 
 func spotToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
 	e := &tradeEvent{}
+	fmt.Println(string(message))
 	err := json.Unmarshal(message, e)
 	if err != nil {
 		return nil, err

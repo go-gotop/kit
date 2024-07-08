@@ -6,5 +6,5 @@ type tradeEvent struct {
 	Price     string `json:"Price"`
 	Side      string `json:"Side"`
 	Symbol    string `json:"Symbol"`
-	TradeTime int64  `json:"TradeTime"`
+	TradeTime int64  `json:"TradedAt"`
 }

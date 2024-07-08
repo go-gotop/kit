@@ -63,13 +63,18 @@ func (w *GorillaWebsocket) readMessages(req *websocket.WebsocketRequest) {
 		case <-w.closeCh: // 如果收到关闭信号，则立即退出循环
 			return
 		default:
+			if w.conn == nil { // 检查连接是否为空
+				return
+			}
 			_, message, err := w.conn.ReadMessage()
 			if err != nil {
 				// 当遇到错误时，首先检查是否因为连接已关闭
 				select {
 				case <-w.closeCh: // 如果已经收到关闭信号，则不处理错误
 				default:
-					req.ErrorHandler(err) // 否则，处理错误
+					if w.conn != nil && req != nil && req.ErrorHandler != nil { // 增加对 req 和 ErrorHandler 的检查
+						req.ErrorHandler(err)
+					}
 				}
 				return // 退出循环
 			}

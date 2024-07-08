@@ -258,3 +258,63 @@ type bnSpotFill struct {
 	Commission      string `json:"commission"`
 	CommissionAsset string `json:"commissionAsset"`
 }
+
+type bnSpotSearchOrderReponse struct {
+	ClientOrderID     string `json:"clientOrderId"`
+	OrderID           int64  `json:"orderId"`
+	Status            string `json:"status"`
+	Symbol            string `json:"symbol"`
+	Volume            string `json:"origQty"` // 原始交易数量
+	Price             string `json:"price"`
+	OrigQuoteOrderQty string `json:"origQuoteOrderQty"` //原始交易金额
+	FilledQuoteVolume string `json:"cummulativeQuoteQty"`
+	FilledVolume      string `json:"executedQty"`
+	Side              string `json:"side"`
+	TimeInForce       string `json:"timeInForce"`
+	OrderType         string `json:"type"`
+	CreatedTime       int64  `json:"time"`
+	UpdateTime        int64  `json:"updateTime"`
+}
+
+type bnFuturesSearchOrderResponse struct {
+	ClientOrderID     string `json:"clientOrderId"`
+	OrderID           int64  `json:"orderId"`
+	Status            string `json:"status"`
+	Symbol            string `json:"symbol"`
+	AvgPrice          string `json:"avgPrice"`
+	Volume            string `json:"origQty"`
+	Price             string `json:"price"`
+	FilledQuoteVolume string `json:"cumQuote"`
+	FilledVolume      string `json:"executedQty"`
+	Side              string `json:"side"`
+	PositionSide      string `json:"positionSide"`
+	TimeInForce       string `json:"timeInForce"`
+	OrderType         string `json:"type"`
+	CreatedTime       int64  `json:"time"`
+	UpdateTime        int64  `json:"updateTime"`
+}
+
+    // "symbol": "BNBBTC",
+    // "id": 28457,
+    // "orderId": 100234,
+    // "price": "4.00000100",
+    // "qty": "12.00000000",
+    // "commission": "10.10000000",
+    // "commissionAsset": "BNB",
+    // "time": 1499865549590,
+    // "isBuyer": true,
+    // "isMaker": false,
+    // "isBestMatch": true
+type bnSpotTrades struct {
+	Symbol          string `json:"symbol"`
+	ID              int64  `json:"id"`
+	OrderID         int64  `json:"orderId"`
+	Price           string `json:"price"`
+	Quantity        string `json:"qty"`
+	Commission      string `json:"commission"`
+	CommissionAsset string `json:"commissionAsset"`
+	Time            int64  `json:"time"`
+	IsBuyer         bool   `json:"isBuyer"`
+	IsMaker         bool   `json:"isMaker"`
+	IsBestMatch     bool   `json:"isBestMatch"`
+}
