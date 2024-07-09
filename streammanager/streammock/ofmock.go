@@ -27,10 +27,10 @@ var (
 )
 
 const (
-	wsEndpoint          = "ws://192.168.1.105:8073/ws/order"
-	mockExchangEndpoint = "http://192.168.1.105:8070"
-	// wsEndpoint          = "ws://127.0.0.1:8073/ws/order"
-	// mockExchangEndpoint = "http://127.0.0.1:8070"
+	// wsEndpoint          = "ws://192.168.1.105:8073/ws/order"
+	// mockExchangEndpoint = "http://192.168.1.105:8070"
+	wsEndpoint          = "ws://127.0.0.1:8073/ws/order"
+	mockExchangEndpoint = "http://127.0.0.1:8070"
 )
 
 // TODO: 限流器放在 ofbinance 做调用，不传入 wsmanager
@@ -54,6 +54,7 @@ func NewMockStream(cli *mohttp.Client, limiter limiter.Limiter, opts ...Option) 
 		limiter:       limiter,
 		listenKeySets: make(map[string]*listenKey),
 		wsm: manager.NewManager(
+			manager.WithLogger(o.logger),
 			manager.WithMaxConnDuration(o.maxConnDuration),
 			// manager.WithConnLimiter(limiter),
 		),

@@ -106,8 +106,8 @@ func (b *Manager) CloseWebsocket(uniq string) error {
 	if ws == nil {
 		return ErrWSNotFound
 	}
-	ws.Disconnect()
 	delete(b.wsSets, uniq)
+	ws.Disconnect()
 	b.currentConnCount--
 	return nil
 }
@@ -173,10 +173,13 @@ func (b *Manager) checkConnection() {
 					ws.ConnectionDuration() > b.config.maxConnDuration {
 					if err := ws.Reconnect(); err != nil {
 						b.config.logger.Errorf("reconnect websocket error: %s", err)
+					} else {
+						b.config.logger.Infof("reconnect websocket success")
 					}
 				}
 			}
 			b.mux.Unlock()
+			time.Sleep(1 * time.Second)
 		}
 	}
 }

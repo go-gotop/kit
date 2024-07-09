@@ -34,6 +34,7 @@ type GorillaWebsocket struct {
 
 func (w *GorillaWebsocket) Connect(req *websocket.WebsocketRequest) error {
 	if err := w.conn.Dial(req.Endpoint, nil); err != nil {
+		close(w.doneCh)
 		return err
 	}
 	w.configure()
@@ -69,6 +70,8 @@ func (w *GorillaWebsocket) readMessages(req *websocket.WebsocketRequest) {
 				select {
 				case <-w.closeCh: // 如果已经收到关闭信号，则不处理错误
 				default:
+					// 读取消息时发生错误，标识连接已断开
+					w.isConnected = false
 					if w.conn != nil && req != nil && req.ErrorHandler != nil { // 增加对 req 和 ErrorHandler 的检查
 						req.ErrorHandler(err)
 					}
