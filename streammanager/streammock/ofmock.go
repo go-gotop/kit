@@ -367,7 +367,7 @@ func swoueToOrderEvent(event *wsOrderUpdateEvent) (*exchange.OrderResultEvent, e
 		return nil, err
 	}
 	ps := exchange.PositionSideLong
-	if event.Side == "SELL" {
+	if event.Instrument == string(exchange.InstrumentTypeFutures) && event.PositionSide == string(exchange.PositionSideShort) {
 		ps = exchange.PositionSideShort
 	}
 	avgPrice := decimal.Zero
