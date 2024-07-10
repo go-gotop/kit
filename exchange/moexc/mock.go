@@ -10,23 +10,31 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-const (
-	mockExchangEndpoint = "http://192.168.1.105:8070"
-)
-
 type ApiResponse struct {
 	Code    int         `json:"code"`
 	Message string      `json:"message"`
 	Data    interface{} `json:"data"`
 }
 
-func NewMockExchange(cli *mohttp.Client) exchange.Exchange {
+func NewMockExchange(cli *mohttp.Client, opts ...Option) exchange.Exchange {
+
+	// 默认配置
+	o := &options{
+		mockExchangEndpoint: "ws://192.168.1.105:8072/ws/data",
+	}
+
+	for _, opt := range opts {
+		opt(o)
+	}
+
 	return &mockExchange{
+		opts:   o,
 		client: cli,
 	}
 }
 
 type mockExchange struct {
+	opts   *options
 	client *mohttp.Client
 }
 
@@ -43,7 +51,7 @@ func (m *mockExchange) Assets(ctx context.Context, req *exchange.GetAssetsReques
 		APIKey:    req.APIKey,
 		SecretKey: req.SecretKey,
 	}
-	m.client.SetApiEndpoint(mockExchangEndpoint)
+	m.client.SetApiEndpoint(m.opts.mockExchangEndpoint)
 	r.SetParam("instrumentType", req.InstrumentType)
 	data, err := m.client.CallAPI(ctx, r)
 	if err != nil {
@@ -106,7 +114,7 @@ func (m *mockExchange) CreateOrder(ctx context.Context, o *exchange.CreateOrderR
 		SecretKey: o.SecretKey,
 		SecType:   mohttp.SecTypeAPIKey,
 	}
-	m.client.SetApiEndpoint(mockExchangEndpoint)
+	m.client.SetApiEndpoint(m.opts.mockExchangEndpoint)
 	params := mohttp.Params{
 		"orderTime":     o.OrderTime,
 		"symbol":        o.Symbol,

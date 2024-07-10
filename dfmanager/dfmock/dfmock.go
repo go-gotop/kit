@@ -23,14 +23,10 @@ var (
 	ErrLimitExceed = errors.New("websocket request too frequent, please try again later")
 )
 
-const (
-	wsEndpoint = "ws://192.168.1.105:8072/ws/data"
-	// wsEndpoint = "ws://127.0.0.1:8072/ws/data"
-)
-
 func NewMockDataFeed(limiter limiter.Limiter, opts ...Option) dfmanager.DataFeedManager {
 	// 默认配置
 	o := &options{
+		wsEndpoint:      "ws://192.168.1.105:8072/ws/data",
 		logger:          log.NewHelper(log.DefaultLogger),
 		maxConnDuration: 24*time.Hour - 5*time.Minute,
 	}
@@ -75,7 +71,7 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 		PingHandler: pingHandler,
 		PongHandler: pongHandler,
 	}
-	endpoint = fmt.Sprintf("%s?instrument=%s&symbol=%s&startTime=%v&endTime=%v", wsEndpoint, req.Instrument, symbol, req.StartTime, req.EndTime)
+	endpoint = fmt.Sprintf("%s?instrument=%s&symbol=%s&startTime=%v&endTime=%v", d.opts.wsEndpoint, req.Instrument, symbol, req.StartTime, req.EndTime)
 
 	fn = spotToTradeEvent
 	if req.Instrument == exchange.InstrumentTypeFutures {
@@ -149,7 +145,6 @@ func pongHandler(appData string, conn websocket.WebSocketConn) error {
 
 func spotToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
 	e := &tradeEvent{}
-	fmt.Println(string(message))
 	err := json.Unmarshal(message, e)
 	if err != nil {
 		return nil, err

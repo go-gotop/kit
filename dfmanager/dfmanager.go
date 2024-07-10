@@ -9,6 +9,7 @@ type DataFeedRequest struct {
 	Symbol       string
 	StartTime    int64
 	EndTime      int64
+	FilePath	 string
 	Instrument   exchange.InstrumentType
 	Event        func(data *exchange.TradeEvent)
 	ErrorHandler func(err error)

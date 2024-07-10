@@ -9,6 +9,8 @@ import (
 type Option func(*options)
 
 type options struct {
+	wsEndpoint           string
+	mockExchangEndpoint  string
 	logger               *log.Helper
 	maxConnDuration      time.Duration // 最大连接持续时间
 	listenKeyExpire      time.Duration // listenkey 过期时间
@@ -36,5 +38,17 @@ func WithListenKeyExpire(listenKeyExpire time.Duration) Option {
 func WithCheckListenKeyPeriod(checkListenKeyPeriod time.Duration) Option {
 	return func(o *options) {
 		o.checkListenKeyPeriod = checkListenKeyPeriod
+	}
+}
+
+func WithWsEndpoint(wsEndpoint string) Option {
+	return func(o *options) {
+		o.wsEndpoint = wsEndpoint
+	}
+}
+
+func WithMockExchangEndpoint(mockExchangEndpoint string) Option {
+	return func(o *options) {
+		o.mockExchangEndpoint = mockExchangEndpoint
 	}
 }

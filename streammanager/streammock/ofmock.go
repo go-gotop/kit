@@ -26,19 +26,15 @@ var (
 	ErrLimitExceed = errors.New("websocket request too frequent, please try again later")
 )
 
-const (
-	// wsEndpoint          = "ws://192.168.1.105:8073/ws/order"
-	// mockExchangEndpoint = "http://192.168.1.105:8070"
-	wsEndpoint          = "ws://127.0.0.1:8073/ws/order"
-	mockExchangEndpoint = "http://127.0.0.1:8070"
-)
-
 // TODO: 限流器放在 ofbinance 做调用，不传入 wsmanager
 func NewMockStream(cli *mohttp.Client, limiter limiter.Limiter, opts ...Option) streammanager.StreamManager {
 	// 默认配置
 	o := &options{
-		logger:               log.NewHelper(log.DefaultLogger),
-		maxConnDuration:      24*time.Hour - 5*time.Minute,
+		wsEndpoint:          "ws://192.168.1.105:8073/ws/order",
+		mockExchangEndpoint: "http://192.168.1.105:8070",
+		logger:              log.NewHelper(log.DefaultLogger),
+		// maxConnDuration:      24*time.Hour - 5*time.Minute,
+		maxConnDuration:      1 * time.Minute,
 		listenKeyExpire:      72 * time.Hour,
 		checkListenKeyPeriod: 1 * time.Minute,
 	}
@@ -108,7 +104,7 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 	generateTime := time.Now()
 	uuid := uuid.New().String() // 一个链接的uuid，因为一个账户可能存在多条链接，所以不能用账户ID做标识
 	// 拼接 listenKey 到请求地址
-	endpoint := fmt.Sprintf("%s?listenKey=%s", wsEndpoint, key)
+	endpoint := fmt.Sprintf("%s?listenKey=%s", o.opts.wsEndpoint, key)
 
 	wsHandler := func(message []byte) {
 		event := &wsOrderUpdateEvent{}
@@ -250,7 +246,7 @@ func (o *of) generateListenKey(req *streammanager.StreamRequest) (string, error)
 
 	r.Endpoint = "/api/exchange/listenkey"
 	r.SetFormParam("instrumentType", req.Instrument)
-	o.client.SetApiEndpoint(mockExchangEndpoint)
+	o.client.SetApiEndpoint(o.opts.mockExchangEndpoint)
 	data, err := o.client.CallAPI(context.Background(), r)
 	if err != nil {
 		return "", err
