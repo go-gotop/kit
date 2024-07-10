@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	broker "github.com/go-gotop/kit/broker"
-	gomock "github.com/golang/mock/gomock"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // MockBroker is a mock of Broker interface.
