@@ -533,12 +533,10 @@ func (o *of) deleteListenKeySet(accountId string) error {
 }
 
 func pingHandler(appData string, conn websocket.WebSocketConn) error {
-	fmt.Printf("pingHandler: %s\n", appData)
 	return conn.WriteMessage(gwebsocket.PongMessage, []byte(appData))
 }
 
 func pongHandler(appData string, conn websocket.WebSocketConn) error {
-	fmt.Printf("pongHandler: %s\n", appData)
 	return conn.WriteMessage(gwebsocket.PingMessage, []byte(appData))
 }
 
