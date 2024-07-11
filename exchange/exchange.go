@@ -267,7 +267,7 @@ type Symbol struct {
 	SizePrecision int32
 }
 
-//go:generate mockgen -destination=../exchange/mocks/exchange.go -package=exchange . Exchange
+//go:generate mockgen -destination=../exchange/mocks/exchange.go -package=mkexchange . Exchange
 type Exchange interface {
 	Name() string
 	Assets(ctx context.Context, req *GetAssetsRequest) ([]Asset, error)

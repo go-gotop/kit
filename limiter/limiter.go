@@ -16,7 +16,7 @@ type LimiterReq struct {
 	LimiterType LimitType
 }
 
-//go:generate mockgen -destination=../limiter/mocks/limiter.go -package=limiter . Limiter
+//go:generate mockgen -destination=../limiter/mocks/limiter.go -package=mklimiter . Limiter
 type Limiter interface {
 	WsAllow() bool
 	SpotAllow(t *LimiterReq) bool

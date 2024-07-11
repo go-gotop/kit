@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-//go:generate mockgen -destination=../broker/mocks/broker.go -package=broker . Broker
+//go:generate mockgen -destination=../broker/mocks/broker.go -package=mkbroker . Broker
 type Broker interface {
 	Name() string
 
