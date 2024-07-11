@@ -1,7 +1,6 @@
 package gorilla
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -63,7 +62,6 @@ func (w *GorillaWebsocket) readMessages(req *websocket.WebsocketRequest) {
 	for {
 		select {
 		case <-w.closeCh: // 如果收到关闭信号，则立即退出循环
-			fmt.Printf("order service Connection closed0: %s\n", w.req.ID)
 			return
 		default:
 			_, message, err := w.conn.ReadMessage()
@@ -71,8 +69,6 @@ func (w *GorillaWebsocket) readMessages(req *websocket.WebsocketRequest) {
 				// 当遇到错误时，首先检查是否因为连接已关闭
 				select {
 				case <-w.closeCh: // 如果已经收到关闭信号，则不处理错误
-					fmt.Printf("order service Connection closed1: %s\n", w.req.ID)
-					return
 				default:
 					// 读取消息时发生错误，标识连接已断开
 					w.isConnected = false

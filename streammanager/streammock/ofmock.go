@@ -33,8 +33,8 @@ func NewMockStream(cli *mohttp.Client, limiter limiter.Limiter, opts ...Option) 
 		wsEndpoint:          "ws://192.168.1.105:8073/ws/order",
 		mockExchangEndpoint: "http://192.168.1.105:8070",
 		logger:              log.NewHelper(log.DefaultLogger),
-		// maxConnDuration:      24*time.Hour - 5*time.Minute,
-		maxConnDuration:      1 * time.Minute,
+		maxConnDuration:     24*time.Hour - 5*time.Minute,
+		// maxConnDuration:      1 * time.Minute,
 		listenKeyExpire:      72 * time.Hour,
 		checkListenKeyPeriod: 1 * time.Minute,
 	}

@@ -3,15 +3,14 @@ package dffile
 import (
 	"context"
 
-	"github.com/go-gotop/kit/exchange"
 	"github.com/shopspring/decimal"
 )
 
 type StreamRequest struct {
-	Symbols       []string                               // 订阅的交易符号
-	Event         func(event *exchange.TradeEvent) error // 事件处理回调
-	FinishedEvent func() error                           // 数据流读取完成回调
-	Ctx           context.Context                        // 上下文信息
+	Symbols       []string                      // 订阅的交易符号
+	Event         func(event *TradeEvent) error // 事件处理回调
+	FinishedEvent func() error                  // 数据流读取完成回调
+	Ctx           context.Context               // 上下文信息
 }
 
 type TradeData struct {
