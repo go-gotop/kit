@@ -2,7 +2,6 @@ package manager
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -172,7 +171,7 @@ func (b *Manager) checkConnection() {
 			for _, ws := range b.wsSets {
 				// TODO: 处理重连逻辑，目前先注释掉判断是否断开连接，后续等系统监控预警完善之后再放开来
 				// if !ws.IsConnected() ||
-				fmt.Printf("connection duration: %v\n", ws.ConnectionDuration())
+				// fmt.Printf("connection duration: %v\n", ws.ConnectionDuration())
 				if ws.ConnectionDuration() > b.config.maxConnDuration {
 					if err := ws.Reconnect(); err != nil {
 						b.config.logger.Errorf("reconnect websocket error: %s", err)
