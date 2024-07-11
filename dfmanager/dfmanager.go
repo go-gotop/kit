@@ -9,21 +9,11 @@ type DataFeedRequest struct {
 	Symbol       string
 	StartTime    int64
 	EndTime      int64
-	FilePath	 string
+	FilePath     string
 	Instrument   exchange.InstrumentType
 	Event        func(data *exchange.TradeEvent)
 	ErrorHandler func(err error)
 }
-
-// type MockDataFeedRequest struct {
-// 	ID           string
-// 	Symbol       string
-// 	StartTime    int64
-// 	EndTime      int64
-// 	Instrument   exchange.InstrumentType
-// 	Event        func(data *exchange.TradeEvent)
-// 	ErrorHandler func(err error)
-// }
 
 type DataFeedManager interface {
 	Name() string

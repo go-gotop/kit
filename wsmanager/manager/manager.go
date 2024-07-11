@@ -2,6 +2,7 @@ package manager
 
 import (
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -12,8 +13,9 @@ import (
 
 var (
 	// 错误定义
-	ErrMaxConnReached = errors.New("max connection reached")
-	ErrWSNotFound     = errors.New("websocket not found")
+	ErrMaxConnReached   = errors.New("max connection reached")
+	ErrWSNotFound       = errors.New("websocket not found")
+	ErrServerClosedConn = errors.New("server closed connection")
 )
 
 type Manager struct {
@@ -83,12 +85,29 @@ func (b *Manager) AddWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.
 		}
 	}
 
+	errorH := func(err error) {
+		if req.ErrorHandler != nil {
+			// 如果包含 1006 错误码，说明服务端主动关闭连接
+			if strings.Contains(err.Error(), "close 1006") {
+				req.ErrorHandler(ErrServerClosedConn)
+				return
+			}
+			req.ErrorHandler(err)
+		}
+	}
+
 	ws := gorilla.NewGorillaWebsocket(conn, &websocket.WebsocketConfig{
 		PingHandler: pingh,
 		PongHandler: pongh,
 	})
 
-	err := ws.Connect(req)
+	err := ws.Connect(&websocket.WebsocketRequest{
+		ID:             req.ID,
+		Endpoint:       req.Endpoint,
+		MessageHandler: req.MessageHandler,
+		ErrorHandler:   errorH,
+	})
+
 	if err != nil {
 		return err
 	}

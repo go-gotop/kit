@@ -138,6 +138,7 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 		Endpoint:       endpoint,
 		ID:             uuid,
 		MessageHandler: o.createWebsocketHandler(req.AccountId, req),
+		ErrorHandler:   req.ErrorHandler,
 	}, conf)
 
 	if err != nil {

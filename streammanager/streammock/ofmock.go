@@ -124,6 +124,7 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 		Endpoint:       endpoint,
 		ID:             uuid,
 		MessageHandler: wsHandler,
+		ErrorHandler:   req.ErrorHandler,
 	}, conf)
 
 	if err != nil {
