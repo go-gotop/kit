@@ -194,7 +194,7 @@ type SearchOrderResponse struct {
 	PositionSide      PositionSide
 	TimeInForce       TimeInForce
 	OrderType         OrderType
-	By 			      string
+	By                string
 	CreatedTime       int64
 	UpdateTime        int64
 }
@@ -267,6 +267,7 @@ type Symbol struct {
 	SizePrecision int32
 }
 
+//go:generate mockgen -destination=../exchange/mocks/exchange.go -package=mkexchange . Exchange
 type Exchange interface {
 	Name() string
 	Assets(ctx context.Context, req *GetAssetsRequest) ([]Asset, error)
