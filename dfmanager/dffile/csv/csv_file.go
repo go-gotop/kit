@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-gotop/kit/dfmanager/dffile"
 	"github.com/go-gotop/kit/exchange"
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/shopspring/decimal"
@@ -44,62 +43,43 @@ func (c *CsvFile) CloseSymbol(id string) error {
 	return nil
 }
 
-func (c *CsvFile) Trade(ctx context.Context, req *dffile.StreamRequest) error {
+func (c *CsvFile) Trade(req *StreamRequest) error {
 	doneC := make(chan struct{})
-	stopC := make(chan struct{})
+	defer close(doneC)
 
 	files, err := readCSVFileNames(c.dir, c.opts.start, c.opts.end)
-	log.Infof("files length: %d", len(files))
 	if err != nil {
 		return err
 	}
 
-	go c.readCSVFiles(doneC, stopC, req, files, c.opts.start, c.opts.end)
+	go c.readCSVFiles(req, files, c.opts.start, c.opts.end)
 
 	return nil
 }
 
-func (c *CsvFile) ReadCSVFile(ctx context.Context, filePath string) ([]*dffile.TradeData, error) {
+func (c *CsvFile) ReadCSVFile(filePath string) ([]*TradeData, error) {
 	return readCSVFile(filePath)
 }
 
-func (c *CsvFile) readCSVFiles(done chan struct{}, stop chan struct{}, req *dffile.StreamRequest, files []string, start int64, end int64) {
-	var (
-		silent bool
-	)
-
-	handleError := func(err error) {
-		if err != nil && !silent {
-			// TODO: 不一定是完成状态
-		}
-	}
-
-	go func() {
-		select {
-		case <-stop:
-			silent = true
-		case <-done:
-		}
-		close(done)
-	}()
-
+func (c *CsvFile) readCSVFiles(req *StreamRequest, files []string, start int64, end int64) {
 	path := c.dir
 	if !strings.HasSuffix(path, "/") {
 		path = path + "/"
 	}
 
-	eventChan := make(chan *dffile.TradeEvent, 1)
+	eventChan := make(chan *TradeEvent, 1)
 	finishedEventChan := make(chan struct{}, 1)
 
 	go func() {
 		defer close(eventChan)
+		defer close(finishedEventChan)
 
 		for _, f := range files {
 			select {
-			case <-stop:
+			case <-req.Ctx.Done():
 				return
 			default:
-				if err := c.processFile(path+f, eventChan, handleError, start, end); err != nil {
+				if err := c.processFile(req.Ctx, path+f, eventChan, start, end); err != nil {
 					return
 				}
 			}
@@ -111,12 +91,11 @@ func (c *CsvFile) readCSVFiles(done chan struct{}, stop chan struct{}, req *dffi
 		req.Event(event)
 	}
 
-	for range finishedEventChan {
-		req.FinishedEvent()
-	}
+	<-finishedEventChan
+	req.FinishedEvent()
 }
 
-func (c *CsvFile) toTradeEvent(t *dffile.TradeData) (*dffile.TradeEvent, error) {
+func (c *CsvFile) toTradeEvent(t *TradeData) (*TradeEvent, error) {
 	price, err := decimal.NewFromString(t.Price)
 	if err != nil {
 		return nil, err
@@ -126,7 +105,7 @@ func (c *CsvFile) toTradeEvent(t *dffile.TradeData) (*dffile.TradeEvent, error) 
 		return nil, err
 	}
 	// TODO side 如何取
-	return &dffile.TradeEvent{
+	return &TradeEvent{
 		TradeID:  t.TradeID,
 		Size:     size,
 		Price:    price,
@@ -136,32 +115,33 @@ func (c *CsvFile) toTradeEvent(t *dffile.TradeData) (*dffile.TradeEvent, error) 
 	}, nil
 }
 
-func (c *CsvFile) processFile(filePath string, eventChan chan<- *dffile.TradeEvent, handleError func(error), start int64, end int64) error {
+func (c *CsvFile) processFile(ctx context.Context, filePath string, eventChan chan<- *TradeEvent, start int64, end int64) error {
 	data, err := readCSVFile(filePath)
 	if err != nil {
-		handleError(err)
 		return err
 	}
-	log.Infof("逐笔数据总条数: %d", len(data))
 	for _, v := range data {
-		// 检查时间戳是否在所需范围内
-		if (start == 0 || v.TradedAt >= start) && (end == 0 || v.TradedAt <= end) {
-			v1, err := c.toTradeEvent(v)
-			if err != nil {
-				handleError(err)
-				return err
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			// 检查时间戳是否在所需范围内
+			if (start == 0 || v.TradedAt >= start) && (end == 0 || v.TradedAt <= end) {
+				v1, err := c.toTradeEvent(v)
+				if err != nil {
+					return err
+				}
+				eventChan <- v1
+			} else if v.TradedAt > end {
+				log.Infof("逐笔数据读取完成，退出时间戳：tradedAt: %v", v.TradedAt)
+				return nil
 			}
-			eventChan <- v1
-		} else if v.TradedAt > end {
-			log.Infof("逐笔数据读取完成，退出时间戳：tradedAt: %v", v.TradedAt)
-			// 由于数据已排好序，当时间戳超过结束时间时，跳出循环
-			break
 		}
 	}
 	return nil
 }
 
-func readCSVFile(f string) ([]*dffile.TradeData, error) {
+func readCSVFile(f string) ([]*TradeData, error) {
 	file, err := os.Open(f)
 	if err != nil {
 		log.Errorf("failed to open file: %v", err)
@@ -177,7 +157,7 @@ func readCSVFile(f string) ([]*dffile.TradeData, error) {
 		return nil, err
 	}
 
-	rows := make([]*dffile.TradeData, 0, 3000)
+	rows := make([]*TradeData, 0, 3000)
 	for {
 		record, err := r.Read()
 		if err != nil {
@@ -252,8 +232,8 @@ func normalizeTimestamp(timestamp int64) int64 {
 	return timestamp - timestamp%(3600*1000)
 }
 
-func toTradeData(headers []string, record []string) (*dffile.TradeData, error) {
-	row := &dffile.TradeData{}
+func toTradeData(headers []string, record []string) (*TradeData, error) {
+	row := &TradeData{}
 	for i, value := range record {
 		switch headers[i] {
 		case "trade_id":

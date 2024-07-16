@@ -1,4 +1,4 @@
-package dffile
+package csv
 
 import (
 	"context"

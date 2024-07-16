@@ -7,7 +7,7 @@ import (
 type Option func(*options)
 
 type options struct {
-	Path   string
+	path   string
 	logger *log.Helper
 }
 
@@ -19,6 +19,6 @@ func WithLogger(logger *log.Helper) Option {
 
 func WithPath(path string) Option {
 	return func(o *options) {
-		o.Path = path
+		o.path = path
 	}
 }
