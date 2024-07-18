@@ -66,7 +66,7 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 	// 创建新的 context 和 cancel function
 	ctx, cancel := context.WithCancel(context.Background())
 
-	csvStream := csv.NewCSVDataFeed(d.opts.path+"/"+req.Symbol, csv.WithStart(req.StartTime), csv.WithEnd(req.EndTime))
+	csvStream := csv.NewCSVDataFeed(d.opts.path, csv.WithStart(req.StartTime), csv.WithEnd(req.EndTime))
 
 	tradeEventHandle := func(data *csv.TradeEvent) error {
 		req.Event(&exchange.TradeEvent{
