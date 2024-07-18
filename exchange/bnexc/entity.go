@@ -251,6 +251,26 @@ type bnSpotCreateOrderResponse struct {
 	MarginBuyBorrowAsset  string        `json:"marginBuyBorrowAsset"`
 }
 
+type bnMarginCreateOrderResponse struct {
+	Symbol                   string `json:"symbol"`
+	OrderID                  int64  `json:"orderId"`
+	ClientOrderID            string `json:"clientOrderId"`
+	TransactTime             int64  `json:"transactTime"`
+	Price                    string `json:"price"`
+	OrigQuantity             string `json:"origQty"`
+	ExecutedQuantity         string `json:"executedQty"`
+	CummulativeQuoteQuantity string `json:"cummulativeQuoteQty"`
+	IsIsolated               bool   `json:"isIsolated"` // for isolated margin
+	Status                   string `json:"status"`
+	TimeInForce              string `json:"timeInForce"`
+	Type                     string `json:"type"`
+	Side                     string `json:"side"`
+	// for order response is set to FULL
+	Fills                 []*bnSpotFill `json:"fills"`
+	MarginBuyBorrowAmount string        `json:"marginBuyBorrowAmount"` // for margin
+	MarginBuyBorrowAsset  string        `json:"marginBuyBorrowAsset"`
+}
+
 type bnSpotFill struct {
 	TradeID         int64  `json:"tradeId"`
 	Price           string `json:"price"`
@@ -329,4 +349,9 @@ type bnPremiumIndex struct {
 	InterestRate         string `json:"interestRate"`
 	NextFundingTime      int64  `json:"nextFundingTime"`
 	Time                 int64  `json:"time"`
+}
+
+type bnMarginInterestRate struct {
+	Asset                  string `json:"asset"`
+	NextHourlyInterestRate string `json:"nextHourlyInterestRate"`
 }

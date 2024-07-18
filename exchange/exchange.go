@@ -25,7 +25,7 @@ type PositionSide string
 // PositionStatus OpeningPosition, HoldingPosition, ClosingPosition, ClosedPosition
 type PositionStatus string
 
-// InstrumentType SPOT，FUTURES
+// InstrumentType SPOT，FUTURES, MARGIN
 type InstrumentType string
 
 // TransactionStatus TRANSACTION_TRADING, TRANSACTION_SUSPEND, TRANSACTION_CLOSE, TRANSACTION_FINISH
@@ -61,6 +61,7 @@ const (
 
 	InstrumentTypeSpot    InstrumentType = "SPOT"
 	InstrumentTypeFutures InstrumentType = "FUTURES"
+	InstrumentTypeMargin   InstrumentType = "MARGIN"
 
 	TransactionStatusTrading TransactionStatus = "TRANSACTION_TRADING"
 	TransactionStatusSuspend TransactionStatus = "TRANSACTION_SUSPEND"
@@ -130,11 +131,25 @@ var (
 	ErrOrderNotEnoughMargin = errors.New("order not enough margin")
 	// ErrCreateOrderLimitExceeded 下单限制
 	ErrCreateOrderLimitExceeded = errors.New("create order limit exceeded")
+	// ErrInstrumentTypeNotSupported 不支持的交易类型
+	ErrInstrumentTypeNotSupported = errors.New("instrument type not supported")
 	// ErrRateLimitExceeded 访问限制
 	ErrRateLimitExceeded = errors.New("rate limit exceeded, IP ban imminent")
 	// ErrListenKeyExpired Stream listenKey 过期（适用binance）
 	ErrListenKeyExpired = errors.New("listen key expired")
 )
+
+type GetMarginInterestRateRequest struct {
+	APIKey	 string
+	SecretKey string
+	Assets     string // 支持多资产查询，以逗号分隔，最多支持20个资产
+	IsIsolated bool   // 是否逐仓
+}
+
+type GetMarginInterestRateResponse struct {
+	Asset                  string
+	NextHourlyInterestRate decimal.Decimal
+}
 
 type GetFundingRate struct {
 	Symbol string
@@ -290,6 +305,10 @@ type Exchange interface {
 	CreateOrder(ctx context.Context, o *CreateOrderRequest) error
 	CancelOrder(ctx context.Context, o *CancelOrderRequest) error
 	SearchOrder(ctx context.Context, o *SearchOrderRequest) (*SearchOrderResponse, error)
+	// 查询成交记录
 	SearchTrades(ctx context.Context, o *SearchTradesRequest) ([]*SearchTradesResponse, error)
+	// 获取资金费率
 	GetFundingRate(ctx context.Context, req *GetFundingRate) ([]*GetFundingRateResponse, error)
+	// 获取杠杠资产小时利率
+	GetMarginInterestRate(ctx context.Context, req *GetMarginInterestRateRequest) ([]*GetMarginInterestRateResponse, error)
 }

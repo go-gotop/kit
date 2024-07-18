@@ -56,8 +56,12 @@ func (b *binance) Assets(ctx context.Context, req *exchange.GetAssetsRequest) ([
 func (b *binance) CreateOrder(ctx context.Context, o *exchange.CreateOrderRequest) error {
 	if o.Instrument == exchange.InstrumentTypeSpot {
 		return b.createSpotOrder(ctx, o)
+	} else if o.Instrument == exchange.InstrumentTypeFutures {
+		return b.createFuturesOrder(ctx, o)
+	} else if o.Instrument == exchange.InstrumentTypeMargin {
+		return b.createMarginOrder(ctx, o)
 	}
-	return b.createFuturesOrder(ctx, o)
+	return exchange.ErrInstrumentTypeNotSupported
 }
 
 func (b *binance) SearchOrder(ctx context.Context, o *exchange.SearchOrderRequest) (*exchange.SearchOrderResponse, error) {
@@ -82,18 +86,51 @@ func (b *binance) GetFundingRate(ctx context.Context, req *exchange.GetFundingRa
 	return b.getAllFundingRates(ctx)
 }
 
+func (b *binance) GetMarginInterestRate(ctx context.Context, req *exchange.GetMarginInterestRateRequest) ([]*exchange.GetMarginInterestRateResponse, error) {
+	r := &bnhttp.Request{
+		APIKey:    req.APIKey,
+		SecretKey: req.SecretKey,
+		Method:    http.MethodGet,
+		Endpoint:  "/sapi/v1/margin/next-hourly-interest-rate",
+		SecType:   bnhttp.SecTypeSigned,
+	}
+	b.client.SetApiEndpoint(bnSpotEndpoint)
+	r = r.SetParams(bnhttp.Params{"assets": req.Assets, "isIsolated": req.IsIsolated})
+	data, err := b.client.CallAPI(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	var res []*bnMarginInterestRate
+	err = bnhttp.Json.Unmarshal(data, &res)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*exchange.GetMarginInterestRateResponse, 0, len(res))
+	for _, v := range res {
+		interestRate, err := decimal.NewFromString(v.NextHourlyInterestRate)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, &exchange.GetMarginInterestRateResponse{
+			Asset:                  v.Asset,
+			NextHourlyInterestRate: interestRate,
+		})
+	}
+	return result, nil
+}
+
 func (b *binance) getSingleFundingRate(ctx context.Context, symbol string) ([]*exchange.GetFundingRateResponse, error) {
 	r := &bnhttp.Request{
 		Method:   http.MethodGet,
 		Endpoint: "/fapi/v1/premiumIndex",
 		SecType:  bnhttp.SecTypeNone,
 	}
+
+	r = r.SetParams(bnhttp.Params{"symbol": symbol})
 	data, err := b.client.CallAPI(ctx, r)
-	r.SetParams(bnhttp.Params{"symbol": symbol})
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(string(data))
 	var result bnPremiumIndex
 	err = bnhttp.Json.Unmarshal(data, &result)
 	if err != nil {
@@ -218,6 +255,29 @@ func (b *binance) createSpotOrder(ctx context.Context, o *exchange.CreateOrderRe
 		return err
 	}
 	res := &bnSpotCreateOrderResponse{}
+	err = bnhttp.Json.Unmarshal(data, res)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// TOFIX:创建杠杠订单默认自动借款和还款，后期按需要把该参数抽离出来sideEffectType
+func (b *binance) createMarginOrder(ctx context.Context, o *exchange.CreateOrderRequest) error {
+	r := &bnhttp.Request{
+		APIKey:    o.APIKey,
+		SecretKey: o.SecretKey,
+		Method:    http.MethodPost,
+		Endpoint:  "/sapi/v1/margin/order",
+		SecType:   bnhttp.SecTypeSigned,
+	}
+	b.client.SetApiEndpoint(bnSpotEndpoint)
+	r = r.SetFormParams(toBnMarginOrderParams(o))
+	data, err := b.client.CallAPI(ctx, r)
+	if err != nil {
+		return err
+	}
+	res := &bnMarginCreateOrderResponse{}
 	err = bnhttp.Json.Unmarshal(data, res)
 	if err != nil {
 		return err
@@ -622,5 +682,28 @@ func toBnSpotOrderParams(o *exchange.CreateOrderRequest) bnhttp.Params {
 	if o.ClientOrderID != "" {
 		m["newClientOrderId"] = o.ClientOrderID
 	}
+	return m
+}
+
+func toBnMarginOrderParams(o *exchange.CreateOrderRequest) bnhttp.Params {
+	m := bnhttp.Params{
+		"symbol": o.Symbol,
+		"side":   o.Side,
+		"type":   o.OrderType,
+	}
+	if o.TimeInForce != "" {
+		m["timeInForce"] = o.TimeInForce
+	}
+	if !o.Size.IsZero() {
+		m["quantity"] = o.Size.String()
+	}
+	if !o.Price.IsZero() {
+		m["price"] = o.Price.String()
+	}
+	if o.ClientOrderID != "" {
+		m["newClientOrderId"] = o.ClientOrderID
+	}
+	// 杠杠默认自动借款和还款
+	m["sideEffectType"] = "AUTO_BORROW_REPAY"
 	return m
 }

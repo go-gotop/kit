@@ -155,3 +155,7 @@ func (m *mockExchange) SearchTrades(ctx context.Context, o *exchange.SearchTrade
 func (b *mockExchange) GetFundingRate(ctx context.Context, req *exchange.GetFundingRate) ([]*exchange.GetFundingRateResponse, error) {
 	return nil, nil
 }
+
+func (b *mockExchange) GetMarginInterestRate(ctx context.Context, req *exchange.GetMarginInterestRateRequest) ([]*exchange.GetMarginInterestRateResponse, error) {
+	return nil, nil
+}

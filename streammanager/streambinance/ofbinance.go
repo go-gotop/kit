@@ -39,6 +39,7 @@ var (
 const (
 	bnSpotWsEndpoint    = "wss://stream.binance.com:9443/ws"
 	bnFuturesWsEndpoint = "wss://fstream.binance.com/ws"
+	bnMarginWsEndpoint  = "ss://stream.binance.com:9443/ws"
 	bnSpotEndpoint      = "https://api.binance.com"
 	bnFuturesEndpoint   = "https://fapi.binance.com"
 
@@ -132,6 +133,8 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 	endpoint := fmt.Sprintf("%s/%s", bnSpotWsEndpoint, key)
 	if req.Instrument == exchange.InstrumentTypeFutures {
 		endpoint = fmt.Sprintf("%s/%s", bnFuturesWsEndpoint, key)
+	} else if req.Instrument == exchange.InstrumentTypeMargin {
+		endpoint = fmt.Sprintf("%s/%s", bnMarginWsEndpoint, key)
 	}
 
 	err = o.addWebsocket(&websocket.WebsocketRequest{
@@ -275,7 +278,7 @@ func (o *of) createWebsocketHandler(accountId string, req *streammanager.StreamR
 			return
 		}
 		switch j.Get("e").MustString() {
-		// 现货订单更新
+		// 现货杠杠订单更新
 		case "executionReport":
 			event := &bnSpotWsOrderUpdateEvent{}
 			err = bnhttp.Json.Unmarshal(message, event)
@@ -317,7 +320,7 @@ func (o *of) createWebsocketHandler(accountId string, req *streammanager.StreamR
 				return
 			}
 			req.AccountEvent(au)
-		// 现货账户更新
+		// 现货账户杠杠更新
 		case "outboundAccountPosition":
 			event := &bnSpotWsAccountUpdateEvent{}
 			err = bnhttp.Json.Unmarshal(message, event)
@@ -381,8 +384,11 @@ func (o *of) generateListenKey(req *streammanager.StreamRequest) (string, error)
 	if req.Instrument == exchange.InstrumentTypeFutures {
 		r.Endpoint = "/fapi/v1/listenKey"
 		o.client.SetApiEndpoint(bnFuturesEndpoint)
-	} else {
+	} else if req.Instrument == exchange.InstrumentTypeSpot {
 		r.Endpoint = "/api/v3/userDataStream"
+		o.client.SetApiEndpoint(bnSpotEndpoint)
+	} else if req.Instrument == exchange.InstrumentTypeMargin {
+		r.Endpoint = "/sapi/v1/margin/listen-key"
 		o.client.SetApiEndpoint(bnSpotEndpoint)
 	}
 
@@ -418,6 +424,11 @@ func (o *of) updateListenKey(lk *listenKey) error {
 	} else if lk.Instrument == exchange.InstrumentTypeFutures {
 		r.Endpoint = "/fapi/v1/listenKey"
 		o.client.SetApiEndpoint(bnFuturesEndpoint)
+	} else if lk.Instrument == exchange.InstrumentTypeMargin {
+		r.Endpoint = "/sapi/v1/margin/listen-key"
+		r.SetFormParam("listenKey", lk.Key)
+		o.client.SetApiEndpoint(bnSpotEndpoint)
+
 	}
 
 	_, err := o.client.CallAPI(context.Background(), r)
