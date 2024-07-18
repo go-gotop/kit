@@ -136,6 +136,21 @@ var (
 	ErrListenKeyExpired = errors.New("listen key expired")
 )
 
+type GetFundingRate struct {
+	Symbol string
+}
+
+type GetFundingRateResponse struct {
+	Symbol               string
+	MarkPrice            decimal.Decimal // 标记价格
+	IndexPrice           decimal.Decimal // 指数价格
+	EstimatedSettlePrice decimal.Decimal // 预估结算价，仅在交割开始前最后一小时有意义
+	LastFundingRate      decimal.Decimal // 最近更新的资金费率
+	NextFundingTime      int64           // 下一个资金费时间
+	InterestRate         decimal.Decimal // 标的资产基础利率
+	Time                 int64           // 更新时间
+}
+
 type GetAssetsRequest struct {
 	APIKey         string
 	SecretKey      string
@@ -276,4 +291,5 @@ type Exchange interface {
 	CancelOrder(ctx context.Context, o *CancelOrderRequest) error
 	SearchOrder(ctx context.Context, o *SearchOrderRequest) (*SearchOrderResponse, error)
 	SearchTrades(ctx context.Context, o *SearchTradesRequest) ([]*SearchTradesResponse, error)
+	GetFundingRate(ctx context.Context, req *GetFundingRate) ([]*GetFundingRateResponse, error)
 }

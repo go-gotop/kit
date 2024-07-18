@@ -26,6 +26,10 @@ type binance struct {
 	client *bnhttp.Client
 }
 
+func (b *binance) Name() string {
+	return exchange.BinanceExchange
+}
+
 func (b *binance) Assets(ctx context.Context, req *exchange.GetAssetsRequest) ([]exchange.Asset, error) {
 	if req.InstrumentType == exchange.InstrumentTypeSpot {
 		result, err := b.spotAssets(ctx, req)
@@ -47,6 +51,114 @@ func (b *binance) Assets(ctx context.Context, req *exchange.GetAssetsRequest) ([
 		return nil, err
 	}
 	return data, nil
+}
+
+func (b *binance) CreateOrder(ctx context.Context, o *exchange.CreateOrderRequest) error {
+	if o.Instrument == exchange.InstrumentTypeSpot {
+		return b.createSpotOrder(ctx, o)
+	}
+	return b.createFuturesOrder(ctx, o)
+}
+
+func (b *binance) SearchOrder(ctx context.Context, o *exchange.SearchOrderRequest) (*exchange.SearchOrderResponse, error) {
+	if o.InstrumentType == exchange.InstrumentTypeSpot {
+		return b.searchSpotOrder(ctx, o)
+	}
+	return b.searchFuturesOrder(ctx, o)
+}
+
+func (b *binance) SearchTrades(ctx context.Context, o *exchange.SearchTradesRequest) ([]*exchange.SearchTradesResponse, error) {
+	if o.InstrumentType == exchange.InstrumentTypeSpot {
+		return b.searchSpotTrades(ctx, o)
+	}
+	return b.searchFuturesTrades(ctx, o)
+}
+
+func (b *binance) GetFundingRate(ctx context.Context, req *exchange.GetFundingRate) ([]*exchange.GetFundingRateResponse, error) {
+	b.client.SetApiEndpoint(bnFuturesEndpoint)
+	if req.Symbol != "" {
+		return b.getSingleFundingRate(ctx, req.Symbol)
+	}
+	return b.getAllFundingRates(ctx)
+}
+
+func (b *binance) getSingleFundingRate(ctx context.Context, symbol string) ([]*exchange.GetFundingRateResponse, error) {
+	r := &bnhttp.Request{
+		Method:   http.MethodGet,
+		Endpoint: "/fapi/v1/premiumIndex",
+		SecType:  bnhttp.SecTypeNone,
+	}
+	data, err := b.client.CallAPI(ctx, r)
+	r.SetParams(bnhttp.Params{"symbol": symbol})
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(string(data))
+	var result bnPremiumIndex
+	err = bnhttp.Json.Unmarshal(data, &result)
+	if err != nil {
+		return nil, err
+	}
+	return []*exchange.GetFundingRateResponse{b.convertFundingRate(&result)}, nil
+}
+
+func (b *binance) getAllFundingRates(ctx context.Context) ([]*exchange.GetFundingRateResponse, error) {
+	r := &bnhttp.Request{
+		Method:   http.MethodGet,
+		Endpoint: "/fapi/v1/premiumIndex",
+		SecType:  bnhttp.SecTypeNone,
+	}
+	data, err := b.client.CallAPI(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	var results []*bnPremiumIndex
+	err = bnhttp.Json.Unmarshal(data, &results)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*exchange.GetFundingRateResponse, 0, len(results))
+	for _, v := range results {
+		res = append(res, b.convertFundingRate(v))
+	}
+	return res, nil
+}
+
+func (b *binance) convertFundingRate(data *bnPremiumIndex) *exchange.GetFundingRateResponse {
+	markPrice, err := decimal.NewFromString(data.MarkPrice)
+	if err != nil {
+		return nil
+	}
+	indexPrice, err := decimal.NewFromString(data.IndexPrice)
+	if err != nil {
+		return nil
+	}
+	estimatedSettlePrice, err := decimal.NewFromString(data.EstimatedSettlePrice)
+	if err != nil {
+		return nil
+	}
+	lastFundingRate, err := decimal.NewFromString(data.LastFundingRate)
+	if err != nil {
+		return nil
+	}
+	interestRate, err := decimal.NewFromString(data.InterestRate)
+	if err != nil {
+		return nil
+	}
+	return &exchange.GetFundingRateResponse{
+		Symbol:               data.Symbol,
+		MarkPrice:            markPrice,
+		IndexPrice:           indexPrice,
+		EstimatedSettlePrice: estimatedSettlePrice,
+		LastFundingRate:      lastFundingRate,
+		NextFundingTime:      data.NextFundingTime,
+		InterestRate:         interestRate,
+		Time:                 data.Time,
+	}
+}
+
+func (b *binance) CancelOrder(ctx context.Context, o *exchange.CancelOrderRequest) error {
+	return nil
 }
 
 func (b *binance) spotAssets(ctx context.Context, req *exchange.GetAssetsRequest) (*bnSpotAccount, error) {
@@ -91,17 +203,6 @@ func (b *binance) futuresAssets(ctx context.Context, req *exchange.GetAssetsRequ
 	return res, nil
 }
 
-func (b *binance) Name() string {
-	return exchange.BinanceExchange
-}
-
-func (b *binance) CreateOrder(ctx context.Context, o *exchange.CreateOrderRequest) error {
-	if o.Instrument == exchange.InstrumentTypeSpot {
-		return b.createSpotOrder(ctx, o)
-	}
-	return b.createFuturesOrder(ctx, o)
-}
-
 func (b *binance) createSpotOrder(ctx context.Context, o *exchange.CreateOrderRequest) error {
 	r := &bnhttp.Request{
 		APIKey:    o.APIKey,
@@ -144,17 +245,6 @@ func (b *binance) createFuturesOrder(ctx context.Context, o *exchange.CreateOrde
 		return err
 	}
 	return nil
-}
-
-func (b *binance) CancelOrder(ctx context.Context, o *exchange.CancelOrderRequest) error {
-	return nil
-}
-
-func (b *binance) SearchOrder(ctx context.Context, o *exchange.SearchOrderRequest) (*exchange.SearchOrderResponse, error) {
-	if o.InstrumentType == exchange.InstrumentTypeSpot {
-		return b.searchSpotOrder(ctx, o)
-	}
-	return b.searchFuturesOrder(ctx, o)
 }
 
 func (b *binance) searchSpotOrder(ctx context.Context, o *exchange.SearchOrderRequest) (*exchange.SearchOrderResponse, error) {
@@ -330,13 +420,6 @@ func (b *binance) searchFuturesOrder(ctx context.Context, o *exchange.SearchOrde
 	result.By = trades[0].By
 
 	return result, nil
-}
-
-func (b *binance) SearchTrades(ctx context.Context, o *exchange.SearchTradesRequest) ([]*exchange.SearchTradesResponse, error) {
-	if o.InstrumentType == exchange.InstrumentTypeSpot {
-		return b.searchSpotTrades(ctx, o)
-	}
-	return b.searchFuturesTrades(ctx, o)
 }
 
 func (b *binance) searchSpotTrades(ctx context.Context, o *exchange.SearchTradesRequest) ([]*exchange.SearchTradesResponse, error) {

@@ -319,3 +319,14 @@ type bnFuturesTrades struct {
 	IsBuyer         bool   `json:"buyer"`
 	IsMaker         bool   `json:"maker"`
 }
+
+type bnPremiumIndex struct {
+	Symbol               string `json:"symbol"`
+	MarkPrice            string `json:"markPrice"`
+	IndexPrice           string `json:"indexPrice"`
+	EstimatedSettlePrice string `json:"estimatedSettlePrice"`
+	LastFundingRate      string `json:"lastFundingRate"`
+	InterestRate         string `json:"interestRate"`
+	NextFundingTime      int64  `json:"nextFundingTime"`
+	Time                 int64  `json:"time"`
+}
