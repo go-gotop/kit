@@ -14,9 +14,17 @@ type DataFeedRequest struct {
 	ErrorHandler func(err error)
 }
 
+type MarkPriceRequest struct {
+	ID           string
+	Instrument   exchange.InstrumentType
+	Event        func(data []*exchange.MarkPriceEvent)
+	ErrorHandler func(err error)
+}
+
 type DataFeedManager interface {
 	Name() string
 	AddDataFeed(req *DataFeedRequest) error
+	AddMarketPriceDataFeed(req *MarkPriceRequest) error // 全市场最新标记价格
 	CloseDataFeed(id string) error
 	DataFeedList() []string
 	Shutdown() error

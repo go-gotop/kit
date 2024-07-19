@@ -26,8 +26,9 @@ var (
 )
 
 const (
-	bnSpotWsEndpoint    = "wss://stream.binance.com:9443/ws"
-	bnFuturesWsEndpoint = "wss://fstream.binance.com/ws"
+	bnSpotWsEndpoint         = "wss://stream.binance.com:9443/ws"
+	bnFuturesWsEndpoint      = "wss://fstream.binance.com/ws"
+	bnFunturesStreamEndpoint = "wss://fstream.binance.com/stream"
 )
 
 func NewBinanceDataFeed(limiter limiter.Limiter, opts ...Option) dfmanager.DataFeedManager {
@@ -92,7 +93,52 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 	wsHandler := func(message []byte) {
 		te, err := fn(message)
 		if err != nil {
-			req.ErrorHandler(err)
+			if req.ErrorHandler != nil {
+				req.ErrorHandler(err)
+			}
+			return
+		}
+		req.Event(te)
+	}
+	err := d.addWebsocket(&websocket.WebsocketRequest{
+		ID:             req.ID,
+		Endpoint:       endpoint,
+		MessageHandler: wsHandler,
+		ErrorHandler:   req.ErrorHandler,
+	}, conf)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
+	var (
+		endpoint string
+		fn       func(message []byte) ([]*exchange.MarkPriceEvent, error)
+	)
+	d.mux.Lock()
+	defer d.mux.Unlock()
+
+	if !d.limiter.WsAllow() {
+		return ErrLimitExceed
+	}
+
+	conf := &wsmanager.WebsocketConfig{
+		PingHandler: pingHandler,
+		PongHandler: pongHandler,
+	}
+	switch req.Instrument {
+	case exchange.InstrumentTypeFutures:
+		endpoint = fmt.Sprintf("%s?streams=!markPrice@arr", bnFunturesStreamEndpoint)
+		fn = futuresMarkPriceToMarkPrice
+	}
+	wsHandler := func(message []byte) {
+		te, err := fn(message)
+		if err != nil {
+			if req.ErrorHandler != nil {
+				req.ErrorHandler(err)
+			}
 			return
 		}
 		req.Event(te)
@@ -215,4 +261,45 @@ func futuresToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
 		te.Side = exchange.SideTypeSell
 	}
 	return te, nil
+}
+
+func futuresMarkPriceToMarkPrice(message []byte) ([]*exchange.MarkPriceEvent, error) {
+	var e binanceFuturesMarkPriceStream
+	err := json.Unmarshal(message, &e)
+	if err != nil {
+		return nil, err
+	}
+	var list []*exchange.MarkPriceEvent
+	for _, v := range e.Data {
+		markPrice, err := decimal.NewFromString(v.MarkPrice)
+		if err != nil {
+			markPrice = decimal.Zero
+		}
+		indexPrice, err := decimal.NewFromString(v.IndexPrice)
+		if err != nil {
+			indexPrice = decimal.Zero
+		}
+		estimatedSettlePrice, err := decimal.NewFromString(v.EstimatedSettlePrice)
+		if err != nil {
+			estimatedSettlePrice = decimal.Zero
+		}
+		lastFundingRate, err := decimal.NewFromString(v.LastFundingRate)
+		if err != nil {
+			lastFundingRate = decimal.Zero
+		}
+
+		te := &exchange.MarkPriceEvent{
+			Symbol:               v.Symbol,
+			MarkPrice:            markPrice,
+			IndexPrice:           indexPrice,
+			EstimatedSettlePrice: estimatedSettlePrice,
+			LastFundingRate:      lastFundingRate,
+			NextFundingTime:      v.NextFundingTime,
+			Time:                 v.Time,
+		}
+		list = append(list, te)
+	}
+
+	return list, nil
+
 }

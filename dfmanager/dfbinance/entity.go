@@ -26,3 +26,19 @@ type binanceFuturesTradeEvent struct {
 	TradeTime        int64  `json:"T"`
 	Maker            bool   `json:"m"`
 }
+
+type binanceFuntureMarkPriceEvent struct {
+	Event                string `json:"e"`
+	Time                 int64  `json:"E"`
+	Symbol               string `json:"s"`
+	MarkPrice            string `json:"p"`
+	IndexPrice           string `json:"i"` // 现货指数价格
+	EstimatedSettlePrice string `json:"P"` // 预估结算价
+	LastFundingRate      string `json:"r"` // 资金费率
+	NextFundingTime      int64  `json:"T"` // 下个资金时间
+}
+
+type binanceFuturesMarkPriceStream struct {
+	Stream string                          `json:"stream"`
+	Data   []*binanceFuntureMarkPriceEvent `json:"data"`
+}

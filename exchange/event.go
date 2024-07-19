@@ -113,6 +113,16 @@ type TradeEvent struct {
 	Instrument InstrumentType
 }
 
+type MarkPriceEvent struct {
+	Time                 int64
+	Symbol               string
+	MarkPrice            decimal.Decimal
+	IndexPrice           decimal.Decimal
+	EstimatedSettlePrice decimal.Decimal
+	LastFundingRate      decimal.Decimal
+	NextFundingTime      int64
+}
+
 type AccountUpdateEvent struct {
 	Asset   string
 	Balance decimal.Decimal

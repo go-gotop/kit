@@ -98,6 +98,10 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 	return nil
 }
 
+func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
+	return nil
+}
+
 func (d *df) CloseDataFeed(id string) error {
 	d.mux.Lock()
 	defer d.mux.Unlock()
