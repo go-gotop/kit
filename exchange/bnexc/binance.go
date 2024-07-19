@@ -119,6 +119,41 @@ func (b *binance) GetMarginInterestRate(ctx context.Context, req *exchange.GetMa
 	return result, nil
 }
 
+func (b *binance) MarginBorrowOrRepay(ctx context.Context, req *exchange.MarginBorrowOrRepayRequest) (string, error) {
+	r := &bnhttp.Request{
+		APIKey:    req.APIKey,
+		SecretKey: req.SecretKey,
+		Method:    http.MethodPost,
+		Endpoint:  "/sapi/v1/margin/borrow-repay",
+		SecType:   bnhttp.SecTypeSigned,
+	}
+
+	b.client.SetApiEndpoint(bnSpotEndpoint)
+	r = r.SetFormParams(bnhttp.Params{
+		"asset":      req.Asset,
+		"amount":     req.Amount,
+		"isIsolated": req.IsIsolated,
+		"symbol":     req.Symbol,
+		"type":       req.Typ,
+		"timestamp":  time.Now().UnixNano() / 1e6,
+	})
+	data, err := b.client.CallAPI(ctx, r)
+	if err != nil {
+		return "", err
+	}
+
+	type result struct {
+		TranId string `json:"tranId"`
+	}
+
+	res := &result{}
+	err = bnhttp.Json.Unmarshal(data, res)
+	if err != nil {
+		return "", err
+	}
+	return res.TranId, nil
+}
+
 func (b *binance) getSingleFundingRate(ctx context.Context, symbol string) ([]*exchange.GetFundingRateResponse, error) {
 	r := &bnhttp.Request{
 		Method:   http.MethodGet,

@@ -61,7 +61,7 @@ const (
 
 	InstrumentTypeSpot    InstrumentType = "SPOT"
 	InstrumentTypeFutures InstrumentType = "FUTURES"
-	InstrumentTypeMargin   InstrumentType = "MARGIN"
+	InstrumentTypeMargin  InstrumentType = "MARGIN"
 
 	TransactionStatusTrading TransactionStatus = "TRANSACTION_TRADING"
 	TransactionStatusSuspend TransactionStatus = "TRANSACTION_SUSPEND"
@@ -139,9 +139,19 @@ var (
 	ErrListenKeyExpired = errors.New("listen key expired")
 )
 
+type MarginBorrowOrRepayRequest struct {
+	APIKey     string
+	SecretKey  string
+	Asset      string
+	IsIsolated bool   // 是否逐仓，默认false
+	Symbol     string // 逐仓交易对，配合逐仓使用
+	Amount     decimal.Decimal
+	Typ        string // BORROW, REPAY
+}
+
 type GetMarginInterestRateRequest struct {
-	APIKey	 string
-	SecretKey string
+	APIKey     string
+	SecretKey  string
 	Assets     string // 支持多资产查询，以逗号分隔，最多支持20个资产
 	IsIsolated bool   // 是否逐仓
 }
@@ -311,4 +321,6 @@ type Exchange interface {
 	GetFundingRate(ctx context.Context, req *GetFundingRate) ([]*GetFundingRateResponse, error)
 	// 获取杠杠资产小时利率
 	GetMarginInterestRate(ctx context.Context, req *GetMarginInterestRateRequest) ([]*GetMarginInterestRateResponse, error)
+	// 杠杠借贷Or还款
+	MarginBorrowOrRepay(ctx context.Context, req *MarginBorrowOrRepayRequest) (string, error)
 }
