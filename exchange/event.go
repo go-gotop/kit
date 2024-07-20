@@ -82,6 +82,8 @@ type StrategySignalEvent struct {
 	OrderType OrderType
 	// PositionSide LONG，SHORT
 	PositionSide PositionSide
+	// Instrument 种类 SPOT, FUTURES
+	Instrument InstrumentType
 	// Symbol 交易对
 	Symbol Symbol
 	// Size 头寸数量
