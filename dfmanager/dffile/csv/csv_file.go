@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-gotop/kit/exchange"
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/shopspring/decimal"
 )
@@ -109,7 +108,7 @@ func (c *CsvFile) toTradeEvent(t *TradeData) (*TradeEvent, error) {
 		TradeID:  t.TradeID,
 		Size:     size,
 		Price:    price,
-		Side:     string(exchange.SideTypeBuy),
+		Side:     t.Side,
 		Symbol:   c.symbol,
 		TradedAt: t.TradedAt,
 	}, nil
