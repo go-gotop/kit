@@ -154,6 +154,31 @@ func (b *binance) MarginBorrowOrRepay(ctx context.Context, req *exchange.MarginB
 	return res.TranId, nil
 }
 
+func (b *binance) GetMarginInventory(ctx context.Context, req *exchange.MarginInventoryRequest) (*exchange.MarginInventory, error) {
+	r := &bnhttp.Request{
+		APIKey:    req.APIKey,
+		SecretKey: req.SecretKey,
+		Method:    http.MethodGet,
+		Endpoint:  "/sapi/v1/margin/available-inventory",
+		SecType:   bnhttp.SecTypeSigned,
+	}
+	b.client.SetApiEndpoint(bnSpotEndpoint)
+	r = r.SetParams(bnhttp.Params{"type": req.Typ})
+	data, err := b.client.CallAPI(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	var res bnMarginInventory
+	err = bnhttp.Json.Unmarshal(data, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &exchange.MarginInventory{
+		Assets: res.Assets,
+	}, nil
+
+}
+
 func (b *binance) getSingleFundingRate(ctx context.Context, symbol string) ([]*exchange.GetFundingRateResponse, error) {
 	r := &bnhttp.Request{
 		Method:   http.MethodGet,

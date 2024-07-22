@@ -355,3 +355,8 @@ type bnMarginInterestRate struct {
 	Asset                  string `json:"asset"`
 	NextHourlyInterestRate string `json:"nextHourlyInterestRate"`
 }
+
+type bnMarginInventory struct {
+	Assets     map[string]string `json:"assets"` // 假设所有资产值都是字符串类型
+	UpdateTime int64             `json:"updateTime"`
+}

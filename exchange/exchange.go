@@ -28,6 +28,9 @@ type PositionStatus string
 // InstrumentType SPOT，FUTURES, MARGIN
 type InstrumentType string
 
+// MarginType MARGIN,ISOLATED 全仓，逐仓
+type MarginType string
+
 // TransactionStatus TRANSACTION_TRADING, TRANSACTION_SUSPEND, TRANSACTION_CLOSE, TRANSACTION_FINISH
 type TransactionStatus string
 
@@ -62,6 +65,9 @@ const (
 	InstrumentTypeSpot    InstrumentType = "SPOT"
 	InstrumentTypeFutures InstrumentType = "FUTURES"
 	InstrumentTypeMargin  InstrumentType = "MARGIN"
+
+	MarginTypeMargin   MarginType = "MARGIN"
+	MarginTypeIsolated MarginType = "ISOLATED"
 
 	TransactionStatusTrading TransactionStatus = "TRANSACTION_TRADING"
 	TransactionStatusSuspend TransactionStatus = "TRANSACTION_SUSPEND"
@@ -138,6 +144,16 @@ var (
 	// ErrListenKeyExpired Stream listenKey 过期（适用binance）
 	ErrListenKeyExpired = errors.New("listen key expired")
 )
+
+type MarginInventoryRequest struct {
+	APIKey    string
+	SecretKey string
+	Typ       MarginType
+}
+
+type MarginInventory struct {
+	Assets map[string]string
+}
 
 type MarginBorrowOrRepayRequest struct {
 	APIKey     string
@@ -323,4 +339,6 @@ type Exchange interface {
 	GetMarginInterestRate(ctx context.Context, req *GetMarginInterestRateRequest) ([]*GetMarginInterestRateResponse, error)
 	// 杠杠借贷Or还款
 	MarginBorrowOrRepay(ctx context.Context, req *MarginBorrowOrRepayRequest) (string, error)
+	// 获取杠杠可用放贷库存
+	GetMarginInventory(ctx context.Context, req *MarginInventoryRequest) (*MarginInventory, error)
 }

@@ -163,3 +163,7 @@ func (b *mockExchange) GetMarginInterestRate(ctx context.Context, req *exchange.
 func (b *mockExchange) MarginBorrowOrRepay(ctx context.Context, req *exchange.MarginBorrowOrRepayRequest) (string, error) {
 	return "", nil
 }
+
+func (b *mockExchange) GetMarginInventory(ctx context.Context, req *exchange.MarginInventoryRequest) (*exchange.MarginInventory, error) {
+	return nil, nil
+}
