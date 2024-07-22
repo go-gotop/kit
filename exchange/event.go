@@ -82,7 +82,7 @@ type StrategySignalEvent struct {
 	OrderType OrderType
 	// PositionSide LONG，SHORT
 	PositionSide PositionSide
-	// Instrument 种类 SPOT, FUTURES
+	// Instrument 种类 SPOT, FUTURES, MARGIN
 	Instrument InstrumentType
 	// Symbol 交易对
 	Symbol Symbol
