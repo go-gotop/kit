@@ -30,8 +30,8 @@ var (
 func NewMockStream(cli *mohttp.Client, limiter limiter.Limiter, opts ...Option) streammanager.StreamManager {
 	// 默认配置
 	o := &options{
-		wsEndpoint:          "ws://192.168.1.105:8073/ws/order",
-		mockExchangEndpoint: "http://192.168.1.105:8070",
+		wsEndpoint:          "ws://192.168.0.101:8073/ws/order",
+		mockExchangEndpoint: "http://192.168.0.101:8070",
 		logger:              log.NewHelper(log.DefaultLogger),
 		maxConnDuration:     24*time.Hour - 5*time.Minute,
 		// maxConnDuration:      1 * time.Minute,

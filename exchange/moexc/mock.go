@@ -20,7 +20,7 @@ func NewMockExchange(cli *mohttp.Client, opts ...Option) exchange.Exchange {
 
 	// 默认配置
 	o := &options{
-		mockExchangEndpoint: "http://192.168.1.105:8070",
+		mockExchangEndpoint: "http://192.168.0.101:8070",
 	}
 
 	for _, opt := range opts {

@@ -6,7 +6,7 @@ type options struct {
 	mockExchangEndpoint string
 }
 
-func WithWsEndpoint(mockExchangEndpoint string) Option {
+func WithMockExchangEndpoint(mockExchangEndpoint string) Option {
 	return func(o *options) {
 		o.mockExchangEndpoint = mockExchangEndpoint
 	}
