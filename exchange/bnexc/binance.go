@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/go-gotop/kit/exchange"
 	"github.com/go-gotop/kit/requests/bnhttp"
@@ -135,7 +134,6 @@ func (b *binance) MarginBorrowOrRepay(ctx context.Context, req *exchange.MarginB
 		"isIsolated": req.IsIsolated,
 		"symbol":     req.Symbol,
 		"type":       req.Typ,
-		"timestamp":  time.Now().UnixNano() / 1e6,
 	})
 	data, err := b.client.CallAPI(ctx, r)
 	if err != nil {
@@ -379,7 +377,6 @@ func (b *binance) searchSpotOrder(ctx context.Context, o *exchange.SearchOrderRe
 	params := bnhttp.Params{
 		"symbol":            o.Symbol,
 		"origClientOrderId": o.ClientOrderID,
-		"timestamp":         time.Now().UnixNano() / 1e6,
 	}
 	r = r.SetParams(params)
 	data, err := b.client.CallAPI(ctx, r)
@@ -465,7 +462,6 @@ func (b *binance) searchFuturesOrder(ctx context.Context, o *exchange.SearchOrde
 	params := bnhttp.Params{
 		"symbol":            o.Symbol,
 		"origClientOrderId": o.ClientOrderID,
-		"timestamp":         time.Now().UnixNano() / 1e6,
 	}
 	r = r.SetParams(params)
 	data, err := b.client.CallAPI(ctx, r)
