@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-gotop/kit/exchange"
 	"github.com/go-gotop/kit/requests/mohttp"
-	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -161,8 +160,8 @@ func (b *mockExchange) GetMarginInterestRate(ctx context.Context, req *exchange.
 	return nil, nil
 }
 
-func (b *mockExchange) MarginBorrowOrRepay(ctx context.Context, req *exchange.MarginBorrowOrRepayRequest) (string, error) {
-	return uuid.New().String(), nil
+func (b *mockExchange) MarginBorrowOrRepay(ctx context.Context, req *exchange.MarginBorrowOrRepayRequest) error {
+	return nil
 }
 
 func (b *mockExchange) GetMarginInventory(ctx context.Context, req *exchange.MarginInventoryRequest) (*exchange.MarginInventory, error) {

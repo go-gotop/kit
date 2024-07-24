@@ -118,7 +118,7 @@ func (b *binance) GetMarginInterestRate(ctx context.Context, req *exchange.GetMa
 	return result, nil
 }
 
-func (b *binance) MarginBorrowOrRepay(ctx context.Context, req *exchange.MarginBorrowOrRepayRequest) (string, error) {
+func (b *binance) MarginBorrowOrRepay(ctx context.Context, req *exchange.MarginBorrowOrRepayRequest) error {
 	r := &bnhttp.Request{
 		APIKey:    req.APIKey,
 		SecretKey: req.SecretKey,
@@ -137,19 +137,21 @@ func (b *binance) MarginBorrowOrRepay(ctx context.Context, req *exchange.MarginB
 	})
 	data, err := b.client.CallAPI(ctx, r)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	type result struct {
-		TranId string `json:"tranId"`
+		TranId int64 `json:"tranId"`
 	}
+
+	fmt.Printf("data: %s\n", string(data))
 
 	res := &result{}
 	err = bnhttp.Json.Unmarshal(data, res)
 	if err != nil {
-		return "", err
+		return err
 	}
-	return res.TranId, nil
+	return nil
 }
 
 func (b *binance) GetMarginInventory(ctx context.Context, req *exchange.MarginInventoryRequest) (*exchange.MarginInventory, error) {

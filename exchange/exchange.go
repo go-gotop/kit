@@ -338,7 +338,7 @@ type Exchange interface {
 	// 获取杠杠资产小时利率
 	GetMarginInterestRate(ctx context.Context, req *GetMarginInterestRateRequest) ([]*GetMarginInterestRateResponse, error)
 	// 杠杠借贷Or还款
-	MarginBorrowOrRepay(ctx context.Context, req *MarginBorrowOrRepayRequest) (string, error)
+	MarginBorrowOrRepay(ctx context.Context, req *MarginBorrowOrRepayRequest) error
 	// 获取杠杠可用放贷库存
 	GetMarginInventory(ctx context.Context, req *MarginInventoryRequest) (*MarginInventory, error)
 }
