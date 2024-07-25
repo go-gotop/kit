@@ -291,7 +291,9 @@ func (o *of) createWebsocketHandler(accountId string, req *streammanager.StreamR
 				o.opts.logger.Error("order to order event error", err)
 				return
 			}
-			req.OrderEvent(oe)
+			if req.OrderEvent != nil {
+				req.OrderEvent(oe)
+			}
 		// 合约订单更新
 		case "ORDER_TRADE_UPDATE":
 			event := &bnFuturesWsUserDataEvent{}
@@ -305,7 +307,9 @@ func (o *of) createWebsocketHandler(accountId string, req *streammanager.StreamR
 				o.opts.logger.Error("order to order event error", err)
 				return
 			}
-			req.OrderEvent(oe)
+			if req.OrderEvent != nil {
+				req.OrderEvent(oe)
+			}
 		// 合约余额和持仓更新
 		case "ACCOUNT_UPDATE":
 			event := &bnFuturesWsAccountUpdateEvent{}
@@ -319,7 +323,9 @@ func (o *of) createWebsocketHandler(accountId string, req *streammanager.StreamR
 				o.opts.logger.Error("account to account event error", err)
 				return
 			}
-			req.AccountEvent(au)
+			if req.AccountEvent != nil {
+				req.AccountEvent(au)
+			}
 		// 现货账户杠杠更新
 		case "outboundAccountPosition":
 			event := &bnSpotWsAccountUpdateEvent{}
@@ -333,7 +339,10 @@ func (o *of) createWebsocketHandler(accountId string, req *streammanager.StreamR
 				o.opts.logger.Error("account to account event error", err)
 				return
 			}
-			req.AccountEvent(au)
+			if req.AccountEvent != nil {
+				req.AccountEvent(au)
+			}
+
 		// listenKey 过期
 		case "listenKeyExpired":
 			event := &bnListenKeyExpiredEvent{}
@@ -357,10 +366,12 @@ func (o *of) createWebsocketHandler(accountId string, req *streammanager.StreamR
 			o.deleteListenKeySet(accountId)
 
 			// 推送事件
-			req.ErrorEvent(&exchange.StreamErrorEvent{
-				AccountID: accountId,
-				Error:     exchange.ErrListenKeyExpired,
-			})
+			if req.ErrorEvent != nil {
+				req.ErrorEvent(&exchange.StreamErrorEvent{
+					AccountID: accountId,
+					Error:     exchange.ErrListenKeyExpired,
+				})
+			}
 		}
 	}
 }
