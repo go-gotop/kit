@@ -39,7 +39,7 @@ var (
 const (
 	bnSpotWsEndpoint    = "wss://stream.binance.com:9443/ws"
 	bnFuturesWsEndpoint = "wss://fstream.binance.com/ws"
-	bnMarginWsEndpoint  = "ss://stream.binance.com:9443/ws"
+	bnMarginWsEndpoint  = "wss://stream.binance.com:9443/ws"
 	bnSpotEndpoint      = "https://api.binance.com"
 	bnFuturesEndpoint   = "https://fapi.binance.com"
 
@@ -399,7 +399,7 @@ func (o *of) generateListenKey(req *streammanager.StreamRequest) (string, error)
 		r.Endpoint = "/api/v3/userDataStream"
 		o.client.SetApiEndpoint(bnSpotEndpoint)
 	} else if req.Instrument == exchange.InstrumentTypeMargin {
-		r.Endpoint = "/sapi/v1/margin/listen-key"
+		r.Endpoint = "/sapi/v1/userDataStream"
 		o.client.SetApiEndpoint(bnSpotEndpoint)
 	}
 
@@ -411,7 +411,7 @@ func (o *of) generateListenKey(req *streammanager.StreamRequest) (string, error)
 	var res struct {
 		ListenKey string `json:"listenKey"`
 	}
-
+	fmt.Printf("data: %s\n", string(data))
 	err = bnhttp.Json.Unmarshal(data, &res)
 	if err != nil {
 		return "", err
@@ -436,7 +436,7 @@ func (o *of) updateListenKey(lk *listenKey) error {
 		r.Endpoint = "/fapi/v1/listenKey"
 		o.client.SetApiEndpoint(bnFuturesEndpoint)
 	} else if lk.Instrument == exchange.InstrumentTypeMargin {
-		r.Endpoint = "/sapi/v1/margin/listen-key"
+		r.Endpoint = "/sapi/v1/userDataStream"
 		r.SetFormParam("listenKey", lk.Key)
 		o.client.SetApiEndpoint(bnSpotEndpoint)
 
