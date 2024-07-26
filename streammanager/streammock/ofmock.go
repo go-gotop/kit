@@ -148,7 +148,7 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 	return uuid, nil
 }
 
-func (o *of) CloseStream(accountId string, uuid string) error {
+func (o *of) CloseStream(accountId string, instrument exchange.InstrumentType, uuid string) error {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 
