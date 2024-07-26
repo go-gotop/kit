@@ -204,7 +204,7 @@ func (o *of) CloseStream(accountId string, instrument exchange.InstrumentType, u
 	}
 
 	if len(lk.UUIDList) > 0 {
-		o.listenKeySets[accountId] = lk
+		o.listenKeySets[accountId+string(instrument)] = lk
 
 		err := o.saveListenKeySet(accountId, string(instrument), lk)
 		if err != nil {
@@ -214,7 +214,7 @@ func (o *of) CloseStream(accountId string, instrument exchange.InstrumentType, u
 	}
 
 	// 如果UUIDList为空，则删除listenKey
-	delete(o.listenKeySets, lk.AccountID)
+	delete(o.listenKeySets, lk.AccountID+string(lk.Instrument))
 	err = o.deleteListenKeySet(lk.AccountID, string(instrument))
 	if err != nil {
 		return err
@@ -354,7 +354,7 @@ func (o *of) createWebsocketHandler(req *streammanager.StreamRequest) func(messa
 
 			// 关闭accountId下所有连接
 			for _, lk := range o.listenKeySets {
-				if lk.AccountID == req.AccountId {
+				if lk.AccountID+string(lk.Instrument) == req.AccountId+string(req.Instrument) {
 					for _, uuid := range lk.UUIDList {
 						o.wsm.CloseWebsocket(uuid)
 					}
