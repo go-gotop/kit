@@ -34,7 +34,7 @@ func ParsePeriod(period string) (time.Duration, int, error) {
 	}
 	// 解析数字部分
 	num, err := strconv.Atoi(numStr)
-	log.Printf("numStr: %v, unitStr %v", numStr, unitStr)
+	//log.Printf("numStr: %v, unitStr %v", numStr, unitStr)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -122,7 +122,7 @@ func GetOutBoundIP() (ip string, err error) {
 		return
 	}
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
-	fmt.Println(localAddr.String())
+	//fmt.Println(localAddr.String())
 	ip = strings.Split(localAddr.String(), ":")[0]
 	return
 }
