@@ -58,6 +58,8 @@ func ParsePeriod(period string) (time.Duration, int, error) {
 func SetAllLimiters(redis redis.Client, exchange string, periodLimitArray []PeriodLimit) map[string][]*rate.Limiter {
 	limiterMap := make(map[string][]*rate.Limiter)
 	// 限流器唯一标识用于 redis key，对于websocket只对ip限制，其他请求对accountId限制
+	// limiterMap[MarginCreateOrderLimit] = SetLimiterMap(redis, periodLimitArray, "MarginCreateOrderPeriod", "MarginCreateOrderTimes")
+	limiterMap[MarginNormalRequestLimit] = SetLimiterMap(redis, periodLimitArray, "MarginNormalRequestPeriod", "MarginNormalRequestTimes")
 	limiterMap[WsConnectLimit] = SetLimiterMap(redis, periodLimitArray, "WsConnectPeriod", "WsConnectTimes")
 	limiterMap[SpotCreateOrderLimit] = SetLimiterMap(redis, periodLimitArray, "SpotCreateOrderPeriod", "SpotCreateOrderTimes")
 	limiterMap[FutureCreateOrderLimit] = SetLimiterMap(redis, periodLimitArray, "FutureCreateOrderPeriod", "FutureCreateOrderTimes")

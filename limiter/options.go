@@ -4,12 +4,17 @@ const (
 	WsConnectLimit           = "WS_CONNECT"
 	SpotCreateOrderLimit     = "SPOT_CREATE_ORDER"
 	SpotNormalRequestLimit   = "SPOT_NORMAL_REQUEST"
+	MarginCreateOrderLimit   = "MARGIN_CREATE_ORDER"
+	MarginNormalRequestLimit = "MARGIN_NORMAL_REQUEST"
+	MarginBorrowOrRepayLimit = "MARGIN_BORROW_OR_REPAY"
 	FutureNormalRequestLimit = "FUTURE_NORMAL_REQUEST"
 	FutureCreateOrderLimit   = "FUTURE_CREATE_ORDER"
 
 	// redis key
+	MarginWeight       = "MARGIN_WEIGHT"
 	SpotWeight         = "SPOT_WEIGHT"
 	FutureWeight       = "FUTURE_WEIGHT"
+	MarginLastRestTime = "MARGIN_LAST_RESET_TIME"
 	SpotLastRestTime   = "SPOT_LAST_RESET_TIME"
 	FutureLastRestTime = "FUTURE_LAST_RESET_TIME"
 )
@@ -19,14 +24,16 @@ type Option func(*Options)
 type WeightType int64
 
 type PeriodLimit struct {
-	WsConnectPeriod         string
-	WsConnectTimes          int64
-	SpotCreateOrderPeriod   string
-	SpotCreateOrderTimes    int64
-	SpotNormalRequestPeriod string
-	SpotNormalRequestTimes  int64
-	FutureCreateOrderPeriod string
-	FutureCreateOrderTimes  int64
+	WsConnectPeriod           string
+	WsConnectTimes            int64
+	SpotCreateOrderPeriod     string
+	SpotCreateOrderTimes      int64
+	SpotNormalRequestPeriod   string
+	SpotNormalRequestTimes    int64
+	FutureCreateOrderPeriod   string
+	FutureCreateOrderTimes    int64
+	MarginNormalRequestPeriod string
+	MarginNormalRequestTimes  int64
 }
 
 type Options struct {
@@ -34,6 +41,7 @@ type Options struct {
 	PeriodLimitArray []PeriodLimit
 
 	// 权重
+	CreateMarginOrderWeights WeightType
 	CreateSpotOrderWeights   WeightType
 	CreateOcoOrderWeights    WeightType
 	CreateFutureOrderWeights WeightType
@@ -43,6 +51,7 @@ type Options struct {
 	SearchFutureOrderWeights WeightType
 	UpdateSpotOrderWeights   WeightType
 	UpdateFutureOrderWeights WeightType
+	BorrowOrRepayWeights     WeightType
 	OtherWeights             WeightType
 }
 
@@ -103,6 +112,18 @@ func WithUpdateSpotOrderWeights(w WeightType) Option {
 func WithUpdateFutureOrderWeights(w WeightType) Option {
 	return func(o *Options) {
 		o.UpdateFutureOrderWeights = w
+	}
+}
+
+func WithBorrowOrRepayWeights(w WeightType) Option {
+	return func(o *Options) {
+		o.BorrowOrRepayWeights = w
+	}
+}
+
+func WithCreateMarginOrderWeights(w WeightType) Option {
+	return func(o *Options) {
+		o.CreateMarginOrderWeights = w
 	}
 }
 

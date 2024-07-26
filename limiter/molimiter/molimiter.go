@@ -132,6 +132,10 @@ func (b *MockLimiter) FutureAllow(t *limiter.LimiterReq) bool {
 	// }
 }
 
+func (b *MockLimiter) MarginAllow(t *limiter.LimiterReq) bool {
+	return true
+}
+
 // 允许创建现货oco订单
 func (b *MockLimiter) allowCreateOcoOrder(uniq string) bool {
 	return limiter.LimiterAllow(b.limiterMap[limiter.SpotCreateOrderLimit], uniq) && b.allowSpotWeights(b.opts.CreateOcoOrderWeights)
