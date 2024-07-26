@@ -41,18 +41,19 @@ type Options struct {
 	PeriodLimitArray []PeriodLimit
 
 	// 权重
-	CreateMarginOrderWeights WeightType
-	CreateSpotOrderWeights   WeightType
-	CreateOcoOrderWeights    WeightType
-	CreateFutureOrderWeights WeightType
-	CancelSpotOrderWeights   WeightType
-	CancelFutureOrderWeights WeightType
-	SearchSpotOrderWeights   WeightType
-	SearchFutureOrderWeights WeightType
-	UpdateSpotOrderWeights   WeightType
-	UpdateFutureOrderWeights WeightType
-	BorrowOrRepayWeights     WeightType
-	OtherWeights             WeightType
+	GetMarginInventoryWeights WeightType
+	CreateMarginOrderWeights  WeightType
+	CreateSpotOrderWeights    WeightType
+	CreateOcoOrderWeights     WeightType
+	CreateFutureOrderWeights  WeightType
+	CancelSpotOrderWeights    WeightType
+	CancelFutureOrderWeights  WeightType
+	SearchSpotOrderWeights    WeightType
+	SearchFutureOrderWeights  WeightType
+	UpdateSpotOrderWeights    WeightType
+	UpdateFutureOrderWeights  WeightType
+	BorrowOrRepayWeights      WeightType
+	OtherWeights              WeightType
 }
 
 func WithPeriodLimitArray(p []PeriodLimit) Option {

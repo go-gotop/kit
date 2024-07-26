@@ -36,18 +36,19 @@ func NewBinanceLimiter(redisClient *redis.Client, opts ...limiter.Option) *Binan
 				FutureCreateOrderTimes:  1200,
 			},
 		},
-		CreateSpotOrderWeights:   1,
-		CreateOcoOrderWeights:    2,
-		CreateFutureOrderWeights: 0,
-		CancelSpotOrderWeights:   1,
-		CancelFutureOrderWeights: 1,
-		SearchSpotOrderWeights:   1,
-		SearchFutureOrderWeights: 1,
-		UpdateSpotOrderWeights:   1,
-		UpdateFutureOrderWeights: 1,
-		OtherWeights:             1,
-		BorrowOrRepayWeights:     1200,
-		CreateMarginOrderWeights: 6,
+		CreateSpotOrderWeights:    1,
+		CreateOcoOrderWeights:     2,
+		CreateFutureOrderWeights:  0,
+		CancelSpotOrderWeights:    1,
+		CancelFutureOrderWeights:  1,
+		SearchSpotOrderWeights:    1,
+		SearchFutureOrderWeights:  1,
+		UpdateSpotOrderWeights:    1,
+		UpdateFutureOrderWeights:  1,
+		OtherWeights:              1,
+		BorrowOrRepayWeights:      1200,
+		CreateMarginOrderWeights:  6,
+		GetMarginInventoryWeights: 50,
 	}
 	for _, opt := range opts {
 		opt(o)
@@ -142,6 +143,8 @@ func (b *BinanceLimiter) MarginAllow(t *limiter.LimiterReq) bool {
 		return b.allowMarginBorrowOrRepay()
 	case limiter.CreateOrderLimit:
 		return b.allowMarginCreateOrder()
+	case limiter.GetMarginInventory:
+		return b.allowGetMarginInventory()
 	default:
 		return true
 	}
@@ -190,6 +193,10 @@ func (b *BinanceLimiter) allSearchFutureOrder() bool {
 // 允许合约其他普通请求
 func (b *BinanceLimiter) allFutureNormalRequest() bool {
 	return b.allowFutureWeights(b.opts.OtherWeights)
+}
+
+func (b *BinanceLimiter) allowGetMarginInventory() bool {
+	return b.allowMarginWeights(b.opts.GetMarginInventoryWeights)
 }
 
 func (b *BinanceLimiter) allowMarginCreateOrder() bool {
