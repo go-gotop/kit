@@ -10,10 +10,13 @@ import (
 // SideType BUY, SELL
 type SideType string
 
-// OrderType LIMIT, MARKET
+// STOP 止损限价单,STOP_MARKET 止损市价单,TAKE_PROFIT 止盈限价单,TAKE_PROFIT_MARKET 止盈市价单,TRAILING_STOP_MARKET 跟踪止损单
 type OrderType string
 
-// OrderState NEW, FILLED, CANCELED, REJECTED, EXPIRED
+// NEW, TRADE, CANCELED, REJECTED, EXPIRED
+type ExecutionState string
+
+// OrderState NEW, PARTIALLY_FILLED, FILLED, CANCELED, REJECTED, EXPIRED
 type OrderState string
 
 // PositionSide LONG, SHORT
@@ -22,16 +25,23 @@ type PositionSide string
 // PositionStatus OpeningPosition, HoldingPosition, ClosingPosition, ClosedPosition
 type PositionStatus string
 
-// InstrumentType SPOT，FUTURES
+// InstrumentType SPOT，FUTURES, MARGIN
 type InstrumentType string
 
-// SymbolStatus SYMBOL_TRADING, SYMBOL_SUSPEND, SYMBOL_CLOSE, SYMBOL_FINISH
-type SymbolStatus string
+// MarginType MARGIN,ISOLATED 全仓，逐仓
+type MarginType string
+
+// TransactionStatus TRANSACTION_TRADING, TRANSACTION_SUSPEND, TRANSACTION_CLOSE, TRANSACTION_FINISH
+type TransactionStatus string
 
 // TimeInForce GTC, IOC, FOK, GTX, GTD
 type TimeInForce string
 
+// StrategyStatus NEW, START, STOP, DELETE
 type StrategyStatus string
+
+// StrategySide LONG, SHORT, BOTH
+type StrategySide string
 
 // Global enums
 const (
@@ -40,28 +50,40 @@ const (
 	CoinBaseExchange = "COINBASE"
 	MockExchange     = "MOCK"
 
-	StrategyTypeGrid = "GRID"
+	StrategyTypeGrid    = "GRID"
 	StrategyTypeDynamic = "DYNAMIC"
-	
+
 	ByMaker = "MAKER"
 	ByTaker = "TAKER"
 
-	CreatedByUser = "USER"
+	CreatedByUser   = "USER"
 	CreatedBySystem = "SYSTEM"
+
+	TransactionByUser   = "USER"
+	TransactionBySystem = "SYSTEM"
 
 	InstrumentTypeSpot    InstrumentType = "SPOT"
 	InstrumentTypeFutures InstrumentType = "FUTURES"
+	InstrumentTypeMargin  InstrumentType = "MARGIN"
 
-	SymbolStatusTrading SymbolStatus = "SYMBOL_TRADING"
-	SymbolStatusSuspend SymbolStatus = "SYMBOL_SUSPEND"
-	SymbolStatusClose   SymbolStatus = "SYMBOL_CLOSE"
-	SymbolStatusFinish  SymbolStatus = "SYMBOL_FINISH"
+	MarginTypeMargin   MarginType = "MARGIN"
+	MarginTypeIsolated MarginType = "ISOLATED"
+
+	TransactionStatusTrading TransactionStatus = "TRANSACTION_TRADING"
+	TransactionStatusSuspend TransactionStatus = "TRANSACTION_SUSPEND"
+	TransactionStatusClose   TransactionStatus = "TRANSACTION_CLOSE"
+	TransactionStatusFinish  TransactionStatus = "TRANSACTION_FINISH"
 
 	SideTypeBuy  SideType = "BUY"
 	SideTypeSell SideType = "SELL"
 
-	OrderTypeLimit  OrderType = "LIMIT"
-	OrderTypeMarket OrderType = "MARKET"
+	OrderTypeLimit              OrderType = "LIMIT"
+	OrderTypeMarket             OrderType = "MARKET"
+	OrderTypeStop               OrderType = "STOP"
+	OrderTypeStopMarket         OrderType = "STOP_MARKET"
+	OrderTypeTakeProfit         OrderType = "TAKE_PROFIT"
+	OrderTypeTakeProfitMarket   OrderType = "TAKE_PROFIT_MARKET"
+	OrderTypeTrailingStopMarket OrderType = "TRAILING_STOP_MARKET"
 
 	OrderStateTrade           OrderState = "TRADE"
 	OrderStateNew             OrderState = "NEW"
@@ -71,6 +93,8 @@ const (
 	OrderStateExpired         OrderState = "EXPIRED"
 	OrderStateClose           OrderState = "CLOSE"
 	OrderStatePartiallyFilled OrderState = "PARTIALLY_FILLED"
+	// 标识系统异常订单
+	OrderStateUnusual OrderState = "UNUSUAL"
 
 	PositionStatusNew     PositionStatus = "NEW_POSITION"
 	PositionStatusOpening PositionStatus = "OPENING_POSITION"
@@ -81,7 +105,13 @@ const (
 	PositionSideLong  PositionSide = "LONG"
 	PositionSideShort PositionSide = "SHORT"
 
+	StrategySideLong  StrategySide = "LONG"
+	StrategySideShort StrategySide = "SHORT"
+	StrategySideBoth  StrategySide = "BOTH"
+
 	StrategyStatusNew    StrategyStatus = "NEW"
+	StrategyStatusStart  StrategyStatus = "START"
+	StrategyStatusStop   StrategyStatus = "STOP"
 	StrategyStatusDelete StrategyStatus = "DELETE"
 
 	// Good Till Cancel 成交为止, 一直有效直到被取消
@@ -107,11 +137,70 @@ var (
 	ErrOrderNotEnoughMargin = errors.New("order not enough margin")
 	// ErrCreateOrderLimitExceeded 下单限制
 	ErrCreateOrderLimitExceeded = errors.New("create order limit exceeded")
+	// ErrInstrumentTypeNotSupported 不支持的交易类型
+	ErrInstrumentTypeNotSupported = errors.New("instrument type not supported")
 	// ErrRateLimitExceeded 访问限制
 	ErrRateLimitExceeded = errors.New("rate limit exceeded, IP ban imminent")
+	// ErrListenKeyExpired Stream listenKey 过期（适用binance）
+	ErrListenKeyExpired = errors.New("listen key expired")
 )
 
+type MarginInventoryRequest struct {
+	APIKey    string
+	SecretKey string
+	Typ       MarginType
+}
+
+type MarginInventory struct {
+	Assets map[string]string
+}
+
+type MarginBorrowOrRepayRequest struct {
+	APIKey     string
+	SecretKey  string
+	Asset      string
+	IsIsolated bool   // 是否逐仓，默认false
+	Symbol     string // 逐仓交易对，配合逐仓使用
+	Amount     decimal.Decimal
+	Typ        string // BORROW, REPAY
+}
+
+type GetMarginInterestRateRequest struct {
+	APIKey     string
+	SecretKey  string
+	Assets     string // 支持多资产查询，以逗号分隔，最多支持20个资产
+	IsIsolated bool   // 是否逐仓
+}
+
+type GetMarginInterestRateResponse struct {
+	Asset                  string
+	NextHourlyInterestRate decimal.Decimal
+}
+
+type GetFundingRate struct {
+	Symbol string
+}
+
+type GetFundingRateResponse struct {
+	Symbol               string
+	MarkPrice            decimal.Decimal // 标记价格
+	IndexPrice           decimal.Decimal // 指数价格
+	EstimatedSettlePrice decimal.Decimal // 预估结算价，仅在交割开始前最后一小时有意义
+	LastFundingRate      decimal.Decimal // 最近更新的资金费率
+	NextFundingTime      int64           // 下一个资金费时间
+	InterestRate         decimal.Decimal // 标的资产基础利率
+	Time                 int64           // 更新时间
+}
+
+type GetAssetsRequest struct {
+	APIKey         string
+	SecretKey      string
+	InstrumentType InstrumentType
+}
+
 type CreateOrderRequest struct {
+	APIKey        string
+	SecretKey     string
 	OrderTime     int64
 	Symbol        string
 	ClientOrderID string
@@ -137,7 +226,59 @@ type CreateOrderResponse struct {
 	ExecutedQuantity decimal.Decimal
 }
 
+type SearchOrderRequest struct {
+	APIKey         string
+	SecretKey      string
+	ClientOrderID  string
+	InstrumentType InstrumentType
+	Symbol         string
+}
+
+type SearchOrderResponse struct {
+	ClientOrderID     string
+	OrderID           string
+	State             OrderState
+	Symbol            string
+	AvgPrice          decimal.Decimal
+	Volume            decimal.Decimal
+	Price             decimal.Decimal
+	FilledQuoteVolume decimal.Decimal
+	FilledVolume      decimal.Decimal
+	FeeCost           decimal.Decimal
+	FeeAsset          string
+	Side              SideType
+	PositionSide      PositionSide
+	TimeInForce       TimeInForce
+	OrderType         OrderType
+	By                string
+	CreatedTime       int64
+	UpdateTime        int64
+}
+
+// 账户成交历史
+type SearchTradesRequest struct {
+	APIKey         string
+	SecretKey      string
+	Symbol         string
+	OrderID        string
+	InstrumentType InstrumentType
+}
+
+type SearchTradesResponse struct {
+	Symbol   string
+	ID       string
+	OrderID  string
+	Price    decimal.Decimal
+	Volume   decimal.Decimal
+	FeeCost  decimal.Decimal
+	FeeAsset string
+	Time     int64
+	By       string
+}
+
 type CancelOrderRequest struct {
+	APIKey        string
+	SecretKey     string
 	ClientOrderID string
 	Symbol        string
 }
@@ -166,8 +307,8 @@ type Symbol struct {
 	Exchange string
 	// 种类: SPOT, FUTURES
 	Instrument InstrumentType
-	// 状态: SYMBOL_TRADING, SYMBOL_SUSPEND, SYMBOL_CLOSE, SYMBOL_FINISH
-	Status SymbolStatus
+	// 状态: TRANSACTION_TRADING, TRANSACTION_SUSPEND, TRANSACTION_CLOSE, TRANSACTION_FINISH
+	Status TransactionStatus
 	// 最小头寸
 	MinSize decimal.Decimal
 	// 最大头寸
@@ -182,94 +323,22 @@ type Symbol struct {
 	SizePrecision int32
 }
 
-// type Symbol struct {
-// 	AssetName      string
-// 	SymbolName     string
-// 	Exchange       string
-// 	AutoAllocation bool
-// 	PricePrecision int32
-// 	SizePrecision  int32
-// 	MinSize        decimal.Decimal
-// 	MaxSize        decimal.Decimal
-// 	MinPrice       decimal.Decimal
-// 	MaxPrice       decimal.Decimal
-// 	Status         SymbolStatus
-// 	Instrument     InstrumentType
-// }
-
-type Position struct {
-	// 交易id
-	TransactionID string
-	// 客户端订单ID
-	ClientOrderID string
-	// 交易所
-	Exchange string
-	// 交易对
-	Symbol string
-	// 账户ID
-	AccountID string
-	// 头寸
-	Size decimal.Decimal
-	// 已成交数量
-	ExecutedQuantity decimal.Decimal
-	// 手续费
-	FeeCost decimal.Decimal
-	// 入场价格
-	EntryPrice decimal.Decimal
-	// 退出价格
-	ExitPrice decimal.Decimal
-	// 止损价格
-	StopPrice decimal.Decimal
-	// 平均价格
-	AvgPrice decimal.Decimal
-	// 订单状态
-	State OrderState
-	// 仓位状态
-	Status PositionStatus
-	// 种类
-	Instrument InstrumentType
-	// 仓位方向
-	PositionSide PositionSide
-}
-
-type Order struct {
-	// 帐号ID
-	AccountID string
-	// 客户端订单ID
-	ClientOrderID string
-	// 策略ID
-	StrategyID string
-	// 交易所
-	Exchange string
-	// 交易对
-	Symbol string
-	// 仓位侧
-	Side SideType
-	// 头寸
-	Size decimal.Decimal
-	// 价格
-	Price decimal.Decimal
-	// 金额
-	Amount decimal.Decimal
-	// 费用资产
-	FeeAsset string
-	// 费用
-	Fee decimal.Decimal
-	// 状态
-	State OrderState
-	// 种类
-	Instrument InstrumentType
-	// 仓位方向
-	PositionSide PositionSide
-	// 成交时间
-	TransactionTime int64
-}
-
+//go:generate mockgen -destination=../exchange/mocks/exchange.go -package=mkexchange . Exchange
 type Exchange interface {
 	Name() string
-	Assets(ctx context.Context, it InstrumentType) ([]Asset, error)
+	Assets(ctx context.Context, req *GetAssetsRequest) ([]Asset, error)
 	// Symbols(ctx context.Context, it InstrumentType) ([]Symbol, error)
 	CreateOrder(ctx context.Context, o *CreateOrderRequest) error
 	CancelOrder(ctx context.Context, o *CancelOrderRequest) error
+	SearchOrder(ctx context.Context, o *SearchOrderRequest) (*SearchOrderResponse, error)
+	// 查询成交记录
+	SearchTrades(ctx context.Context, o *SearchTradesRequest) ([]*SearchTradesResponse, error)
+	// 获取资金费率
+	GetFundingRate(ctx context.Context, req *GetFundingRate) ([]*GetFundingRateResponse, error)
+	// 获取杠杠资产小时利率
+	GetMarginInterestRate(ctx context.Context, req *GetMarginInterestRateRequest) ([]*GetMarginInterestRateResponse, error)
+	// 杠杠借贷Or还款
+	MarginBorrowOrRepay(ctx context.Context, req *MarginBorrowOrRepayRequest) error
+	// 获取杠杠可用放贷库存
+	GetMarginInventory(ctx context.Context, req *MarginInventoryRequest) (*MarginInventory, error)
 }
-

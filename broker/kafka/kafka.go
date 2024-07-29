@@ -45,6 +45,7 @@ type kafkaBroker struct {
 	logger *log.Helper
 	producerTracer *tracing.Tracer
 	consumerTracer *tracing.Tracer
+	stopCh chan struct{}
 }
 
 func NewBroker(logger *log.Helper, opts ...broker.Option) broker.Broker {
@@ -68,6 +69,7 @@ func NewBroker(logger *log.Helper, opts ...broker.Option) broker.Broker {
 		options:      options,
 		retriesCount: 1,
 		subscribers:  broker.NewSubscriberSyncMap(),
+		stopCh: 	 make(chan struct{}),
 	}
 
 	return b
@@ -331,6 +333,7 @@ func (b *kafkaBroker) Disconnect() error {
 
 	b.writer.Close()
 	b.subscribers.Clear()
+	close(b.stopCh)
 
 	b.connected = false
 	return nil
@@ -597,6 +600,8 @@ func (b *kafkaBroker) Subscribe(topic string, handler broker.Handler, binder bro
 
 		for {
 			select {
+			case <-b.stopCh:
+				return
 			case <-options.Context.Done():
 				return
 			default:

@@ -2,18 +2,21 @@ package manager
 
 import (
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-gotop/kit/websocket"
 	"github.com/go-gotop/kit/websocket/gorilla"
 	"github.com/go-gotop/kit/wsmanager"
+	"github.com/go-kratos/kratos/v2/log"
 )
 
 var (
 	// 错误定义
-	ErrMaxConnReached = errors.New("max connection reached")
-	ErrWSNotFound     = errors.New("websocket not found")
+	ErrMaxConnReached   = errors.New("max connection reached")
+	ErrWSNotFound       = errors.New("websocket not found")
+	ErrServerClosedConn = errors.New("server closed connection")
 )
 
 type Manager struct {
@@ -26,10 +29,11 @@ type Manager struct {
 
 func NewManager(opts ...ConnConfig) *Manager {
 	config := &connConfig{
+		logger:          log.NewHelper(log.DefaultLogger),
 		maxConn:         1000,
 		maxConnDuration: 24 * time.Hour,
 		// connLimiter:     nil,
-		isCheckReConn:   true,
+		isCheckReConn: true,
 	}
 
 	for _, opt := range opts {
@@ -54,7 +58,7 @@ func NewManager(opts ...ConnConfig) *Manager {
 func (b *Manager) AddWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.WebsocketConfig) error {
 	b.mux.Lock()
 	defer b.mux.Unlock()
-	
+
 	// 最大连接数限制
 	if b.currentConnCount >= b.config.maxConn {
 		return ErrMaxConnReached
@@ -83,12 +87,29 @@ func (b *Manager) AddWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.
 		}
 	}
 
+	errorH := func(err error) {
+		if req.ErrorHandler != nil {
+			// 如果包含 1006 错误码，说明服务端主动关闭连接
+			if strings.Contains(err.Error(), "close 1006") {
+				req.ErrorHandler(ErrServerClosedConn)
+				return
+			}
+			req.ErrorHandler(err)
+		}
+	}
+
 	ws := gorilla.NewGorillaWebsocket(conn, &websocket.WebsocketConfig{
 		PingHandler: pingh,
 		PongHandler: pongh,
 	})
 
-	err := ws.Connect(req)
+	err := ws.Connect(&websocket.WebsocketRequest{
+		ID:             req.ID,
+		Endpoint:       req.Endpoint,
+		MessageHandler: req.MessageHandler,
+		ErrorHandler:   errorH,
+	})
+
 	if err != nil {
 		return err
 	}
@@ -106,8 +127,8 @@ func (b *Manager) CloseWebsocket(uniq string) error {
 	if ws == nil {
 		return ErrWSNotFound
 	}
-	ws.Disconnect()
 	delete(b.wsSets, uniq)
+	ws.Disconnect()
 	b.currentConnCount--
 	return nil
 }
@@ -147,9 +168,10 @@ func (b *Manager) Shutdown() error {
 
 	var err error
 
-	for _, ws := range b.wsSets {
+	for key, ws := range b.wsSets {
 		err = ws.Disconnect()
 		if err == nil {
+			delete(b.wsSets, key) // 删除映射中的连接
 			b.currentConnCount--
 		}
 	}
@@ -168,14 +190,19 @@ func (b *Manager) checkConnection() {
 		default:
 			b.mux.Lock()
 			for _, ws := range b.wsSets {
-				if !ws.IsConnected() ||
-					ws.ConnectionDuration() > b.config.maxConnDuration {
+				// TODO: 处理重连逻辑，目前先注释掉判断是否断开连接，后续等系统监控预警完善之后再放开来
+				// if !ws.IsConnected() ||
+				// fmt.Printf("connection duration: %v\n", ws.ConnectionDuration())
+				if ws.ConnectionDuration() > b.config.maxConnDuration {
 					if err := ws.Reconnect(); err != nil {
 						b.config.logger.Errorf("reconnect websocket error: %s", err)
+					} else {
+						b.config.logger.Infof("reconnect websocket success")
 					}
 				}
 			}
 			b.mux.Unlock()
+			time.Sleep(1 * time.Second)
 		}
 	}
 }

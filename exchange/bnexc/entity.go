@@ -251,10 +251,112 @@ type bnSpotCreateOrderResponse struct {
 	MarginBuyBorrowAsset  string        `json:"marginBuyBorrowAsset"`
 }
 
+type bnMarginCreateOrderResponse struct {
+	Symbol                   string `json:"symbol"`
+	OrderID                  int64  `json:"orderId"`
+	ClientOrderID            string `json:"clientOrderId"`
+	TransactTime             int64  `json:"transactTime"`
+	Price                    string `json:"price"`
+	OrigQuantity             string `json:"origQty"`
+	ExecutedQuantity         string `json:"executedQty"`
+	CummulativeQuoteQuantity string `json:"cummulativeQuoteQty"`
+	IsIsolated               bool   `json:"isIsolated"` // for isolated margin
+	Status                   string `json:"status"`
+	TimeInForce              string `json:"timeInForce"`
+	Type                     string `json:"type"`
+	Side                     string `json:"side"`
+	// for order response is set to FULL
+	Fills                 []*bnSpotFill `json:"fills"`
+	MarginBuyBorrowAmount string        `json:"marginBuyBorrowAmount"` // for margin
+	MarginBuyBorrowAsset  string        `json:"marginBuyBorrowAsset"`
+}
+
 type bnSpotFill struct {
 	TradeID         int64  `json:"tradeId"`
 	Price           string `json:"price"`
 	Quantity        string `json:"qty"`
 	Commission      string `json:"commission"`
 	CommissionAsset string `json:"commissionAsset"`
+}
+
+type bnSpotSearchOrderReponse struct {
+	ClientOrderID     string `json:"clientOrderId"`
+	OrderID           int64  `json:"orderId"`
+	Status            string `json:"status"`
+	Symbol            string `json:"symbol"`
+	Volume            string `json:"origQty"` // 原始交易数量
+	Price             string `json:"price"`
+	OrigQuoteOrderQty string `json:"origQuoteOrderQty"` //原始交易金额
+	FilledQuoteVolume string `json:"cummulativeQuoteQty"`
+	FilledVolume      string `json:"executedQty"`
+	Side              string `json:"side"`
+	TimeInForce       string `json:"timeInForce"`
+	OrderType         string `json:"type"`
+	CreatedTime       int64  `json:"time"`
+	UpdateTime        int64  `json:"updateTime"`
+}
+
+type bnFuturesSearchOrderResponse struct {
+	ClientOrderID     string `json:"clientOrderId"`
+	OrderID           int64  `json:"orderId"`
+	Status            string `json:"status"`
+	Symbol            string `json:"symbol"`
+	AvgPrice          string `json:"avgPrice"`
+	Volume            string `json:"origQty"`
+	Price             string `json:"price"`
+	FilledQuoteVolume string `json:"cumQuote"`
+	FilledVolume      string `json:"executedQty"`
+	Side              string `json:"side"`
+	PositionSide      string `json:"positionSide"`
+	TimeInForce       string `json:"timeInForce"`
+	OrderType         string `json:"type"`
+	CreatedTime       int64  `json:"time"`
+	UpdateTime        int64  `json:"updateTime"`
+}
+
+type bnSpotTrades struct {
+	Symbol          string `json:"symbol"`
+	ID              int64  `json:"id"`
+	OrderID         int64  `json:"orderId"`
+	Price           string `json:"price"`
+	Quantity        string `json:"qty"`
+	Commission      string `json:"commission"`
+	CommissionAsset string `json:"commissionAsset"`
+	Time            int64  `json:"time"`
+	IsBuyer         bool   `json:"isBuyer"`
+	IsMaker         bool   `json:"isMaker"`
+}
+
+type bnFuturesTrades struct {
+	Symbol          string `json:"symbol"`
+	ID              int64  `json:"id"`
+	OrderID         int64  `json:"orderId"`
+	Price           string `json:"price"`
+	Quantity        string `json:"qty"`
+	Commission      string `json:"commission"`
+	CommissionAsset string `json:"commissionAsset"`
+	Time            int64  `json:"time"`
+	IsBuyer         bool   `json:"buyer"`
+	IsMaker         bool   `json:"maker"`
+}
+
+type bnPremiumIndex struct {
+	Symbol               string `json:"symbol"`
+	MarkPrice            string `json:"markPrice"`
+	IndexPrice           string `json:"indexPrice"`
+	EstimatedSettlePrice string `json:"estimatedSettlePrice"`
+	LastFundingRate      string `json:"lastFundingRate"`
+	InterestRate         string `json:"interestRate"`
+	NextFundingTime      int64  `json:"nextFundingTime"`
+	Time                 int64  `json:"time"`
+}
+
+type bnMarginInterestRate struct {
+	Asset                  string `json:"asset"`
+	NextHourlyInterestRate string `json:"nextHourlyInterestRate"`
+}
+
+type bnMarginInventory struct {
+	Assets     map[string]string `json:"assets"` // 假设所有资产值都是字符串类型
+	UpdateTime int64             `json:"updateTime"`
 }

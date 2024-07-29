@@ -9,6 +9,8 @@ const (
 	CancelOrderLimit    LimitType = "CANCEL_ORDER"           // 取消订单
 	SearchOrderLimit    LimitType = "SEARCH_ORDER"           // 查询订单
 	NormalRequestLimit  LimitType = "NORMAL_REQUEST"         // 普通请求
+	BorrowOrRepayLimit  LimitType = "BORROW_OR_REPAY"        // 借贷或还款
+	GetMarginInventory  LimitType = "GET_MARGIN_INVENTORY"   // 获取可借贷库存
 )
 
 type LimiterReq struct {
@@ -16,8 +18,10 @@ type LimiterReq struct {
 	LimiterType LimitType
 }
 
+//go:generate mockgen -destination=../limiter/mocks/limiter.go -package=mklimiter . Limiter
 type Limiter interface {
 	WsAllow() bool
 	SpotAllow(t *LimiterReq) bool
 	FutureAllow(t *LimiterReq) bool
+	MarginAllow(t *LimiterReq) bool
 }

@@ -454,7 +454,6 @@ func (lim *Limiter) reserveNC(uniqId string, t time.Time, n int, maxFutureReserv
 	if err != redis.Nil {
 		lim.actTokensCount = val
 	}
-	fmt.Printf("key %v\n", val)
 
 	// 判断缓存是否存在该 key，存在则赋值
 	timeStr, err := lim.rdb.Get(context.Background(), uniqId+"_time").Result()
@@ -518,8 +517,6 @@ func (lim *Limiter) reserveNC(uniqId string, t time.Time, n int, maxFutureReserv
 	ok := n <= lim.burst && waitDuration <= maxFutureReserve
 	// 如果tokens充足，但是单位时间内消费token数超过限制，则需要等待
 	if ok && lim.actTokensCount+float64(n) > float64(lim.burst) {
-		fmt.Printf("actTokensCount: %v, n: %v\n", lim.actTokensCount, n)
-		fmt.Printf("总计（actTokensCount + n）: %v, burst: %v\n", lim.actTokensCount+float64(n), lim.burst)
 		ok = false
 	}
 	// Prepare reservation

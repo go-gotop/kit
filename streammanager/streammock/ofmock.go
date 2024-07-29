@@ -1,4 +1,4 @@
-package ofbinance
+package streammock
 
 import (
 	"context"
@@ -10,35 +10,32 @@ import (
 
 	"github.com/go-gotop/kit/exchange"
 	"github.com/go-gotop/kit/limiter"
-	"github.com/go-gotop/kit/ofmanager"
-	"github.com/go-gotop/kit/requests/bnhttp"
+	"github.com/go-gotop/kit/requests/mohttp"
+	"github.com/go-gotop/kit/streammanager"
 	"github.com/go-gotop/kit/websocket"
 	"github.com/go-gotop/kit/wsmanager"
 	"github.com/go-gotop/kit/wsmanager/manager"
 	"github.com/go-kratos/kratos/v2/log"
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
 
-var _ ofmanager.OrderFeedManager = (*of)(nil)
+var _ streammanager.StreamManager = (*of)(nil)
 
 var (
 	ErrLimitExceed = errors.New("websocket request too frequent, please try again later")
 )
 
-const (
-	bnSpotWsEndpoint    = "wss://stream.binance.com:9443/ws"
-	bnFuturesWsEndpoint = "wss://fstream.binance.com/ws"
-	bnSpotEndpoint      = "https://api.binance.com"
-	bnFuturesEndpoint   = "https://fapi.binance.com"
-)
-
 // TODO: 限流器放在 ofbinance 做调用，不传入 wsmanager
-func NewBinanceOrderFeed(cli *bnhttp.Client, limiter limiter.Limiter, opts ...Option) ofmanager.OrderFeedManager {
+func NewMockStream(cli *mohttp.Client, limiter limiter.Limiter, opts ...Option) streammanager.StreamManager {
 	// 默认配置
 	o := &options{
-		logger:               log.NewHelper(log.DefaultLogger),
-		maxConnDuration:      24*time.Hour - 5*time.Minute,
-		listenKeyExpire:      58 * time.Minute,
+		wsEndpoint:          "ws://192.168.0.101:8073/ws/order",
+		mockExchangEndpoint: "http://192.168.0.101:8070",
+		logger:              log.NewHelper(log.DefaultLogger),
+		maxConnDuration:     24*time.Hour - 5*time.Minute,
+		// maxConnDuration:      1 * time.Minute,
+		listenKeyExpire:      72 * time.Hour,
 		checkListenKeyPeriod: 1 * time.Minute,
 	}
 
@@ -47,12 +44,13 @@ func NewBinanceOrderFeed(cli *bnhttp.Client, limiter limiter.Limiter, opts ...Op
 	}
 
 	of := &of{
-		name:          exchange.BinanceExchange,
+		name:          exchange.MockExchange,
 		opts:          o,
 		client:        cli,
 		limiter:       limiter,
 		listenKeySets: make(map[string]*listenKey),
 		wsm: manager.NewManager(
+			manager.WithLogger(o.logger),
 			manager.WithMaxConnDuration(o.maxConnDuration),
 			// manager.WithConnLimiter(limiter),
 		),
@@ -71,13 +69,14 @@ type listenKey struct {
 	SecretKey   string
 	CreatedTime time.Time
 	Instrument  exchange.InstrumentType
+	uuidList    []string
 }
 
 type of struct {
 	exitChan      chan struct{}
 	name          string
 	opts          *options
-	client        *bnhttp.Client
+	client        *mohttp.Client
 	limiter       limiter.Limiter
 	wsm           wsmanager.WebsocketManager
 	listenKeySets map[string]*listenKey // listenKey 集合, 合约一个，现货一个
@@ -88,13 +87,9 @@ func (o *of) Name() string {
 	return o.name
 }
 
-func (o *of) AddOrderFeed(req *ofmanager.OrderFeedRequest) error {
+func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 	o.mux.Lock()
 	defer o.mux.Unlock()
-
-	if !o.limiter.WsAllow() {
-		return ErrLimitExceed
-	}
 
 	conf := &wsmanager.WebsocketConfig{
 		PingHandler: pingHandler,
@@ -104,57 +99,41 @@ func (o *of) AddOrderFeed(req *ofmanager.OrderFeedRequest) error {
 	key, err := o.generateListenKey(req)
 
 	if err != nil {
-		return err
+		return "", err
 	}
 	generateTime := time.Now()
+	uuid := uuid.New().String() // 一个链接的uuid，因为一个账户可能存在多条链接，所以不能用账户ID做标识
 	// 拼接 listenKey 到请求地址
-	endpoint := fmt.Sprintf("%s/%s", bnSpotWsEndpoint, key)
-	if req.Instrument == exchange.InstrumentTypeFutures {
-		endpoint = fmt.Sprintf("%s/%s", bnFuturesWsEndpoint, key)
-	}
+	endpoint := fmt.Sprintf("%s?listenKey=%s", o.opts.wsEndpoint, key)
+
 	wsHandler := func(message []byte) {
-		j, err := bnhttp.NewJSON(message)
+		event := &wsOrderUpdateEvent{}
+		err = mohttp.Json.Unmarshal(message, event)
 		if err != nil {
 			o.opts.logger.Error("order new json error", err)
 			return
 		}
-		switch j.Get("e").MustString() {
-		case "executionReport":
-			event := &bnSpotWsOrderUpdateEvent{}
-			err = bnhttp.Json.Unmarshal(message, event)
-			if err != nil {
-				o.opts.logger.Error("order unmarshal error", err)
-				return
-			}
-			oe, err := swoueToOrderEvent(event)
-			if err != nil {
-				o.opts.logger.Error("order to order event error", err)
-				return
-			}
-			req.Event(oe)
-		case "ORDER_TRADE_UPDATE":
-			event := &bnFuturesWsUserDataEvent{}
-			err = bnhttp.Json.Unmarshal(message, event)
-			if err != nil {
-				o.opts.logger.Error("order unmarshal error", err)
-				return
-			}
-			oe, err := fwoueToOrderEvent(&event.OrderTradeUpdate)
-			if err != nil {
-				o.opts.logger.Error("order to order event error", err)
-				return
-			}
-			req.Event(oe)
+		oe, err := swoueToOrderEvent(event)
+		if err != nil {
+			o.opts.logger.Error("order to order event error", err)
+			return
 		}
+		req.OrderEvent(oe)
 	}
 	err = o.addWebsocket(&websocket.WebsocketRequest{
 		Endpoint:       endpoint,
-		ID:             req.AccountId,
+		ID:             uuid,
 		MessageHandler: wsHandler,
+		ErrorHandler:   req.ErrorHandler,
 	}, conf)
 
 	if err != nil {
-		return err
+		return "", err
+	}
+	// 判断账户id是否存在listenkey，存在则不用再次添加，只添加uuid
+	if _, ok := o.listenKeySets[req.AccountId]; ok {
+		o.listenKeySets[req.AccountId].uuidList = append(o.listenKeySets[req.AccountId].uuidList, uuid)
+		return uuid, nil
 	}
 	o.listenKeySets[req.AccountId] = &listenKey{
 		AccountID:   req.AccountId,
@@ -163,26 +142,41 @@ func (o *of) AddOrderFeed(req *ofmanager.OrderFeedRequest) error {
 		Instrument:  req.Instrument,
 		APIKey:      req.APIKey,
 		SecretKey:   req.SecretKey,
+		uuidList:    []string{uuid},
 	}
 
-	return nil
+	return uuid, nil
 }
 
-func (o *of) CloseOrderFeed(id string) error {
+func (o *of) CloseStream(accountId string, instrument exchange.InstrumentType, uuid string) error {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 
-	lk, ok := o.listenKeySets[id]
+	lk, ok := o.listenKeySets[accountId]
 	if !ok {
 		return fmt.Errorf("listenKey not found")
 	}
 
-	err := o.closeListenKey(lk)
+	// 删除uuid
+	for i, v := range lk.uuidList {
+		if v == uuid {
+			lk.uuidList = append(lk.uuidList[:i], lk.uuidList[i+1:]...)
+			break
+		}
+	}
+
+	// 关闭链接
+	err := o.wsm.CloseWebsocket(uuid)
 	if err != nil {
 		return err
 	}
 
-	err = o.wsm.CloseWebsocket(id)
+	if len(lk.uuidList) > 0 {
+		return nil
+	}
+
+	// 如果uuidList为空，则删除listenKey
+	err = o.closeListenKey(lk)
 	if err != nil {
 		return err
 	}
@@ -190,18 +184,21 @@ func (o *of) CloseOrderFeed(id string) error {
 	return nil
 }
 
-func (o *of) OrderFeedList() []ofmanager.OrderFeed {
+func (o *of) StreamList() []streammanager.Stream {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 
-	list := make([]ofmanager.OrderFeed, 0, len(o.listenKeySets))
+	list := make([]streammanager.Stream, 0, len(o.listenKeySets))
 	for _, v := range o.listenKeySets {
-		list = append(list, ofmanager.OrderFeed{
-			AccountId:  v.AccountID,
-			APIKey:     v.APIKey,
-			Exchange:   o.name,
-			Instrument: v.Instrument,
-		})
+		for _, uuid := range v.uuidList {
+			list = append(list, streammanager.Stream{
+				UUID:       uuid,
+				AccountId:  v.AccountID,
+				APIKey:     v.APIKey,
+				Exchange:   o.name,
+				Instrument: v.Instrument,
+			})
+		}
 	}
 	return list
 }
@@ -234,61 +231,50 @@ func (o *of) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.Webso
 	return nil
 }
 
-func (o *of) generateListenKey(req *ofmanager.OrderFeedRequest) (string, error) {
+func (o *of) generateListenKey(req *streammanager.StreamRequest) (string, error) {
 	for _, lk := range o.listenKeySets {
 		if lk.AccountID == req.AccountId && lk.Instrument == req.Instrument {
 			return lk.Key, nil
 		}
 	}
 
-	r := &bnhttp.Request{
+	r := &mohttp.Request{
 		APIKey:    req.APIKey,
 		SecretKey: req.SecretKey,
 		Method:    http.MethodPost,
-		SecType:   bnhttp.SecTypeAPIKey,
+		SecType:   mohttp.SecTypeAPIKey,
 	}
 
-	if req.Instrument == exchange.InstrumentTypeFutures {
-		r.Endpoint = "/fapi/v1/listenKey"
-		o.client.SetApiEndpoint(bnFuturesEndpoint)
-	} else {
-		r.Endpoint = "/api/v3/userDataStream"
-		o.client.SetApiEndpoint(bnSpotEndpoint)
-	}
-
+	r.Endpoint = "/api/exchange/listenkey"
+	r.SetFormParam("instrumentType", req.Instrument)
+	o.client.SetApiEndpoint(o.opts.mockExchangEndpoint)
 	data, err := o.client.CallAPI(context.Background(), r)
 	if err != nil {
 		return "", err
 	}
-
 	var res struct {
-		ListenKey string `json:"listenKey"`
+		Code    int    `json:"code"`
+		Data    string `json:"data"`
+		Message string `json:"message"`
 	}
 
-	err = bnhttp.Json.Unmarshal(data, &res)
+	err = mohttp.Json.Unmarshal(data, &res)
 	if err != nil {
 		return "", err
 	}
 
-	return res.ListenKey, nil
+	return res.Data, nil
 }
 
 func (o *of) updateListenKey(lk *listenKey) error {
-	r := &bnhttp.Request{
+	r := &mohttp.Request{
 		APIKey:    lk.APIKey,
 		SecretKey: lk.SecretKey,
 		Method:    http.MethodPut,
-		SecType:   bnhttp.SecTypeAPIKey,
+		SecType:   mohttp.SecTypeAPIKey,
 	}
 
-	if lk.Instrument == exchange.InstrumentTypeSpot {
-		r.Endpoint = "/api/v3/userDataStream"
-		r.SetFormParam("listenKey", lk.Key)
-		o.client.SetApiEndpoint(bnSpotEndpoint)
-	} else if lk.Instrument == exchange.InstrumentTypeFutures {
-		r.Endpoint = "/fapi/v1/listenKey"
-		o.client.SetApiEndpoint(bnFuturesEndpoint)
-	}
+	r.Endpoint = "/api/exchange/listenkey"
 
 	_, err := o.client.CallAPI(context.Background(), r)
 	if err != nil {
@@ -302,21 +288,14 @@ func (o *of) updateListenKey(lk *listenKey) error {
 }
 
 func (o *of) closeListenKey(lk *listenKey) error {
-	r := &bnhttp.Request{
+	r := &mohttp.Request{
 		Method:    http.MethodDelete,
-		SecType:   bnhttp.SecTypeAPIKey,
+		SecType:   mohttp.SecTypeAPIKey,
 		APIKey:    lk.APIKey,
 		SecretKey: lk.SecretKey,
 	}
 
-	
-	if lk.Instrument == exchange.InstrumentTypeFutures {
-		r.Endpoint = "/fapi/v1/listenKey"
-		o.client.SetApiEndpoint(bnFuturesEndpoint)
-	}else{
-		r.Endpoint = "/api/v3/userDataStream"
-		o.client.SetApiEndpoint(bnSpotEndpoint)
-	}
+	r.Endpoint = "/api/exchange/listenkey"
 
 	_, err := o.client.CallAPI(context.Background(), r)
 	if err != nil {
@@ -356,7 +335,7 @@ func pongHandler(appData string, conn websocket.WebSocketConn) error {
 	return conn.WriteMessage(9, []byte(appData))
 }
 
-func swoueToOrderEvent(event *bnSpotWsOrderUpdateEvent) (*exchange.OrderResultEvent, error) {
+func swoueToOrderEvent(event *wsOrderUpdateEvent) (*exchange.OrderResultEvent, error) {
 	price, err := decimal.NewFromString(event.Price)
 	if err != nil {
 		return nil, err
@@ -386,23 +365,23 @@ func swoueToOrderEvent(event *bnSpotWsOrderUpdateEvent) (*exchange.OrderResultEv
 		return nil, err
 	}
 	ps := exchange.PositionSideLong
-	if event.Side == "SELL" {
+	if event.Instrument == string(exchange.InstrumentTypeFutures) && event.PositionSide == string(exchange.PositionSideShort) {
 		ps = exchange.PositionSideShort
 	}
 	avgPrice := decimal.Zero
 	if filledQuoteVolume.GreaterThan(decimal.Zero) && filledVolume.GreaterThan(decimal.Zero) {
 		avgPrice = filledQuoteVolume.Div(filledVolume)
 	}
-	return &exchange.OrderResultEvent{
+	ore := &exchange.OrderResultEvent{
 		PositionSide:    ps,
-		Exchange:        exchange.BinanceExchange,
+		Exchange:        exchange.MockExchange,
 		Symbol:          event.Symbol,
-		ClientOrderID:   event.ClientOrderId,
-		ExecutionType:   exchange.OrderState(event.ExecutionType),
+		ClientOrderID:   event.ClientOrderID,
+		ExecutionType:   exchange.ExecutionState(event.ExecutionType),
 		State:           exchange.OrderState(event.Status),
-		OrderID:         fmt.Sprintf("%d", event.Id),
+		OrderID:         event.ID,
 		TransactionTime: event.TransactionTime,
-		IsMaker:         event.IsMaker,
+		By:              exchange.ByTaker, // 默认为吃单  mock 交易所目前只有市价单
 		Side:            exchange.SideType(event.Side),
 		Type:            exchange.OrderType(event.Type),
 		Instrument:      exchange.InstrumentTypeSpot,
@@ -414,62 +393,9 @@ func swoueToOrderEvent(event *bnSpotWsOrderUpdateEvent) (*exchange.OrderResultEv
 		FeeAsset:        event.FeeAsset,
 		FeeCost:         feeCost,
 		AvgPrice:        avgPrice,
-	}, nil
-}
-
-func fwoueToOrderEvent(event *bnFuturesWsOrderUpdateEvent) (*exchange.OrderResultEvent, error) {
-	price, err := decimal.NewFromString(event.OriginalPrice)
-	if err != nil {
-		return nil, err
 	}
-	volume, err := decimal.NewFromString(event.OriginalQty)
-	if err != nil {
-		return nil, err
-	}
-	latestVolume, err := decimal.NewFromString(event.LastFilledQty)
-	if err != nil {
-		return nil, err
-	}
-	filledVolume, err := decimal.NewFromString(event.AccumulatedFilledQty)
-	if err != nil {
-		return nil, err
-	}
-	latestPrice, err := decimal.NewFromString(event.LastFilledPrice)
-	if err != nil {
-		return nil, err
-	}
-	feeCost, err := decimal.NewFromString(event.Commission)
-	if err != nil {
-		return nil, err
-	}
-	avg, err := decimal.NewFromString(event.AveragePrice)
-	if err != nil {
-		return nil, err
-	}
-	ps := exchange.PositionSideLong
-	if event.PositionSide == "SHORT" {
-		ps = exchange.PositionSideShort
-	}
-	return &exchange.OrderResultEvent{
-		PositionSide:    ps,
-		Exchange:        exchange.BinanceExchange,
-		Symbol:          event.Symbol,
-		ClientOrderID:   event.ClientOrderID,
-		ExecutionType:   exchange.OrderState(event.ExecutionType),
-		State:           exchange.OrderState(event.Status),
-		OrderID:         fmt.Sprintf("%d", event.ID),
-		TransactionTime: event.TradeTime,
-		IsMaker:         event.IsMaker,
-		Side:            exchange.SideType(event.Side),
-		Type:            exchange.OrderType(event.Type),
-		Instrument:      exchange.InstrumentTypeFutures,
-		Volume:          volume,
-		Price:           price,
-		LatestVolume:    latestVolume,
-		FilledVolume:    filledVolume,
-		LatestPrice:     latestPrice,
-		FeeAsset:        event.CommissionAsset,
-		FeeCost:         feeCost,
-		AvgPrice:        avg,
-	}, nil
+	// if event.IsMaker {
+	// 	ore.By = exchange.ByMaker
+	// }
+	return ore, nil
 }

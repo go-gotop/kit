@@ -2,22 +2,22 @@ package manager
 
 import (
 	"time"
-	
+
 	"github.com/go-kratos/kratos/v2/log"
 )
 
 type ConnConfig func(*connConfig)
 
 type connConfig struct {
-	logger 		    *log.Helper     // 日志记录器
-	maxConn         int             // 最大连接数
-	maxConnDuration time.Duration   // 最大连接持续时间
-	isCheckReConn   bool            // 是否检查重连
+	logger          *log.Helper   // 日志记录器
+	maxConn         int           // 最大连接数
+	maxConnDuration time.Duration // 最大连接持续时间
+	isCheckReConn   bool          // 是否检查重连
 }
 
-func WithLogger(logger log.Logger) ConnConfig {
+func WithLogger(logger *log.Helper) ConnConfig {
 	return func(c *connConfig) {
-		c.logger = log.NewHelper(logger)
+		c.logger = logger
 	}
 }
 
