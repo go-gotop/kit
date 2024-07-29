@@ -9,6 +9,7 @@ import (
 	"github.com/go-gotop/kit/websocket"
 	"github.com/go-gotop/kit/websocket/gorilla"
 	"github.com/go-gotop/kit/wsmanager"
+	"github.com/go-kratos/kratos/v2/log"
 )
 
 var (
@@ -28,6 +29,7 @@ type Manager struct {
 
 func NewManager(opts ...ConnConfig) *Manager {
 	config := &connConfig{
+		logger:          log.NewHelper(log.DefaultLogger),
 		maxConn:         1000,
 		maxConnDuration: 24 * time.Hour,
 		// connLimiter:     nil,
