@@ -99,6 +99,45 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 }
 
 func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
+	var (
+		endpoint string
+		fn       func(message []byte) ([]*exchange.MarkPriceEvent, error)
+	)
+	d.mux.Lock()
+	defer d.mux.Unlock()
+
+	if !d.limiter.WsAllow() {
+		return ErrLimitExceed
+	}
+
+	conf := &wsmanager.WebsocketConfig{
+		PingHandler: pingHandler,
+		PongHandler: pongHandler,
+	}
+	switch req.Instrument {
+	case exchange.InstrumentTypeFutures:
+		endpoint = fmt.Sprintf("%s?streams=fundingrate&startTime=%v&endTime=%v", d.opts.wsEndpoint, req.StartTime, req.EndTime)
+		fn = futuresMarkPriceToMarkPrice
+	}
+	wsHandler := func(message []byte) {
+		te, err := fn(message)
+		if err != nil {
+			if req.ErrorHandler != nil {
+				req.ErrorHandler(err)
+			}
+			return
+		}
+		req.Event(te)
+	}
+	err := d.addWebsocket(&websocket.WebsocketRequest{
+		ID:             req.ID,
+		Endpoint:       endpoint,
+		MessageHandler: wsHandler,
+		ErrorHandler:   req.ErrorHandler,
+	}, conf)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -203,4 +242,45 @@ func funturesToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
 	te.Price = p
 	te.Side = exchange.SideTypeBuy
 	return te, nil
+}
+
+func futuresMarkPriceToMarkPrice(message []byte) ([]*exchange.MarkPriceEvent, error) {
+	var e []*funtureMarkPriceEvent
+	err := json.Unmarshal(message, &e)
+	if err != nil {
+		return nil, err
+	}
+	var list []*exchange.MarkPriceEvent
+	for _, v := range e {
+		markPrice, err := decimal.NewFromString(v.MarkPrice)
+		if err != nil {
+			markPrice = decimal.Zero
+		}
+		indexPrice, err := decimal.NewFromString(v.IndexPrice)
+		if err != nil {
+			indexPrice = decimal.Zero
+		}
+		estimatedSettlePrice, err := decimal.NewFromString(v.EstimatedSettlePrice)
+		if err != nil {
+			estimatedSettlePrice = decimal.Zero
+		}
+		lastFundingRate, err := decimal.NewFromString(v.LastFundingRate)
+		if err != nil {
+			lastFundingRate = decimal.Zero
+		}
+
+		te := &exchange.MarkPriceEvent{
+			Symbol:               v.Symbol,
+			MarkPrice:            markPrice,
+			IndexPrice:           indexPrice,
+			EstimatedSettlePrice: estimatedSettlePrice,
+			LastFundingRate:      lastFundingRate,
+			NextFundingTime:      v.NextFundingTime,
+			Time:                 v.Time,
+		}
+		list = append(list, te)
+	}
+
+	return list, nil
+
 }

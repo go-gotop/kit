@@ -17,6 +17,8 @@ type DataFeedRequest struct {
 type MarkPriceRequest struct {
 	ID           string
 	Instrument   exchange.InstrumentType
+	StartTime    int64
+	EndTime      int64
 	Event        func(data []*exchange.MarkPriceEvent)
 	ErrorHandler func(err error)
 }
