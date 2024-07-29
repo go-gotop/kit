@@ -168,6 +168,7 @@ func (b *binance) GetMarginInventory(ctx context.Context, req *exchange.MarginIn
 	if err != nil {
 		return nil, err
 	}
+
 	var res bnMarginInventory
 	err = bnhttp.Json.Unmarshal(data, &res)
 	if err != nil {
