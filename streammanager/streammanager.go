@@ -25,7 +25,7 @@ type Stream struct {
 
 type StreamManager interface {
 	Name() string
-	AddStream(req *StreamRequest) (string, error)
+	AddStream(req *StreamRequest) ([]string, error)
 	CloseStream(accountId string, instrument exchange.InstrumentType, uuid string) error
 	StreamList() []Stream
 	Shutdown() error

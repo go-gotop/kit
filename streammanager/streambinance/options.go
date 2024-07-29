@@ -13,6 +13,7 @@ type options struct {
 	maxConnDuration      time.Duration // 最大连接持续时间
 	listenKeyExpire      time.Duration // listenkey 过期时间
 	checkListenKeyPeriod time.Duration // 检查 listenkey 的周期
+	connectCount         int
 }
 
 func WithLogger(logger *log.Helper) Option {

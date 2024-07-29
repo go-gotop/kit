@@ -51,9 +51,10 @@ func NewBinanceStream(cli *bnhttp.Client, redisClient *redis.Client, limiter lim
 	// 默认配置
 	o := &options{
 		logger:               log.NewHelper(log.DefaultLogger),
-		maxConnDuration:      24*time.Hour - 5*time.Minute,
+		maxConnDuration:      20 * time.Hour,
 		listenKeyExpire:      58 * time.Minute,
 		checkListenKeyPeriod: 5 * time.Second,
+		connectCount:         2,
 	}
 
 	for _, opt := range opts {
@@ -107,12 +108,12 @@ func (o *of) Name() string {
 	return o.name
 }
 
-func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
+func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 
 	if !o.limiter.WsAllow() {
-		return "", ErrLimitExceed
+		return nil, ErrLimitExceed
 	}
 
 	conf := &wsmanager.WebsocketConfig{
@@ -123,11 +124,10 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 	key, err := o.generateListenKey(req)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	generateTime := time.Now()
-	uuid := uuid.New().String() // 一个链接的uuid，因为一个账户可能存在多条链接，所以不能用账户ID做标识
 
 	// 拼接 listenKey 到请求地址
 	endpoint := fmt.Sprintf("%s/%s", bnSpotWsEndpoint, key)
@@ -137,46 +137,75 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 		endpoint = fmt.Sprintf("%s/%s", bnMarginWsEndpoint, key)
 	}
 
-	err = o.addWebsocket(&websocket.WebsocketRequest{
-		Endpoint:       endpoint,
-		ID:             uuid,
-		MessageHandler: o.createWebsocketHandler(req),
-		ErrorHandler:   req.ErrorHandler,
-	}, conf)
-
-	if err != nil {
-		return "", err
-	}
-
-	// 判断账户id是否存在listenkey，存在则不用再次添加，只添加uuid, 更新createTime 和 listenkey
-	if _, ok := o.listenKeySets[req.AccountId+string(req.Instrument)]; ok {
-		o.listenKeySets[req.AccountId+string(req.Instrument)].UUIDList = append(o.listenKeySets[req.AccountId+string(req.Instrument)].UUIDList, uuid)
-		o.listenKeySets[req.AccountId+string(req.Instrument)].CreatedTime = generateTime
-		o.listenKeySets[req.AccountId+string(req.Instrument)].Key = key
-		err := o.saveListenKeySet(req.AccountId, string(req.Instrument), o.listenKeySets[req.AccountId+string(req.Instrument)])
+	//构建连接池  //配置连接数量 默认2 要自定义连接时间
+	for i := 0; i < o.opts.connectCount; i++ {
+		uuid := uuid.New().String() // 一个链接的uuid，因为一个账户可能存在多条链接，所以不能用账户ID做标识
+		err = o.addWebsocket(&websocket.WebsocketRequest{
+			Endpoint:       endpoint,
+			ID:             uuid,
+			MessageHandler: o.createWebsocketHandler(req, o.rdb),
+			ErrorHandler:   req.ErrorHandler,
+		}, conf)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		return uuid, nil
-	}
 
-	lk := &listenKey{
-		AccountID:   req.AccountId,
-		Key:         key,
-		CreatedTime: generateTime,
-		Instrument:  req.Instrument,
-		APIKey:      req.APIKey,
-		SecretKey:   req.SecretKey,
-		UUIDList:    []string{uuid},
-	}
-	o.listenKeySets[req.AccountId+string(req.Instrument)] = lk
+		// 判断账户id是否存在listenkey，存在则不用再次添加，只添加uuid, 更新createTime 和 listenkey
+		if _, ok := o.listenKeySets[req.AccountId+string(req.Instrument)]; ok {
+			o.listenKeySets[req.AccountId+string(req.Instrument)].UUIDList = append(o.listenKeySets[req.AccountId+string(req.Instrument)].UUIDList, uuid)
+			o.listenKeySets[req.AccountId+string(req.Instrument)].CreatedTime = generateTime
+			o.listenKeySets[req.AccountId+string(req.Instrument)].Key = key
+			err := o.saveListenKeySet(req.AccountId, string(req.Instrument), o.listenKeySets[req.AccountId+string(req.Instrument)])
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			lk := &listenKey{
+				AccountID:   req.AccountId,
+				Key:         key,
+				CreatedTime: generateTime,
+				Instrument:  req.Instrument,
+				APIKey:      req.APIKey,
+				SecretKey:   req.SecretKey,
+				UUIDList:    []string{uuid},
+			}
+			o.listenKeySets[req.AccountId+string(req.Instrument)] = lk
 
-	err = o.saveListenKeySet(req.AccountId, string(req.Instrument), lk)
-	if err != nil {
-		return "", err
+			err = o.saveListenKeySet(req.AccountId, string(req.Instrument), lk)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
+	// 判断账户id是否存在listenkey，存在则不用再次添加，只添加uuid, 更新createTime 和 listenkey
+	//if _, ok := o.listenKeySets[req.AccountId+string(req.Instrument)]; ok {
+	//	o.listenKeySets[req.AccountId+string(req.Instrument)].UUIDList = append(o.listenKeySets[req.AccountId+string(req.Instrument)].UUIDList, uuid)
+	//	o.listenKeySets[req.AccountId+string(req.Instrument)].CreatedTime = generateTime
+	//	o.listenKeySets[req.AccountId+string(req.Instrument)].Key = key
+	//	err := o.saveListenKeySet(req.AccountId, string(req.Instrument), o.listenKeySets[req.AccountId+string(req.Instrument)])
+	//	if err != nil {
+	//		return "", err
+	//	}
+	//	return uuid, nil
+	//}
+	//
+	//lk := &listenKey{
+	//	AccountID:   req.AccountId,
+	//	Key:         key,
+	//	CreatedTime: generateTime,
+	//	Instrument:  req.Instrument,
+	//	APIKey:      req.APIKey,
+	//	SecretKey:   req.SecretKey,
+	//	UUIDList:    []string{uuid},
+	//}
+	//o.listenKeySets[req.AccountId+string(req.Instrument)] = lk
+	//
+	//err = o.saveListenKeySet(req.AccountId, string(req.Instrument), lk)
+	//if err != nil {
+	//	return "", err
+	//}
 
-	return uuid, nil
+	return o.listenKeySets[req.AccountId+string(req.Instrument)].UUIDList, nil
 }
 
 func (o *of) CloseStream(accountId string, instrument exchange.InstrumentType, uuid string) error {
@@ -270,7 +299,7 @@ func (o *of) Shutdown() error {
 	return nil
 }
 
-func (o *of) createWebsocketHandler(req *streammanager.StreamRequest) func(message []byte) {
+func (o *of) createWebsocketHandler(req *streammanager.StreamRequest, rcli *redis.Client) func(message []byte) {
 	return func(message []byte) {
 		j, err := bnhttp.NewJSON(message)
 		if err != nil {
@@ -284,6 +313,9 @@ func (o *of) createWebsocketHandler(req *streammanager.StreamRequest) func(messa
 			err = bnhttp.Json.Unmarshal(message, event)
 			if err != nil {
 				o.opts.logger.Error("order unmarshal error", err)
+				return
+			}
+			if !o.onlyProcessing(event.ClientOrderId, rcli) {
 				return
 			}
 			oe, err := swoueToOrderEvent(event)
@@ -300,6 +332,9 @@ func (o *of) createWebsocketHandler(req *streammanager.StreamRequest) func(messa
 			err = bnhttp.Json.Unmarshal(message, event)
 			if err != nil {
 				o.opts.logger.Error("order unmarshal error", err)
+				return
+			}
+			if !o.onlyProcessing(event.OrderTradeUpdate.ClientOrderID, rcli) {
 				return
 			}
 			oe, err := fwoueToOrderEvent(&event.OrderTradeUpdate)
@@ -374,6 +409,15 @@ func (o *of) createWebsocketHandler(req *streammanager.StreamRequest) func(messa
 			}
 		}
 	}
+}
+
+func (o *of) onlyProcessing(uid string, rcli *redis.Client) bool {
+	nx := rcli.SetNX(context.Background(), uid, 1, 10*time.Minute)
+	if nx.Err() != nil {
+		o.opts.logger.Errorf("onlyProcessing setnx redis error: %v", nx.Err())
+		return false
+	}
+	return nx.Val()
 }
 
 func (o *of) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.WebsocketConfig) error {
