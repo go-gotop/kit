@@ -123,6 +123,7 @@ type MarkPriceEvent struct {
 	EstimatedSettlePrice decimal.Decimal
 	LastFundingRate      decimal.Decimal
 	NextFundingTime      int64
+	IsSettlement         bool // 是否结算,mockExchange专用
 }
 
 type AccountUpdateEvent struct {

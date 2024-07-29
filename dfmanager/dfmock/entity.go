@@ -17,4 +17,5 @@ type funtureMarkPriceEvent struct {
 	EstimatedSettlePrice string `json:"estimatedSettlePrice"` // 预估结算价
 	LastFundingRate      string `json:"lastFundingRate"`      // 资金费率
 	NextFundingTime      int64  `json:"nextFundingTime"`      // 下个资金时间
+	IsSettlement         bool   `json:"isSettlement"`         // 是否结算
 }
