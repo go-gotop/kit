@@ -277,6 +277,7 @@ func futuresMarkPriceToMarkPrice(message []byte) ([]*exchange.MarkPriceEvent, er
 			LastFundingRate:      lastFundingRate,
 			NextFundingTime:      v.NextFundingTime,
 			Time:                 v.Time,
+			IsSettlement:         v.IsSettlement,
 		}
 		list = append(list, te)
 	}
