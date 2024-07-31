@@ -197,9 +197,9 @@ func (b *Manager) checkConnection() {
 					if err := ws.Reconnect(); err != nil {
 						b.config.logger.Errorf("reconnect websocket error: %s", err)
 					} else {
-						//采取延迟重连策略  只要触发就说明需要要重连 为了避免不同时重连相同的连接
+						//采取延迟重连策略  只要触发就说明需要要重连 为了避免不同时重连相同类型的连接
 						b.config.logger.Infof("reconnect websocket success")
-						time.Sleep(3 * time.Second)
+						time.Sleep(1 * time.Second)
 					}
 
 				}

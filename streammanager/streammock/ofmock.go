@@ -87,7 +87,7 @@ func (o *of) Name() string {
 	return o.name
 }
 
-func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
+func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 
@@ -99,7 +99,7 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 	key, err := o.generateListenKey(req)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	generateTime := time.Now()
 	uuid := uuid.New().String() // 一个链接的uuid，因为一个账户可能存在多条链接，所以不能用账户ID做标识
@@ -128,12 +128,12 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 	}, conf)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	// 判断账户id是否存在listenkey，存在则不用再次添加，只添加uuid
 	if _, ok := o.listenKeySets[req.AccountId]; ok {
 		o.listenKeySets[req.AccountId].uuidList = append(o.listenKeySets[req.AccountId].uuidList, uuid)
-		return uuid, nil
+		return o.listenKeySets[req.AccountId].uuidList, nil
 	}
 	o.listenKeySets[req.AccountId] = &listenKey{
 		AccountID:   req.AccountId,
@@ -145,7 +145,7 @@ func (o *of) AddStream(req *streammanager.StreamRequest) (string, error) {
 		uuidList:    []string{uuid},
 	}
 
-	return uuid, nil
+	return o.listenKeySets[req.AccountId].uuidList, nil
 }
 
 func (o *of) CloseStream(accountId string, instrument exchange.InstrumentType, uuid string) error {
