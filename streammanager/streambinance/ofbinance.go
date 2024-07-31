@@ -47,11 +47,11 @@ const (
 )
 
 // TODO: 限流器放在 ofbinance 做调用，不传入 wsmanager
-func NewBinanceStream(cli *bnhttp.Client, redisClient *redis.Client, limiter limiter.Limiter, opts ...Option) streammanager.StreamManager {
+func NewBinanceStream(cli *bnhttp.Client, redisClient *redis.Client, limiter limiter.Limiter, t time.Duration, opts ...Option) streammanager.StreamManager {
 	// 默认配置
 	o := &options{
 		logger:               log.NewHelper(log.DefaultLogger),
-		maxConnDuration:      20 * time.Hour,
+		maxConnDuration:      t,
 		listenKeyExpire:      58 * time.Minute,
 		checkListenKeyPeriod: 5 * time.Second,
 		connectCount:         2,
