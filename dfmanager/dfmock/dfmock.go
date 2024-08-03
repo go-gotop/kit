@@ -71,7 +71,7 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 		PingHandler: pingHandler,
 		PongHandler: pongHandler,
 	}
-	endpoint = fmt.Sprintf("%s?instrument=%s&symbol=%s&startTime=%v&endTime=%v", d.opts.wsEndpoint, req.Instrument, symbol, req.StartTime, req.EndTime)
+	endpoint = fmt.Sprintf("%s?streams=trade&instrument=%s&symbol=%s&startTime=%v&endTime=%v", d.opts.wsEndpoint, req.Instrument, symbol, req.StartTime, req.EndTime)
 
 	fn = spotToTradeEvent
 	if req.Instrument == exchange.InstrumentTypeFutures {
