@@ -157,11 +157,10 @@ func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
 		PingHandler: pingHandler,
 		PongHandler: pongHandler,
 	}
-	switch req.Instrument {
-	case exchange.InstrumentTypeFutures:
-		endpoint = fmt.Sprintf("%s?streams=kline&symbol=%v&period=%v&startTime=%v&endTime=%v", d.opts.wsEndpoint, req.Symbol, req.Period, req.StartTime, req.EndTime)
-		fn = klineToEvent
-	}
+
+	endpoint = fmt.Sprintf("%s?streams=kline&symbol=%v&period=%v&startTime=%v&endTime=%v", d.opts.wsEndpoint, req.Symbol, req.Period, req.StartTime, req.EndTime)
+	fn = klineToEvent
+	fmt.Printf("endpoint: %v\n", endpoint)
 	wsHandler := func(message []byte) {
 		te, err := fn(message)
 		if err != nil {
