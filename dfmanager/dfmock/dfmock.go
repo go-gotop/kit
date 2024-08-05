@@ -335,18 +335,52 @@ func klineToEvent(message []byte) (*exchange.KlineEvent, error) {
 		return nil, err
 	}
 
+	open, err := decimal.NewFromString(e.Open)
+	if err != nil {
+		return nil, err
+	}
+	high, err := decimal.NewFromString(e.High)
+	if err != nil {
+		return nil, err
+	}
+	low, err := decimal.NewFromString(e.Low)
+	if err != nil {
+		return nil, err
+	}
+	close, err := decimal.NewFromString(e.Close)
+	if err != nil {
+		return nil, err
+	}
+	volume, err := decimal.NewFromString(e.Volume)
+	if err != nil {
+		return nil, err
+	}
+	quoteAssetVolume, err := decimal.NewFromString(e.QuoteAssetVolume)
+	if err != nil {
+		return nil, err
+	}
+	takerBuyBaseAssetVolume, err := decimal.NewFromString(e.TakerBuyBaseAssetVolume)
+	if err != nil {
+		return nil, err
+	}
+	takerBuyQuoteAssetVolume, err := decimal.NewFromString(e.TakerBuyQuoteAssetVolume)
+	if err != nil {
+		return nil, err
+	}
+
 	te := &exchange.KlineEvent{
 		Symbol:                   e.Symbol,
 		OpenTime:                 e.OpenTime,
-		Open:                     e.Open,
-		High:                     e.High,
-		Low:                      e.Low,
-		Close:                    e.Close,
-		Volume:                   e.Volume,
-		QuoteAssetVolume:         e.QuoteAssetVolume,
+		Open:                     open,
+		High:                     high,
+		Low:                      low,
+		Close:                    close,
+		Volume:                   volume,
+		CloseTime:                e.CloseTime,
+		QuoteAssetVolume:         quoteAssetVolume,
 		NumberOfTrades:           e.NumberOfTrades,
-		TakerBuyBaseAssetVolume:  e.TakerBuyBaseAssetVolume,
-		TakerBuyQuoteAssetVolume: e.TakerBuyQuoteAssetVolume,
+		TakerBuyBaseAssetVolume:  takerBuyBaseAssetVolume,
+		TakerBuyQuoteAssetVolume: takerBuyQuoteAssetVolume,
 	}
 	return te, nil
 }

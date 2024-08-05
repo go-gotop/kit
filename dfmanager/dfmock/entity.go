@@ -1,7 +1,5 @@
 package dfmock
 
-import "github.com/shopspring/decimal"
-
 type tradeEvent struct {
 	TradeID   int64  `json:"TradeID"`
 	Size      string `json:"Size"`
@@ -23,16 +21,16 @@ type funtureMarkPriceEvent struct {
 }
 
 type klineEvent struct {
-	Symbol                   string          `json:"Symbol"`
-	OpenTime                 int64           `json:"OpenTime"`
-	Open                     decimal.Decimal `json:"Open"`
-	High                     decimal.Decimal `json:"High"`
-	Low                      decimal.Decimal `json:"Low"`
-	Close                    decimal.Decimal `json:"Close"`
-	Volume                   decimal.Decimal `json:"Volume"`
-	CloseTime                int64           `json:"CloseTime"`
-	QuoteAssetVolume         decimal.Decimal `json:"QuoteAssetVolume"`
-	NumberOfTrades           int64           `json:"NumberOfTrades"`
-	TakerBuyBaseAssetVolume  decimal.Decimal `json:"TakerBuyBaseAssetVolume"`
-	TakerBuyQuoteAssetVolume decimal.Decimal `json:"TakerBuyQuoteAssetVolume"`
+	Symbol                   string `json:"Symbol"`
+	OpenTime                 int64  `json:"OpenTime"`
+	Open                     string `json:"Open"`
+	High                     string `json:"High"`
+	Low                      string `json:"Low"`
+	Close                    string `json:"Close"`
+	Volume                   string `json:"Volume"`
+	CloseTime                int64  `json:"CloseTime"`
+	QuoteAssetVolume         string `json:"QuoteAssetVolume"`
+	NumberOfTrades           int64  `json:"NumberOfTrades"`
+	TakerBuyBaseAssetVolume  string `json:"TakerBuyBaseAssetVolume"`
+	TakerBuyQuoteAssetVolume string `json:"TakerBuyQuoteAssetVolume"`
 }
