@@ -29,8 +29,8 @@ type klineEvent struct {
 	Close                    string `json:"Close"`
 	Volume                   string `json:"Volume"`
 	CloseTime                int64  `json:"CloseTime"`
-	QuoteAssetVolume         string `json:"QuoteAssetVolume"`
-	NumberOfTrades           int64  `json:"NumberOfTrades"`
-	TakerBuyBaseAssetVolume  string `json:"TakerBuyBaseAssetVolume"`
-	TakerBuyQuoteAssetVolume string `json:"TakerBuyQuoteAssetVolume"`
+	// QuoteAssetVolume         string `json:"QuoteAssetVolume"`
+	// NumberOfTrades           int64  `json:"NumberOfTrades"`
+	// TakerBuyBaseAssetVolume  string `json:"TakerBuyBaseAssetVolume"`
+	// TakerBuyQuoteAssetVolume string `json:"TakerBuyQuoteAssetVolume"`
 }

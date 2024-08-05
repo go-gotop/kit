@@ -158,7 +158,7 @@ func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
 		PongHandler: pongHandler,
 	}
 
-	endpoint = fmt.Sprintf("%s?streams=kline&symbol=%v&period=%v&startTime=%v&endTime=%v", d.opts.wsEndpoint, req.Symbol, req.Period, req.StartTime, req.EndTime)
+	endpoint = fmt.Sprintf("%s?streams=kline&instrument=%v&symbol=%v&period=%v&startTime=%v&endTime=%v", d.opts.wsEndpoint, req.Instrument, req.Symbol, req.Period, req.StartTime, req.EndTime)
 	fn = klineToEvent
 	fmt.Printf("endpoint: %v\n", endpoint)
 	wsHandler := func(message []byte) {
@@ -333,7 +333,6 @@ func klineToEvent(message []byte) (*exchange.KlineEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	open, err := decimal.NewFromString(e.Open)
 	if err != nil {
 		return nil, err
@@ -354,32 +353,32 @@ func klineToEvent(message []byte) (*exchange.KlineEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	quoteAssetVolume, err := decimal.NewFromString(e.QuoteAssetVolume)
-	if err != nil {
-		return nil, err
-	}
-	takerBuyBaseAssetVolume, err := decimal.NewFromString(e.TakerBuyBaseAssetVolume)
-	if err != nil {
-		return nil, err
-	}
-	takerBuyQuoteAssetVolume, err := decimal.NewFromString(e.TakerBuyQuoteAssetVolume)
-	if err != nil {
-		return nil, err
-	}
+	// quoteAssetVolume, err := decimal.NewFromString(e.QuoteAssetVolume)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// takerBuyBaseAssetVolume, err := decimal.NewFromString(e.TakerBuyBaseAssetVolume)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// takerBuyQuoteAssetVolume, err := decimal.NewFromString(e.TakerBuyQuoteAssetVolume)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	te := &exchange.KlineEvent{
-		Symbol:                   e.Symbol,
-		OpenTime:                 e.OpenTime,
-		Open:                     open,
-		High:                     high,
-		Low:                      low,
-		Close:                    close,
-		Volume:                   volume,
-		CloseTime:                e.CloseTime,
-		QuoteAssetVolume:         quoteAssetVolume,
-		NumberOfTrades:           e.NumberOfTrades,
-		TakerBuyBaseAssetVolume:  takerBuyBaseAssetVolume,
-		TakerBuyQuoteAssetVolume: takerBuyQuoteAssetVolume,
+		Symbol:    e.Symbol,
+		OpenTime:  e.OpenTime,
+		Open:      open,
+		High:      high,
+		Low:       low,
+		Close:     close,
+		Volume:    volume,
+		CloseTime: e.CloseTime,
+		// QuoteAssetVolume:         quoteAssetVolume,
+		// NumberOfTrades:           e.NumberOfTrades,
+		// TakerBuyBaseAssetVolume:  takerBuyBaseAssetVolume,
+		// TakerBuyQuoteAssetVolume: takerBuyQuoteAssetVolume,
 	}
 	return te, nil
 }
