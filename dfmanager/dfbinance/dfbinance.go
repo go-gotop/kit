@@ -155,6 +155,10 @@ func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
 	return nil
 }
 
+func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
+	return errors.New("not implemented")
+}
+
 func (d *df) CloseDataFeed(id string) error {
 	d.mux.Lock()
 	defer d.mux.Unlock()

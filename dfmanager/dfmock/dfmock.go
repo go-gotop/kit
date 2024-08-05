@@ -141,6 +141,49 @@ func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
 	return nil
 }
 
+func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
+	var (
+		endpoint string
+		fn       func(message []byte) (*exchange.KlineEvent, error)
+	)
+	d.mux.Lock()
+	defer d.mux.Unlock()
+
+	if !d.limiter.WsAllow() {
+		return ErrLimitExceed
+	}
+
+	conf := &wsmanager.WebsocketConfig{
+		PingHandler: pingHandler,
+		PongHandler: pongHandler,
+	}
+	switch req.Instrument {
+	case exchange.InstrumentTypeFutures:
+		endpoint = fmt.Sprintf("%s?streams=kline&symbol=%v&period=%v&startTime=%v&endTime=%v", d.opts.wsEndpoint, req.Symbol, req.Period, req.StartTime, req.EndTime)
+		fn = klineToEvent
+	}
+	wsHandler := func(message []byte) {
+		te, err := fn(message)
+		if err != nil {
+			if req.ErrorHandler != nil {
+				req.ErrorHandler(err)
+			}
+			return
+		}
+		req.Event(te)
+	}
+	err := d.addWebsocket(&websocket.WebsocketRequest{
+		ID:             req.ID,
+		Endpoint:       endpoint,
+		MessageHandler: wsHandler,
+		ErrorHandler:   req.ErrorHandler,
+	}, conf)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (d *df) CloseDataFeed(id string) error {
 	d.mux.Lock()
 	defer d.mux.Unlock()
@@ -283,5 +326,26 @@ func futuresMarkPriceToMarkPrice(message []byte) ([]*exchange.MarkPriceEvent, er
 	}
 
 	return list, nil
+}
 
+func klineToEvent(message []byte) (*exchange.KlineEvent, error) {
+	var e *klineEvent
+	err := json.Unmarshal(message, &e)
+	if err != nil {
+		return nil, err
+	}
+
+	te := &exchange.KlineEvent{
+		OpenTime:                 e.OpenTime,
+		Open:                     e.Open,
+		High:                     e.High,
+		Low:                      e.Low,
+		Close:                    e.Close,
+		Volume:                   e.Volume,
+		QuoteAssetVolume:         e.QuoteAssetVolume,
+		NumberOfTrades:           e.NumberOfTrades,
+		TakerBuyBaseAssetVolume:  e.TakerBuyBaseAssetVolume,
+		TakerBuyQuoteAssetVolume: e.TakerBuyQuoteAssetVolume,
+	}
+	return te, nil
 }

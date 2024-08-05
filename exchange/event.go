@@ -126,6 +126,20 @@ type MarkPriceEvent struct {
 	IsSettlement         bool // 是否结算,mockExchange专用
 }
 
+type KlineEvent struct {
+	OpenTime                 int64
+	Open                     decimal.Decimal
+	High                     decimal.Decimal
+	Low                      decimal.Decimal
+	Close                    decimal.Decimal
+	Volume                   decimal.Decimal
+	CloseTime                int64
+	QuoteAssetVolume         decimal.Decimal
+	NumberOfTrades           int64
+	TakerBuyBaseAssetVolume  decimal.Decimal
+	TakerBuyQuoteAssetVolume decimal.Decimal
+}
+
 type AccountUpdateEvent struct {
 	Asset   string
 	Balance decimal.Decimal

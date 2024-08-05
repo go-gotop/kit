@@ -1,5 +1,7 @@
 package dfmock
 
+import "github.com/shopspring/decimal"
+
 type tradeEvent struct {
 	TradeID   int64  `json:"TradeID"`
 	Size      string `json:"Size"`
@@ -18,4 +20,18 @@ type funtureMarkPriceEvent struct {
 	LastFundingRate      string `json:"lastFundingRate"`      // 资金费率
 	NextFundingTime      int64  `json:"nextFundingTime"`      // 下个资金时间
 	IsSettlement         bool   `json:"isSettlement"`         // 是否结算
+}
+
+type klineEvent struct {
+	OpenTime                 int64           `json:"openTime"`
+	Open                     decimal.Decimal `json:"open"`
+	High                     decimal.Decimal `json:"high"`
+	Low                      decimal.Decimal `json:"low"`
+	Close                    decimal.Decimal `json:"close"`
+	Volume                   decimal.Decimal `json:"volume"`
+	CloseTime                int64           `json:"closeTime"`
+	QuoteAssetVolume         decimal.Decimal `json:"quoteAssetVolume"`
+	NumberOfTrades           int64           `json:"numberOfTrades"`
+	TakerBuyBaseAssetVolume  decimal.Decimal `json:"takerBuyBaseAssetVolume"`
+	TakerBuyQuoteAssetVolume decimal.Decimal `json:"takerBuyQuoteAssetVolume"`
 }
