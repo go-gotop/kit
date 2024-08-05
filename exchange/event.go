@@ -127,6 +127,7 @@ type MarkPriceEvent struct {
 }
 
 type KlineEvent struct {
+	Symbol                   string
 	OpenTime                 int64
 	Open                     decimal.Decimal
 	High                     decimal.Decimal

@@ -23,15 +23,16 @@ type funtureMarkPriceEvent struct {
 }
 
 type klineEvent struct {
-	OpenTime                 int64           `json:"openTime"`
-	Open                     decimal.Decimal `json:"open"`
-	High                     decimal.Decimal `json:"high"`
-	Low                      decimal.Decimal `json:"low"`
-	Close                    decimal.Decimal `json:"close"`
-	Volume                   decimal.Decimal `json:"volume"`
-	CloseTime                int64           `json:"closeTime"`
-	QuoteAssetVolume         decimal.Decimal `json:"quoteAssetVolume"`
-	NumberOfTrades           int64           `json:"numberOfTrades"`
-	TakerBuyBaseAssetVolume  decimal.Decimal `json:"takerBuyBaseAssetVolume"`
-	TakerBuyQuoteAssetVolume decimal.Decimal `json:"takerBuyQuoteAssetVolume"`
+	Symbol                   string          `json:"Symbol"`
+	OpenTime                 int64           `json:"OpenTime"`
+	Open                     decimal.Decimal `json:"Open"`
+	High                     decimal.Decimal `json:"High"`
+	Low                      decimal.Decimal `json:"Low"`
+	Close                    decimal.Decimal `json:"Close"`
+	Volume                   decimal.Decimal `json:"Volume"`
+	CloseTime                int64           `json:"CloseTime"`
+	QuoteAssetVolume         decimal.Decimal `json:"QuoteAssetVolume"`
+	NumberOfTrades           int64           `json:"NumberOfTrades"`
+	TakerBuyBaseAssetVolume  decimal.Decimal `json:"TakerBuyBaseAssetVolume"`
+	TakerBuyQuoteAssetVolume decimal.Decimal `json:"TakerBuyQuoteAssetVolume"`
 }

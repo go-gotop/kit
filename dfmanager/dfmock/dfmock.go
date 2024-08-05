@@ -336,6 +336,7 @@ func klineToEvent(message []byte) (*exchange.KlineEvent, error) {
 	}
 
 	te := &exchange.KlineEvent{
+		Symbol:                   e.Symbol,
 		OpenTime:                 e.OpenTime,
 		Open:                     e.Open,
 		High:                     e.High,
