@@ -95,7 +95,7 @@ func (h *RedisHandler) Log(level log.Level, keyvals ...interface{}) error {
 		}
 	}
 	nano := time.Now().UnixNano()
-	key := fmt.Sprintf("{log}:%d", nano)
+	key := fmt.Sprintf("log:%d", nano)
 	entry := &LogEntry{
 		Service:   h.serviceName,
 		Level:     levelField,
