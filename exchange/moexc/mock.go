@@ -165,5 +165,32 @@ func (b *mockExchange) MarginBorrowOrRepay(ctx context.Context, req *exchange.Ma
 }
 
 func (b *mockExchange) GetMarginInventory(ctx context.Context, req *exchange.MarginInventoryRequest) (*exchange.MarginInventory, error) {
-	return nil, nil
+	r := &mohttp.Request{
+		Method:    http.MethodGet,
+		Endpoint:  "/api/exchange/margin/inventory",
+		SecType:   mohttp.SecTypeAPIKey,
+		APIKey:    req.APIKey,
+		SecretKey: req.SecretKey,
+	}
+	b.client.SetApiEndpoint(b.opts.mockExchangEndpoint)
+	r = r.SetParams(mohttp.Params{"type": req.Typ})
+	data, err := b.client.CallAPI(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	var res struct {
+		Code    int               `json:"code"`
+		Data    map[string]string `json:"assets"`
+		Message string            `json:"message"`
+	}
+
+	// var res map[string]string
+	err = mohttp.Json.Unmarshal(data, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &exchange.MarginInventory{
+		Assets: res.Data,
+	}, nil
 }
