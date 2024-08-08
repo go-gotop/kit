@@ -37,11 +37,13 @@ var (
 )
 
 const (
-	bnSpotWsEndpoint    = "wss://stream.binance.com:9443/ws"
-	bnFuturesWsEndpoint = "wss://fstream.binance.com/ws"
-	bnMarginWsEndpoint  = "wss://stream.binance.com:9443/ws"
-	bnSpotEndpoint      = "https://api.binance.com"
-	bnFuturesEndpoint   = "https://fapi.binance.com"
+	bnSpotWsEndpoint            = "wss://stream.binance.com:9443/ws"
+	bnFuturesWsEndpoint         = "wss://fstream.binance.com/ws"
+	bnMarginWsEndpoint          = "wss://stream.binance.com:9443/ws"
+	bnPortfolioMarginWsEndpoint = "wss://fstream.binance.com/pm/ws"
+	bnSpotEndpoint              = "https://api.binance.com"
+	bnFuturesEndpoint           = "https://fapi.binance.com"
+	bnPortfolioMarginEndpoint   = "https://papi.binance.com"
 
 	redisKeyPrefix = "binance_listenkey:"
 )
@@ -130,11 +132,16 @@ func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 	generateTime := time.Now()
 
 	// 拼接 listenKey 到请求地址
-	endpoint := fmt.Sprintf("%s/%s", bnSpotWsEndpoint, key)
-	if req.Instrument == exchange.InstrumentTypeFutures {
-		endpoint = fmt.Sprintf("%s/%s", bnFuturesWsEndpoint, key)
-	} else if req.Instrument == exchange.InstrumentTypeMargin {
-		endpoint = fmt.Sprintf("%s/%s", bnMarginWsEndpoint, key)
+	var endpoint string
+	if req.IsUnifiedAccount {
+		endpoint = fmt.Sprintf("%s/%s", bnPortfolioMarginWsEndpoint, key)
+	} else {
+		endpoint = fmt.Sprintf("%s/%s", bnSpotWsEndpoint, key)
+		if req.Instrument == exchange.InstrumentTypeFutures {
+			endpoint = fmt.Sprintf("%s/%s", bnFuturesWsEndpoint, key)
+		} else if req.Instrument == exchange.InstrumentTypeMargin {
+			endpoint = fmt.Sprintf("%s/%s", bnMarginWsEndpoint, key)
+		}
 	}
 
 	//构建连接池  //配置连接数量 默认2 要自定义连接时间
@@ -436,15 +443,20 @@ func (o *of) generateListenKey(req *streammanager.StreamRequest) (string, error)
 		SecType:   bnhttp.SecTypeAPIKey,
 	}
 
-	if req.Instrument == exchange.InstrumentTypeFutures {
-		r.Endpoint = "/fapi/v1/listenKey"
-		o.client.SetApiEndpoint(bnFuturesEndpoint)
-	} else if req.Instrument == exchange.InstrumentTypeSpot {
-		r.Endpoint = "/api/v3/userDataStream"
-		o.client.SetApiEndpoint(bnSpotEndpoint)
-	} else if req.Instrument == exchange.InstrumentTypeMargin {
-		r.Endpoint = "/sapi/v1/userDataStream"
-		o.client.SetApiEndpoint(bnSpotEndpoint)
+	if !req.IsUnifiedAccount {
+		if req.Instrument == exchange.InstrumentTypeFutures {
+			r.Endpoint = "/fapi/v1/listenKey"
+			o.client.SetApiEndpoint(bnFuturesEndpoint)
+		} else if req.Instrument == exchange.InstrumentTypeSpot {
+			r.Endpoint = "/api/v3/userDataStream"
+			o.client.SetApiEndpoint(bnSpotEndpoint)
+		} else if req.Instrument == exchange.InstrumentTypeMargin {
+			r.Endpoint = "/sapi/v1/userDataStream"
+			o.client.SetApiEndpoint(bnSpotEndpoint)
+		}
+	} else {
+		r.Endpoint = "/papi/v1/listenKey"
+		o.client.SetApiEndpoint(bnPortfolioMarginEndpoint)
 	}
 
 	data, err := o.client.CallAPI(context.Background(), r)
