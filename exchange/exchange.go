@@ -199,18 +199,19 @@ type GetAssetsRequest struct {
 }
 
 type CreateOrderRequest struct {
-	APIKey        string
-	SecretKey     string
-	OrderTime     int64
-	Symbol        string
-	ClientOrderID string
-	Side          SideType
-	OrderType     OrderType
-	PositionSide  PositionSide
-	TimeInForce   TimeInForce
-	Instrument    InstrumentType
-	Size          decimal.Decimal
-	Price         decimal.Decimal
+	APIKey           string
+	SecretKey        string
+	OrderTime        int64
+	Symbol           string
+	ClientOrderID    string
+	Side             SideType
+	OrderType        OrderType
+	PositionSide     PositionSide
+	TimeInForce      TimeInForce
+	Instrument       InstrumentType
+	Size             decimal.Decimal
+	Price            decimal.Decimal
+	IsUnifiedAccount bool // 统一账户, 默认 false
 }
 
 type CreateOrderResponse struct {

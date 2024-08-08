@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	bnSpotEndpoint    = "https://api.binance.com"
-	bnFuturesEndpoint = "https://fapi.binance.com"
+	bnSpotEndpoint            = "https://api.binance.com"
+	bnFuturesEndpoint         = "https://fapi.binance.com"
+	bnPortfolioMarginEndpoint = "https://papi.binance.com"
 )
 
 func NewBinance(cli *bnhttp.Client) exchange.Exchange {
@@ -332,7 +333,12 @@ func (b *binance) createMarginOrder(ctx context.Context, o *exchange.CreateOrder
 		Endpoint:  "/sapi/v1/margin/order",
 		SecType:   bnhttp.SecTypeSigned,
 	}
-	b.client.SetApiEndpoint(bnSpotEndpoint)
+	if o.IsUnifiedAccount {
+		r.Endpoint = "/papi/v1/margin/order"
+		b.client.SetApiEndpoint(bnPortfolioMarginEndpoint)
+	} else {
+		b.client.SetApiEndpoint(bnSpotEndpoint)
+	}
 	r = r.SetFormParams(toBnMarginOrderParams(o))
 	data, err := b.client.CallAPI(ctx, r)
 	if err != nil {
@@ -354,7 +360,12 @@ func (b *binance) createFuturesOrder(ctx context.Context, o *exchange.CreateOrde
 		Endpoint:  "/fapi/v1/order",
 		SecType:   bnhttp.SecTypeSigned,
 	}
-	b.client.SetApiEndpoint(bnFuturesEndpoint)
+	if o.IsUnifiedAccount {
+		r.Endpoint = "/papi/v1/um/order"
+		b.client.SetApiEndpoint(bnPortfolioMarginEndpoint)
+	} else {
+		b.client.SetApiEndpoint(bnFuturesEndpoint)
+	}
 	r = r.SetFormParams(toBnFuturesOrderParams(o))
 	data, err := b.client.CallAPI(ctx, r)
 	if err != nil {
