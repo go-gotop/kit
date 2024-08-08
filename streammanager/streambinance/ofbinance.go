@@ -85,13 +85,15 @@ func NewBinanceStream(cli *bnhttp.Client, redisClient *redis.Client, limiter lim
 }
 
 type listenKey struct {
-	AccountID   string                  `json:"account_id"`
-	Key         string                  `json:"key"`
-	APIKey      string                  `json:"api_key"`
-	SecretKey   string                  `json:"secret_key"`
-	CreatedTime time.Time               `json:"created_time"`
-	Instrument  exchange.InstrumentType `json:"instrument"`
-	UUIDList    []string                `json:"uuid_list"`
+	AccountID        string                  `json:"account_id"`
+	Key              string                  `json:"key"`
+	APIKey           string                  `json:"api_key"`
+	SecretKey        string                  `json:"secret_key"`
+	CreatedTime      time.Time               `json:"created_time"`
+	Instrument       exchange.InstrumentType `json:"instrument"`
+	UUIDList         []string                `json:"uuid_list"`
+	IsUnifiedAccount bool                    `json:"is_unified_account"` // 统一账户, 默认 false
+
 }
 
 type of struct {
@@ -168,13 +170,14 @@ func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 			}
 		} else {
 			lk := &listenKey{
-				AccountID:   req.AccountId,
-				Key:         key,
-				CreatedTime: generateTime,
-				Instrument:  req.Instrument,
-				APIKey:      req.APIKey,
-				SecretKey:   req.SecretKey,
-				UUIDList:    []string{uuid},
+				AccountID:        req.AccountId,
+				Key:              key,
+				CreatedTime:      generateTime,
+				Instrument:       req.Instrument,
+				APIKey:           req.APIKey,
+				SecretKey:        req.SecretKey,
+				UUIDList:         []string{uuid},
+				IsUnifiedAccount: req.IsUnifiedAccount,
 			}
 			o.listenKeySets[req.AccountId+string(req.Instrument)] = lk
 
@@ -314,7 +317,7 @@ func (o *of) createWebsocketHandler(req *streammanager.StreamRequest, rcli *redi
 			return
 		}
 		switch j.Get("e").MustString() {
-		// 现货杠杠订单更新
+		// 现货杠杠订单更新 | 统一账户杠杆订单更新
 		case "executionReport":
 			event := &bnSpotWsOrderUpdateEvent{}
 			err = bnhttp.Json.Unmarshal(message, event)
@@ -333,7 +336,7 @@ func (o *of) createWebsocketHandler(req *streammanager.StreamRequest, rcli *redi
 			if req.OrderEvent != nil {
 				req.OrderEvent(oe)
 			}
-		// 合约订单更新
+		// 合约订单更新  ｜ 统一账户合约订单更新
 		case "ORDER_TRADE_UPDATE":
 			event := &bnFuturesWsUserDataEvent{}
 			err = bnhttp.Json.Unmarshal(message, event)
@@ -352,7 +355,7 @@ func (o *of) createWebsocketHandler(req *streammanager.StreamRequest, rcli *redi
 			if req.OrderEvent != nil {
 				req.OrderEvent(oe)
 			}
-		// 合约余额和持仓更新
+		// 合约余额和持仓更新  ｜ 统一账户合约余额和持仓更新
 		case "ACCOUNT_UPDATE":
 			event := &bnFuturesWsAccountUpdateEvent{}
 			err = bnhttp.Json.Unmarshal(message, event)
@@ -368,7 +371,7 @@ func (o *of) createWebsocketHandler(req *streammanager.StreamRequest, rcli *redi
 			if req.AccountEvent != nil {
 				req.AccountEvent(au)
 			}
-		// 现货账户杠杠更新
+		// 现货账户杠杠更新 ｜ 统一账户杠杆更新
 		case "outboundAccountPosition":
 			event := &bnSpotWsAccountUpdateEvent{}
 			err = bnhttp.Json.Unmarshal(message, event)
@@ -484,18 +487,23 @@ func (o *of) updateListenKey(lk *listenKey) error {
 		SecType:   bnhttp.SecTypeAPIKey,
 	}
 
-	if lk.Instrument == exchange.InstrumentTypeSpot {
-		r.Endpoint = "/api/v3/userDataStream"
+	if !lk.IsUnifiedAccount {
+		if lk.Instrument == exchange.InstrumentTypeSpot {
+			r.Endpoint = "/api/v3/userDataStream"
+			r.SetFormParam("listenKey", lk.Key)
+			o.client.SetApiEndpoint(bnSpotEndpoint)
+		} else if lk.Instrument == exchange.InstrumentTypeFutures {
+			r.Endpoint = "/fapi/v1/listenKey"
+			o.client.SetApiEndpoint(bnFuturesEndpoint)
+		} else if lk.Instrument == exchange.InstrumentTypeMargin {
+			r.Endpoint = "/sapi/v1/userDataStream"
+			r.SetFormParam("listenKey", lk.Key)
+			o.client.SetApiEndpoint(bnSpotEndpoint)
+		}
+	} else {
+		r.Endpoint = "/papi/v1/listenKey"
 		r.SetFormParam("listenKey", lk.Key)
-		o.client.SetApiEndpoint(bnSpotEndpoint)
-	} else if lk.Instrument == exchange.InstrumentTypeFutures {
-		r.Endpoint = "/fapi/v1/listenKey"
-		o.client.SetApiEndpoint(bnFuturesEndpoint)
-	} else if lk.Instrument == exchange.InstrumentTypeMargin {
-		r.Endpoint = "/sapi/v1/userDataStream"
-		r.SetFormParam("listenKey", lk.Key)
-		o.client.SetApiEndpoint(bnSpotEndpoint)
-
+		o.client.SetApiEndpoint(bnPortfolioMarginEndpoint)
 	}
 
 	_, err := o.client.CallAPI(context.Background(), r)
