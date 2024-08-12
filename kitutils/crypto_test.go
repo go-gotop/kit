@@ -1,4 +1,4 @@
-package utils
+package kitutils
 
 import (
 	"fmt"

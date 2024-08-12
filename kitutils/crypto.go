@@ -1,15 +1,16 @@
-package utils
+package kitutils
 
 import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"io"
+	"os"
+
 	"github.com/deatil/go-cryptobin/cryptobin/crypto"
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/nacl/secretbox"
-	"io"
-	"os"
 )
 
 // GenerateSaltFromUUID 生成盐（IV），取UUID的前n字节和后16-n字节，凑够16字节
