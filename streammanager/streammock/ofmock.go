@@ -384,7 +384,7 @@ func swoueToOrderEvent(event *wsOrderUpdateEvent) (*exchange.OrderResultEvent, e
 		By:              exchange.ByTaker, // 默认为吃单  mock 交易所目前只有市价单
 		Side:            exchange.SideType(event.Side),
 		Type:            exchange.OrderType(event.Type),
-		Instrument:      exchange.InstrumentTypeSpot,
+		Instrument:      exchange.InstrumentType(event.Instrument),
 		Volume:          volume,
 		Price:           price,
 		LatestVolume:    latestVolume,
