@@ -104,7 +104,7 @@ func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 	generateTime := time.Now()
 	uuid := uuid.New().String() // 一个链接的uuid，因为一个账户可能存在多条链接，所以不能用账户ID做标识
 	// 拼接 listenKey 到请求地址
-	endpoint := fmt.Sprintf("%s?listenKey=%s", o.opts.wsEndpoint, key)
+	endpoint := fmt.Sprintf("%s?listenKey=%s&instrument=%s", o.opts.wsEndpoint, key, req.Instrument)
 
 	wsHandler := func(message []byte) {
 		event := &wsOrderUpdateEvent{}
