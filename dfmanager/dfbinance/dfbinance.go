@@ -86,6 +86,9 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 	case exchange.InstrumentTypeSpot:
 		endpoint = fmt.Sprintf("%s/%s@trade", bnSpotWsEndpoint, symbol)
 		fn = spotToTradeEvent
+	case exchange.InstrumentTypeMargin:
+		endpoint = fmt.Sprintf("%s/%s@trade", bnSpotWsEndpoint, symbol)
+		fn = spotToTradeEvent
 	case exchange.InstrumentTypeFutures:
 		endpoint = fmt.Sprintf("%s/%s@aggTrade", bnFuturesWsEndpoint, symbol)
 		fn = futuresToTradeEvent
