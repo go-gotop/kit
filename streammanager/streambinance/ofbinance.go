@@ -187,33 +187,6 @@ func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 			}
 		}
 	}
-	// 判断账户id是否存在listenkey，存在则不用再次添加，只添加uuid, 更新createTime 和 listenkey
-	//if _, ok := o.listenKeySets[req.AccountId+string(req.Instrument)]; ok {
-	//	o.listenKeySets[req.AccountId+string(req.Instrument)].UUIDList = append(o.listenKeySets[req.AccountId+string(req.Instrument)].UUIDList, uuid)
-	//	o.listenKeySets[req.AccountId+string(req.Instrument)].CreatedTime = generateTime
-	//	o.listenKeySets[req.AccountId+string(req.Instrument)].Key = key
-	//	err := o.saveListenKeySet(req.AccountId, string(req.Instrument), o.listenKeySets[req.AccountId+string(req.Instrument)])
-	//	if err != nil {
-	//		return "", err
-	//	}
-	//	return uuid, nil
-	//}
-	//
-	//lk := &listenKey{
-	//	AccountID:   req.AccountId,
-	//	Key:         key,
-	//	CreatedTime: generateTime,
-	//	Instrument:  req.Instrument,
-	//	APIKey:      req.APIKey,
-	//	SecretKey:   req.SecretKey,
-	//	UUIDList:    []string{uuid},
-	//}
-	//o.listenKeySets[req.AccountId+string(req.Instrument)] = lk
-	//
-	//err = o.saveListenKeySet(req.AccountId, string(req.Instrument), lk)
-	//if err != nil {
-	//	return "", err
-	//}
 
 	return o.listenKeySets[req.AccountId+string(req.Instrument)].UUIDList, nil
 }
@@ -319,25 +292,54 @@ func (o *of) createWebsocketHandler(req *streammanager.StreamRequest, rcli *redi
 		switch j.Get("e").MustString() {
 		// 现货杠杠订单更新 | 统一账户杠杆订单更新
 		case "executionReport":
-			event := &bnSpotWsOrderUpdateEvent{}
-			err = bnhttp.Json.Unmarshal(message, event)
-			if err != nil {
-				o.opts.logger.Error("order unmarshal error", err)
+			if req.Instrument == exchange.InstrumentTypeFutures {
 				return
 			}
-			if !o.onlyProcessing(event.ClientOrderId+event.Status, rcli) {
-				return
+			if req.IsUnifiedAccount {
+				event := &bnUniSpotWsOrderUpdateEvent{}
+
+				err = bnhttp.Json.Unmarshal(message, event)
+				if err != nil {
+					o.opts.logger.Error("order unmarshal error", err)
+					return
+				}
+				if !o.onlyProcessing(event.ClientOrderId+event.Status, rcli) {
+					return
+				}
+				oe, err := swoueUniToOrderEvent(event)
+				if err != nil {
+					o.opts.logger.Error("order to order event error", err)
+					return
+				}
+				if req.OrderEvent != nil {
+					req.OrderEvent(oe)
+				}
+			} else {
+				event := &bnSpotWsOrderUpdateEvent{}
+
+				err = bnhttp.Json.Unmarshal(message, event)
+				if err != nil {
+					o.opts.logger.Error("order unmarshal error", err)
+					return
+				}
+				if !o.onlyProcessing(event.ClientOrderId+event.Status, rcli) {
+					return
+				}
+				oe, err := swoueToOrderEvent(event)
+				if err != nil {
+					o.opts.logger.Error("order to order event error", err)
+					return
+				}
+				if req.OrderEvent != nil {
+					req.OrderEvent(oe)
+				}
 			}
-			oe, err := swoueToOrderEvent(event)
-			if err != nil {
-				o.opts.logger.Error("order to order event error", err)
-				return
-			}
-			if req.OrderEvent != nil {
-				req.OrderEvent(oe)
-			}
+
 		// 合约订单更新  ｜ 统一账户合约订单更新
 		case "ORDER_TRADE_UPDATE":
+			if req.Instrument == exchange.InstrumentTypeSpot || req.Instrument == exchange.InstrumentTypeMargin {
+				return
+			}
 			event := &bnFuturesWsUserDataEvent{}
 			err = bnhttp.Json.Unmarshal(message, event)
 			if err != nil {
@@ -628,6 +630,68 @@ func pongHandler(appData string, conn websocket.WebSocketConn) error {
 }
 
 func swoueToOrderEvent(event *bnSpotWsOrderUpdateEvent) (*exchange.OrderResultEvent, error) {
+	price, err := decimal.NewFromString(event.Price)
+	if err != nil {
+		return nil, err
+	}
+	volume, err := decimal.NewFromString(event.Volume)
+	if err != nil {
+		return nil, err
+	}
+	latestVolume, err := decimal.NewFromString(event.LatestVolume)
+	if err != nil {
+		return nil, err
+	}
+	filledVolume, err := decimal.NewFromString(event.FilledVolume)
+	if err != nil {
+		return nil, err
+	}
+	latestPrice, err := decimal.NewFromString(event.LatestPrice)
+	if err != nil {
+		return nil, err
+	}
+	feeCost, err := decimal.NewFromString(event.FeeCost)
+	if err != nil {
+		return nil, err
+	}
+	filledQuoteVolume, err := decimal.NewFromString(event.FilledQuoteVolume)
+	if err != nil {
+		return nil, err
+	}
+	ps := exchange.PositionSideLong
+	avgPrice := decimal.Zero
+	if filledQuoteVolume.GreaterThan(decimal.Zero) && filledVolume.GreaterThan(decimal.Zero) {
+		avgPrice = filledQuoteVolume.Div(filledVolume)
+	}
+	ore := &exchange.OrderResultEvent{
+		PositionSide:    ps,
+		Exchange:        exchange.BinanceExchange,
+		Symbol:          event.Symbol,
+		ClientOrderID:   event.ClientOrderId,
+		ExecutionType:   exchange.ExecutionState(event.ExecutionType),
+		State:           exchange.OrderState(event.Status),
+		OrderID:         fmt.Sprintf("%d", event.Id),
+		TransactionTime: event.TransactionTime,
+		Side:            exchange.SideType(event.Side),
+		Type:            exchange.OrderType(event.Type),
+		Instrument:      exchange.InstrumentTypeSpot,
+		Volume:          volume,
+		By:              exchange.ByTaker,
+		Price:           price,
+		LatestVolume:    latestVolume,
+		FilledVolume:    filledVolume,
+		LatestPrice:     latestPrice,
+		FeeAsset:        event.FeeAsset,
+		FeeCost:         feeCost,
+		AvgPrice:        avgPrice,
+	}
+	if event.IsMaker {
+		ore.By = exchange.ByMaker
+	}
+	return ore, nil
+}
+
+func swoueUniToOrderEvent(event *bnUniSpotWsOrderUpdateEvent) (*exchange.OrderResultEvent, error) {
 	price, err := decimal.NewFromString(event.Price)
 	if err != nil {
 		return nil, err
