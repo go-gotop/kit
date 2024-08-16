@@ -2,20 +2,22 @@ package sampler
 
 import (
 	"github.com/shopspring/decimal"
+	"github.com/go-gotop/kit/exchange"
 )
 
-type Sampler interface {
-	Close() error
-	Run() error
+type PricePoint struct {
+	Timestamp int64
+	Price     decimal.Decimal
 }
 
 type AggregatedTrade struct {
 	SellCount      uint64
 	BuyCount       uint64
 	Timestamp      int64
+	OpenPrice      PricePoint
+	ClosePrice     PricePoint
 	HighestPrice   PricePoint
 	LowestPrice    PricePoint
-	CurrentPrice   PricePoint
 	TotalBuySize   decimal.Decimal
 	TotalSellSize  decimal.Decimal
 	TotalBuyQuote  decimal.Decimal
@@ -31,27 +33,24 @@ func (a *AggregatedTrade) Difference() decimal.Decimal {
 func (a *AggregatedTrade) PriceRange() (head PricePoint, tail PricePoint) {
 	head = a.HighestPrice
 	tail = a.LowestPrice
-	if a.HighestPrice.Timestamp - a.LowestPrice.Timestamp > 0 {
+	if a.HighestPrice.Timestamp > a.LowestPrice.Timestamp {
 		head = a.LowestPrice
 		tail = a.HighestPrice
 	}
 	return
 }
 
-type Handler func(*AggregatedTrade)
-
-type Middleware func(Handler) Handler
-
-type PricePoint struct {
-	Price     decimal.Decimal
-	Timestamp int64
+func (a *AggregatedTrade) IsUp() bool {
+	head, tail := a.PriceRange()
+	return tail.Price.GreaterThan(head.Price)
 }
 
-func Chain(m ...Middleware) Middleware {
-	return func(next Handler) Handler {
-		for i := len(m) - 1; i >= 0; i-- {
-			next = m[i](next)
-		}
-		return next
-	}
+func (a *AggregatedTrade) Equal() bool {
+	return a.HighestPrice.Price.Equal(a.LowestPrice.Price)
+}
+
+// Sampler is the interface that wraps the basic Sample method.
+type Sampler interface {
+	// Sample samples the data feed and returns the aggregated trade data
+	Sample(te *exchange.TradeEvent) *AggregatedTrade
 }
