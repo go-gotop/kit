@@ -26,6 +26,7 @@ func toAgg(te *exchange.TradeEvent, ms int64) *sampler.AggregatedTrade {
 	agg := &sampler.AggregatedTrade{}
 	agg.Timestamp = te.TradedAt
 	agg.HighestPrice = toPrice(te)
+	agg.ClosePrice = toPrice(te)
 	agg.LowestPrice = toPrice(te)
 	agg.OpenPrice = toPrice(te)
 	// 当前逐笔数据的时间戳减掉余数
