@@ -13,6 +13,7 @@ require (
 	github.com/segmentio/kafka-go v0.4.47
 	github.com/shopspring/decimal v1.3.1
 	github.com/stretchr/testify v1.9.0
+	github.com/tencentcloud/tencentcloud-sdk-go-intl-en v3.0.1027+incompatible
 	go.opentelemetry.io/otel v1.25.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.25.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.25.0
