@@ -111,7 +111,7 @@ func (h *RedisHandler) Log(level log.Level, keyvals ...interface{}) error {
 		log.Error(err)
 	}
 	// 设置过期时间
-	err = h.client.Expire(context.Background(), key, 10*24*time.Hour).Err()
+	err = h.client.Expire(context.Background(), key, 3*24*time.Hour).Err()
 	if err != nil {
 		log.Error(err)
 	}
