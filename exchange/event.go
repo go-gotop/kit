@@ -104,6 +104,40 @@ type StrategyStatusEvent struct {
 	Status StrategyStatus
 }
 
+// 系统内交易账户变更事件
+type AccountChangeEvent struct {
+	// 账户id
+	AccountID string
+	// 账户类型: 经典 CLASSIC, 统一 UNIFIED
+	AccountType string
+	// 交易种类
+	Instrument []string
+	// 交易所
+	Exchange string
+	// api_key
+	APIKey string
+	// secretKey
+	SecretKey string
+	// 用户id
+	UserID string
+	// 邮箱
+	Email string
+	// 描述
+	Description string
+	// 信号主题
+	SignalTopic string
+	// Order主题
+	OrderTopic string
+	// 状态主题
+	StatusTopic string
+	// 通知主题
+	NotifyTopic string
+	// 死信主题
+	ErrorTopic string
+	// 消费组id
+	GroupID string
+}
+
 type TradeEvent struct {
 	TradedAt   int64
 	TradeID    string
