@@ -118,24 +118,8 @@ type AccountChangeEvent struct {
 	APIKey string
 	// secretKey
 	SecretKey string
-	// 用户id
-	UserID string
-	// 邮箱
-	Email string
-	// 描述
-	Description string
-	// 信号主题
-	SignalTopic string
-	// Order主题
-	OrderTopic string
-	// 状态主题
-	StatusTopic string
-	// 通知主题
-	NotifyTopic string
-	// 死信主题
-	ErrorTopic string
-	// 消费组id
-	GroupID string
+	// 删除
+	DelStatus string
 }
 
 type TradeEvent struct {
