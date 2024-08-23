@@ -111,7 +111,7 @@ type AccountChangeEvent struct {
 	// 账户类型: 经典 CLASSIC, 统一 UNIFIED
 	AccountType string
 	// 交易种类
-	Instrument []string
+	Instrument []InstrumentType
 	// 交易所
 	Exchange string
 	// api_key
