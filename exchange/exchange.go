@@ -7,6 +7,9 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// PosMode ISOLATED 逐仓，CROSSED 全仓
+type PosMode string
+
 // SideType BUY, SELL
 type SideType string
 
@@ -47,6 +50,7 @@ type StrategySide string
 const (
 	BinanceExchange  = "BINANCE"
 	HuobiExchange    = "HUOBI"
+	OkxExchange      = "OKX"
 	CoinBaseExchange = "COINBASE"
 	MockExchange     = "MOCK"
 
@@ -61,6 +65,9 @@ const (
 
 	TransactionByUser   = "USER"
 	TransactionBySystem = "SYSTEM"
+
+	PosModeIsolated PosMode = "ISOLATED" // 逐仓
+	PosModeCrossed  PosMode = "CROSSED"  // 全仓
 
 	InstrumentTypeSpot    InstrumentType = "SPOT"
 	InstrumentTypeFutures InstrumentType = "FUTURES"
@@ -201,6 +208,7 @@ type GetAssetsRequest struct {
 type CreateOrderRequest struct {
 	APIKey           string
 	SecretKey        string
+	Passphrase       string // 秘钥 密码 (okex)
 	OrderTime        int64
 	Symbol           string
 	ClientOrderID    string
