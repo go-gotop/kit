@@ -211,6 +211,7 @@ type CreateOrderRequest struct {
 	Passphrase       string // 秘钥 密码 (okex)
 	OrderTime        int64
 	Symbol           string
+	CtVal            decimal.Decimal // 合约面值； 合约张数 = 合约数量 / 合约面值
 	ClientOrderID    string
 	Side             SideType
 	OrderType        OrderType

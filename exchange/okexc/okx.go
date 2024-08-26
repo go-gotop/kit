@@ -87,7 +87,12 @@ func toOrderParams(o *exchange.CreateOrderRequest) okhttp.Params {
 		"tdMode":  okxPosMode(exchange.PosModeCrossed), // 默认全仓
 		"side":    okxSide(o.Side),
 		"ordType": okxOrderType(o.OrderType),
-		"sz":      fmt.Sprintf("%v", o.Size),
+	}
+
+	if o.Instrument == exchange.InstrumentTypeFutures {
+		m["sz"] = fmt.Sprintf("%v", o.Size.Mul(o.CtVal))
+	} else {
+		m["sz"] = fmt.Sprintf("%v", o.Size)
 	}
 
 	if !o.Price.IsZero() {
