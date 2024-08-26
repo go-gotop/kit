@@ -58,4 +58,7 @@ type Websocket interface {
 
 	// GetConnectionDuration 方法用于获取当前连接的持续时间
 	ConnectionDuration() time.Duration
+
+	// WriteMessage 方法用于向Websocket服务器发送消息
+	WriteMessage(messageType int, data []byte) error
 }

@@ -122,6 +122,10 @@ func (w *GorillaWebsocket) IsConnected() bool {
 	return w.isConnected
 }
 
+func (w *GorillaWebsocket) WriteMessage(messageType int, data []byte) error {
+	return w.conn.WriteMessage(messageType, data)
+}
+
 func (w *GorillaWebsocket) GetCurrentRate() int {
 	elapsed := time.Since(w.connectTime).Seconds()
 	if elapsed == 0 {
