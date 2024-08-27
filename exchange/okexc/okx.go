@@ -84,9 +84,9 @@ func (o *okx) GetMarginInventory(ctx context.Context, req *exchange.MarginInvent
 func toOrderParams(o *exchange.CreateOrderRequest) okhttp.Params {
 	m := okhttp.Params{
 		"instId":  o.Symbol,
-		"tdMode":  okxPosMode(exchange.PosModeCrossed), // 默认全仓
-		"side":    okxSide(o.Side),
-		"ordType": okxOrderType(o.OrderType),
+		"tdMode":  OkxPosMode(exchange.PosModeCrossed), // 默认全仓
+		"side":    OkxSide(o.Side),
+		"ordType": OkxOrderType(o.OrderType),
 	}
 
 	if o.Instrument == exchange.InstrumentTypeFutures {
@@ -104,7 +104,7 @@ func toOrderParams(o *exchange.CreateOrderRequest) okhttp.Params {
 	}
 
 	if o.PositionSide != "" {
-		m["posSide"] = okxPositionSide(o.PositionSide)
+		m["posSide"] = OkxPositionSide(o.PositionSide)
 	}
 
 	return m

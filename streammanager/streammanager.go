@@ -8,6 +8,7 @@ type StreamRequest struct {
 	AccountId        string
 	APIKey           string
 	SecretKey        string
+	Passphrase       string
 	Instrument       exchange.InstrumentType
 	OrderEvent       func(evt *exchange.OrderResultEvent)
 	AccountEvent     func(evt []*exchange.AccountUpdateEvent)

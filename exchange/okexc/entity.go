@@ -6,18 +6,38 @@ import (
 	"github.com/go-gotop/kit/exchange"
 )
 
-func okxSide(side exchange.SideType) string {
+func OkxSide(side exchange.SideType) string {
 	return strings.ToLower(string(side))
 }
 
-func okxOrderType(orderType exchange.OrderType) string {
+func OkxOrderType(orderType exchange.OrderType) string {
 	return strings.ToLower(string(orderType))
 }
 
-func okxPositionSide(positionSide exchange.PositionSide) string {
+func OkxPositionSide(positionSide exchange.PositionSide) string {
 	return strings.ToLower(string(positionSide))
 }
 
-func okxPosMode(posMode exchange.PosMode) string {
+func OkxPosMode(posMode exchange.PosMode) string {
 	return strings.ToLower(string(posMode))
+}
+
+func OkxTSide(side string) exchange.SideType {
+	return exchange.SideType(strings.ToUpper(side))
+}
+
+func OkxTOrderType(orderType string) exchange.OrderType {
+	return exchange.OrderType(strings.ToUpper(orderType))
+}
+
+func OkxTPositionSide(positionSide string) exchange.PositionSide {
+	return exchange.PositionSide(strings.ToUpper(positionSide))
+}
+
+func OkxTPosMode(posMode string) exchange.PosMode {
+	return exchange.PosMode(strings.ToUpper(posMode))
+}
+
+func OkxTMarketType(marketType string) exchange.OrderType {
+	return exchange.OrderType(strings.ToUpper(marketType))
 }
