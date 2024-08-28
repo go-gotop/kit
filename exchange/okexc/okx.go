@@ -88,12 +88,12 @@ func toOrderParams(o *exchange.CreateOrderRequest) okhttp.Params {
 		"side":    OkxSide(o.Side),
 		"ordType": OkxOrderType(o.OrderType),
 	}
-
-	if o.Instrument == exchange.InstrumentTypeFutures {
-		m["sz"] = fmt.Sprintf("%v", o.Size.Mul(o.CtVal))
-	} else {
-		m["sz"] = fmt.Sprintf("%v", o.Size)
-	}
+	m["sz"] = fmt.Sprintf("%v", o.Size)
+	// if o.Instrument == exchange.InstrumentTypeFutures {
+	// 	m["sz"] = fmt.Sprintf("%v", o.Size.Mul(o.CtVal))
+	// } else {
+	// 	m["sz"] = fmt.Sprintf("%v", o.Size)
+	// }
 
 	if !o.Price.IsZero() {
 		m["px"] = o.Price
