@@ -67,7 +67,7 @@ const (
 	TransactionBySystem = "SYSTEM"
 
 	PosModeIsolated PosMode = "ISOLATED" // 逐仓
-	PosModeCrossed  PosMode = "CROSSED"  // 全仓
+	PosModeCross  PosMode = "CROSS"  // 全仓
 
 	InstrumentTypeSpot    InstrumentType = "SPOT"
 	InstrumentTypeFutures InstrumentType = "FUTURES"

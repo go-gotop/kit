@@ -110,11 +110,15 @@ func (c *Client) parseRequest(r *Request, opts ...RequestOption) error {
 	curTime := currentTimestamp()
 	fullURL := fmt.Sprintf("%s%s", c.baseURL, r.Endpoint)
 	queryString := r.query.Encode()
-
-	bodyBytes, err := io.ReadAll(r.body)
-	if err != nil {
-		return err // handle error appropriately
+	bodyBytes := []byte{}
+	if r.body != nil {
+		bytes, err := io.ReadAll(r.body)
+		if err != nil {
+			return err // handle error appropriately
+		}
+		bodyBytes = bytes
 	}
+
 	bodyString := string(bodyBytes)
 
 	preSign := curTime + r.Method

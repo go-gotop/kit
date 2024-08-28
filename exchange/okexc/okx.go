@@ -42,7 +42,12 @@ func (o *okx) CreateOrder(ctx context.Context, req *exchange.CreateOrderRequest)
 
 	o.client.SetApiEndpoint(okEndpoint)
 
-	r = r.SetJSONBody(toOrderParams(req))
+	params, err := o.toOrderParams(req)
+	if err != nil {
+		return err
+	}
+
+	r = r.SetJSONBody(params)
 	data, err := o.client.CallAPI(ctx, r)
 	if err != nil {
 		return err
@@ -81,31 +86,82 @@ func (o *okx) GetMarginInventory(ctx context.Context, req *exchange.MarginInvent
 	return nil, nil
 }
 
-func toOrderParams(o *exchange.CreateOrderRequest) okhttp.Params {
+func (o *okx) convertContractCoin(typ string, instId string, sz string, opTyp string) (string, error) {
+	// typ 1:币转账 2:张转币
+	// instId 产品ID
+	// sz 数量
+	// opTyp open or close
+	r := &okhttp.Request{
+		Method:   "GET",
+		Endpoint: "/api/v5/public/convert-contract-coin",
+	}
+	r.SetParams(okhttp.Params{
+		"type":   typ,
+		"instId": instId,
+		"sz":     sz,
+		"opType": opTyp,
+	})
+	o.client.SetApiEndpoint(okEndpoint)
+	data, err := o.client.CallAPI(context.Background(), r)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	var result struct {
+		Code string `json:"code"`
+		Data []struct {
+			Typ    string `json:"type"`
+			InstID string `json:"instId"`
+			Px     string `json:"px"`
+			Sz     string `json:"sz"`
+			Unit   string `json:"unit"`
+		} `json:"data"`
+		Msg string `json:"msg"`
+	}
+	err = okhttp.Json.Unmarshal(data, &result)
+	if err != nil {
+		return "", err
+	}
+	return result.Data[0].Sz, nil
+}
+
+func (o *okx) toOrderParams(req *exchange.CreateOrderRequest) (okhttp.Params, error) {
 	m := okhttp.Params{
-		"instId":  o.Symbol,
-		"tdMode":  OkxPosMode(exchange.PosModeCrossed), // 默认全仓
-		"side":    OkxSide(o.Side),
-		"ordType": OkxOrderType(o.OrderType),
-	}
-	m["sz"] = fmt.Sprintf("%v", o.Size)
-	// if o.Instrument == exchange.InstrumentTypeFutures {
-	// 	m["sz"] = fmt.Sprintf("%v", o.Size.Mul(o.CtVal))
-	// } else {
-	// 	m["sz"] = fmt.Sprintf("%v", o.Size)
-	// }
-
-	if !o.Price.IsZero() {
-		m["px"] = o.Price
+		"instId":  req.Symbol,
+		"tdMode":  OkxPosMode(exchange.PosModeCross), // 默认全仓
+		"side":    OkxSide(req.Side),
+		"ordType": OkxOrderType(req.OrderType),
 	}
 
-	if o.ClientOrderID != "" {
-		m["clOrdId"] = o.ClientOrderID
+	if req.Instrument == exchange.InstrumentTypeFutures {
+		// 合约类型要将币转位张
+		opType := "open"
+		if req.Side == exchange.SideTypeSell && req.PositionSide == exchange.PositionSideLong ||
+			req.Side == exchange.SideTypeBuy && req.PositionSide == exchange.PositionSideShort {
+			opType = "close"
+		}
+
+		sz, err := o.convertContractCoin("1", req.Symbol, fmt.Sprintf("%v", req.Size), opType)
+		if err != nil {
+			return nil, err
+		}
+		m["sz"] = sz
+
+	} else {
+		m["sz"] = fmt.Sprintf("%v", req.Size)
 	}
 
-	if o.PositionSide != "" {
-		m["posSide"] = OkxPositionSide(o.PositionSide)
+	if !req.Price.IsZero() {
+		m["px"] = req.Price
 	}
 
-	return m
+	if req.ClientOrderID != "" {
+		m["clOrdId"] = req.ClientOrderID
+	}
+
+	if req.PositionSide != "" {
+		m["posSide"] = OkxPositionSide(req.PositionSide)
+	}
+
+	return m, nil
 }
