@@ -119,7 +119,7 @@ type AccountChangeEvent struct {
 	// secretKey
 	SecretKey string
 	// 删除
-	DelStatus string
+	DelStatus int8
 }
 
 type TradeEvent struct {

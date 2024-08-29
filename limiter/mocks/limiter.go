@@ -53,6 +53,20 @@ func (mr *MockLimiterMockRecorder) FutureAllow(arg0 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FutureAllow", reflect.TypeOf((*MockLimiter)(nil).FutureAllow), arg0)
 }
 
+// MarginAllow mocks base method.
+func (m *MockLimiter) MarginAllow(arg0 *limiter.LimiterReq) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarginAllow", arg0)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// MarginAllow indicates an expected call of MarginAllow.
+func (mr *MockLimiterMockRecorder) MarginAllow(arg0 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarginAllow", reflect.TypeOf((*MockLimiter)(nil).MarginAllow), arg0)
+}
+
 // SpotAllow mocks base method.
 func (m *MockLimiter) SpotAllow(arg0 *limiter.LimiterReq) bool {
 	m.ctrl.T.Helper()
