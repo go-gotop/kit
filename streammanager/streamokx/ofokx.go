@@ -87,8 +87,8 @@ func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 	}
 
 	conf := &wsmanager.WebsocketConfig{
-		PingHandler: pingHandler,
-		PongHandler: pongHandler,
+		// PingHandler: pingHandler,
+		// PongHandler: pongHandler,
 	}
 
 	endpoint := okWsEndpoint + "/ws/v5/private"
@@ -152,6 +152,9 @@ func (o *of) Shutdown() error {
 }
 
 func (o *of) login(uuid string, req *streammanager.StreamRequest) error {
+	o.mux.Lock()
+	defer o.mux.Unlock()
+
 	timestamp := time.Now().Unix()
 	preSign := fmt.Sprintf("%dGET/users/self/verify", timestamp)
 
@@ -187,6 +190,9 @@ func (o *of) login(uuid string, req *streammanager.StreamRequest) error {
 }
 
 func (o *of) subscribe(uuid string, req *streammanager.StreamRequest) error {
+	o.mux.Lock()
+	defer o.mux.Unlock()
+
 	subList := make([]string, 0)
 	if req.Instrument == exchange.InstrumentTypeFutures {
 		// 如果是合约类型，则添加永续和交割合约
@@ -236,13 +242,13 @@ func (o *of) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.Webso
 	return nil
 }
 
-func pingHandler(appData string, conn websocket.WebSocketConn) error {
-	return conn.WriteMessage(gwebsocket.PongMessage, []byte(appData))
-}
+// func pingHandler(appData string, conn websocket.WebSocketConn) error {
+// 	return conn.WriteMessage(gwebsocket.PongMessage, []byte(appData))
+// }
 
-func pongHandler(appData string, conn websocket.WebSocketConn) error {
-	return conn.WriteMessage(gwebsocket.PingMessage, []byte(appData))
-}
+// func pongHandler(appData string, conn websocket.WebSocketConn) error {
+// 	return conn.WriteMessage(gwebsocket.PingMessage, []byte(appData))
+// }
 
 func (o *of) createWebsocketHandler(uuid string, req *streammanager.StreamRequest, subhandler func(uuid string, req *streammanager.StreamRequest) error) func(message []byte) {
 	return func(message []byte) {
