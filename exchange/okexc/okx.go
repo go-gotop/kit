@@ -159,7 +159,7 @@ func (o *okx) toOrderParams(req *exchange.CreateOrderRequest) (okhttp.Params, er
 		m["clOrdId"] = req.ClientOrderID
 	}
 
-	if req.PositionSide != "" {
+	if req.Instrument == exchange.InstrumentTypeFutures && req.PositionSide != "" {
 		m["posSide"] = OkxPositionSide(req.PositionSide)
 	}
 
