@@ -83,6 +83,65 @@ func (mr *MockExchangeMockRecorder) CreateOrder(arg0, arg1 any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOrder", reflect.TypeOf((*MockExchange)(nil).CreateOrder), arg0, arg1)
 }
 
+// GetFundingRate mocks base method.
+func (m *MockExchange) GetFundingRate(arg0 context.Context, arg1 *exchange.GetFundingRate) ([]*exchange.GetFundingRateResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetFundingRate", arg0, arg1)
+	ret0, _ := ret[0].([]*exchange.GetFundingRateResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetFundingRate indicates an expected call of GetFundingRate.
+func (mr *MockExchangeMockRecorder) GetFundingRate(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFundingRate", reflect.TypeOf((*MockExchange)(nil).GetFundingRate), arg0, arg1)
+}
+
+// GetMarginInterestRate mocks base method.
+func (m *MockExchange) GetMarginInterestRate(arg0 context.Context, arg1 *exchange.GetMarginInterestRateRequest) ([]*exchange.GetMarginInterestRateResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMarginInterestRate", arg0, arg1)
+	ret0, _ := ret[0].([]*exchange.GetMarginInterestRateResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMarginInterestRate indicates an expected call of GetMarginInterestRate.
+func (mr *MockExchangeMockRecorder) GetMarginInterestRate(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMarginInterestRate", reflect.TypeOf((*MockExchange)(nil).GetMarginInterestRate), arg0, arg1)
+}
+
+// GetMarginInventory mocks base method.
+func (m *MockExchange) GetMarginInventory(arg0 context.Context, arg1 *exchange.MarginInventoryRequest) (*exchange.MarginInventory, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMarginInventory", arg0, arg1)
+	ret0, _ := ret[0].(*exchange.MarginInventory)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMarginInventory indicates an expected call of GetMarginInventory.
+func (mr *MockExchangeMockRecorder) GetMarginInventory(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMarginInventory", reflect.TypeOf((*MockExchange)(nil).GetMarginInventory), arg0, arg1)
+}
+
+// MarginBorrowOrRepay mocks base method.
+func (m *MockExchange) MarginBorrowOrRepay(arg0 context.Context, arg1 *exchange.MarginBorrowOrRepayRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarginBorrowOrRepay", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MarginBorrowOrRepay indicates an expected call of MarginBorrowOrRepay.
+func (mr *MockExchangeMockRecorder) MarginBorrowOrRepay(arg0, arg1 any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarginBorrowOrRepay", reflect.TypeOf((*MockExchange)(nil).MarginBorrowOrRepay), arg0, arg1)
+}
+
 // Name mocks base method.
 func (m *MockExchange) Name() string {
 	m.ctrl.T.Helper()

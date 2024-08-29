@@ -54,6 +54,9 @@ const (
 	CoinBaseExchange = "COINBASE"
 	MockExchange     = "MOCK"
 
+	AccountTypeClassic = "CLASSIC"
+	AccountTypeUnified = "UNIFIED"
+
 	StrategyTypeGrid    = "GRID"
 	StrategyTypeDynamic = "DYNAMIC"
 
