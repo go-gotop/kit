@@ -393,7 +393,7 @@ func toOrderEvent(message []byte, instrument exchange.InstrumentType) ([]*exchan
 			FilledVolume:      filledVolume,
 			LatestPrice:       latestPrice,
 			FeeAsset:          d.FeeCcy,
-			FeeCost:           feeCost,
+			FeeCost:           feeCost.Abs(), // 手续费为负的，这里取绝对值
 			AvgPrice:          avgPrice,
 			FilledQuoteVolume: filledQuoteVolume,
 		}
