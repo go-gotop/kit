@@ -43,6 +43,9 @@ func (w *GorillaWebsocket) Connect(req *websocket.WebsocketRequest) error {
 	w.isConnected = true
 	w.connectTime = time.Now()
 	w.messageCount = 0
+	if req.ConnectedHandler != nil {
+		req.ConnectedHandler(req.ID, w.conn)
+	}
 
 	return nil
 }

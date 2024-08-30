@@ -23,7 +23,7 @@ type Manager struct {
 	exitChan         chan struct{}                  // 退出通道
 	config           *connConfig                    // 连接配置
 	currentConnCount int                            // 当前连接数
-	mux              sync.Mutex                     // 互斥锁
+	mux              sync.RWMutex                     // 互斥锁
 	wsSets           map[string]websocket.Websocket // websocket 集合
 }
 
@@ -44,7 +44,6 @@ func NewManager(opts ...ConnConfig) *Manager {
 		exitChan:         make(chan struct{}),
 		config:           config,
 		currentConnCount: 0,
-		mux:              sync.Mutex{},
 		wsSets:           make(map[string]websocket.Websocket),
 	}
 
@@ -108,6 +107,7 @@ func (b *Manager) AddWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.
 		Endpoint:       req.Endpoint,
 		MessageHandler: req.MessageHandler,
 		ErrorHandler:   errorH,
+		ConnectedHandler: req.ConnectedHandler,
 	})
 
 	if err != nil {
@@ -142,6 +142,9 @@ func (b *Manager) GetWebsockets() map[string]websocket.Websocket {
 }
 
 func (b *Manager) IsConnected(uniq string) bool {
+	b.mux.RLock()
+	defer b.mux.RUnlock()
+
 	ws := b.wsSets[uniq]
 	if ws == nil {
 		return false
@@ -188,7 +191,7 @@ func (b *Manager) checkConnection() {
 		case <-b.exitChan:
 			return
 		default:
-			b.mux.Lock()
+			b.mux.RLock()
 			for _, ws := range b.wsSets {
 				// TODO: 处理重连逻辑，目前先注释掉判断是否断开连接，后续等系统监控预警完善之后再放开来
 				// if !ws.IsConnected() ||
@@ -199,13 +202,11 @@ func (b *Manager) checkConnection() {
 					} else {
 						//采取延迟重连策略  只要触发就说明需要要重连 为了避免不同时重连相同类型的连接
 						b.config.logger.Infof("reconnect websocket success")
-						time.Sleep(1 * time.Second)
 					}
 
 				}
 			}
-			b.mux.Unlock()
-			time.Sleep(1 * time.Second)
+			b.mux.RUnlock()
 		}
 	}
 }

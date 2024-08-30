@@ -1,8 +1,8 @@
 package websocket
 
 import (
-	"time"
 	"net/http"
+	"time"
 )
 
 type WebSocketConn interface {
@@ -32,6 +32,9 @@ type WebsocketRequest struct {
 
 	// ErrorHandler 是Websocket错误处理函数
 	ErrorHandler func(err error)
+
+	// ConnectedHandler 是Websocket连接建立成功后的回调函数
+	ConnectedHandler func(id string, conn WebSocketConn)
 }
 
 // Websocket 接口定义了基本的连接管理操作

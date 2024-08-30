@@ -47,22 +47,28 @@ func NewOkxDataFeed(limiter limiter.Limiter, opts ...Option) dfmanager.DataFeedM
 		opt(o)
 	}
 
-	return &df{
+	df := &df{
 		name:    exchange.BinanceExchange,
 		opts:    o,
 		limiter: limiter,
 		wsm: manager.NewManager(
 			manager.WithMaxConnDuration(o.maxConnDuration),
 		),
+		exitChan: make(chan struct{}),
 	}
+
+	go df.keepAlive()
+
+	return df
 }
 
 type df struct {
-	name    string
-	opts    *options
-	limiter limiter.Limiter
-	wsm     wsmanager.WebsocketManager
-	mux     sync.Mutex
+	exitChan chan struct{}
+	name     string
+	opts     *options
+	limiter  limiter.Limiter
+	wsm      wsmanager.WebsocketManager
+	mux      sync.RWMutex
 }
 
 func (d *df) Name() string {
@@ -77,10 +83,7 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 		return ErrLimitExceed
 	}
 
-	conf := &wsmanager.WebsocketConfig{
-		PingHandler: pingHandler,
-		PongHandler: pongHandler,
-	}
+	conf := &wsmanager.WebsocketConfig{}
 
 	endpoint := okWsEndpoint + "/ws/v5/business"
 	wsHandler := func(instrument exchange.InstrumentType) func(message []byte) {
@@ -111,36 +114,12 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 	}
 
 	err := d.addWebsocket(&websocket.WebsocketRequest{
-		ID:             req.ID,
-		Endpoint:       endpoint,
-		MessageHandler: wsHandler(req.Instrument),
-		ErrorHandler:   req.ErrorHandler,
+		ID:               req.ID,
+		Endpoint:         endpoint,
+		MessageHandler:   wsHandler(req.Instrument),
+		ErrorHandler:     req.ErrorHandler,
+		ConnectedHandler: d.connectedHandler(req),
 	}, conf)
-	if err != nil {
-		return err
-	}
-
-	sub := wsSub{
-		Op: "subscribe",
-		Args: []struct {
-			Channel string `json:"channel"`
-			InstID  string `json:"instId"`
-		}{
-			{
-				Channel: "trades-all",
-				InstID:  req.Symbol,
-			},
-		},
-	}
-
-	str, err := json.Marshal(sub)
-	if err != nil {
-		return err
-	}
-
-	time.Sleep(2 * time.Second)
-
-	err = d.wsm.GetWebsocket(req.ID).WriteMessage(gwebsocket.TextMessage, str)
 	if err != nil {
 		return err
 	}
@@ -157,8 +136,8 @@ func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
 }
 
 func (d *df) CloseDataFeed(id string) error {
-	d.mux.Lock()
-	defer d.mux.Unlock()
+	d.mux.RLock()
+	defer d.mux.RUnlock()
 
 	err := d.wsm.CloseWebsocket(id)
 	if err != nil {
@@ -169,6 +148,9 @@ func (d *df) CloseDataFeed(id string) error {
 }
 
 func (d *df) DataFeedList() []string {
+	d.mux.RLock()
+	defer d.mux.RUnlock()
+
 	mapList := d.wsm.GetWebsockets()
 	list := make([]string, 0, len(mapList))
 	for k := range mapList {
@@ -177,7 +159,43 @@ func (d *df) DataFeedList() []string {
 	return list
 }
 
+// 连接成功后订阅交易数据
+func (d *df) connectedHandler(req *dfmanager.DataFeedRequest) func(id string, conn websocket.WebSocketConn) {
+	return func(id string, conn websocket.WebSocketConn) {
+		// ws := d.wsm.GetWebsocket(id)
+		sub := wsSub{
+			Op: "subscribe",
+			Args: []struct {
+				Channel string `json:"channel"`
+				InstID  string `json:"instId"`
+			}{
+				{
+					Channel: "trades-all",
+					InstID:  req.Symbol,
+				},
+			},
+		}
+
+		str, err := json.Marshal(sub)
+		if err != nil {
+			if req.ErrorHandler != nil {
+				req.ErrorHandler(err)
+			}
+		}
+
+		err = conn.WriteMessage(gwebsocket.TextMessage, str)
+		if err != nil {
+			if req.ErrorHandler != nil {
+				req.ErrorHandler(err)
+			}
+		}
+	}
+}
+
 func (d *df) Shutdown() error {
+	d.mux.RLock()
+	defer d.mux.RUnlock()
+
 	err := d.wsm.Shutdown()
 	if err != nil {
 		return err
@@ -193,12 +211,22 @@ func (d *df) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.Webso
 	return nil
 }
 
-func pingHandler(appData string, conn websocket.WebSocketConn) error {
-	return conn.WriteMessage(gwebsocket.PongMessage, []byte(appData))
-}
-
-func pongHandler(appData string, conn websocket.WebSocketConn) error {
-	return conn.WriteMessage(gwebsocket.PingMessage, []byte(appData))
+func (d *df) keepAlive() {
+	for {
+		select {
+		case <-d.exitChan:
+			return
+		case <-time.After(10 * time.Second):
+			d.mux.RLock()
+			for _, ws := range d.wsm.GetWebsockets() {
+				err := ws.WriteMessage(gwebsocket.PingMessage, nil)
+				if err != nil {
+					d.opts.logger.Error("write ping message error", err)
+				}
+			}
+			d.mux.RUnlock()
+		}
+	}
 }
 
 func toTradeEvent(message []byte, instrument exchange.InstrumentType) (*exchange.TradeEvent, error) {

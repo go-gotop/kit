@@ -71,7 +71,7 @@ type of struct {
 	limiter    limiter.Limiter
 	streamList []streammanager.Stream
 	wsm        wsmanager.WebsocketManager
-	mux        sync.Mutex
+	mux        sync.RWMutex
 }
 
 func (o *of) Name() string {
@@ -86,27 +86,19 @@ func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 		return nil, ErrLimitExceed
 	}
 
-	conf := &wsmanager.WebsocketConfig{
-		// PingHandler: pingHandler,
-		// PongHandler: pongHandler,
-	}
+	conf := &wsmanager.WebsocketConfig{}
 
 	endpoint := okWsEndpoint + "/ws/v5/private"
 
 	// 建立连接
 	uuid := uuid.New().String()
 	err := o.addWebsocket(&websocket.WebsocketRequest{
-		Endpoint:       endpoint,
-		ID:             uuid,
-		MessageHandler: o.createWebsocketHandler(uuid, req, o.subscribe),
-		ErrorHandler:   req.ErrorHandler,
+		Endpoint:         endpoint,
+		ID:               uuid,
+		MessageHandler:   o.createWebsocketHandler(uuid, req, o.subscribe),
+		ErrorHandler:     req.ErrorHandler,
+		ConnectedHandler: o.connectedHandler(req),
 	}, conf)
-	if err != nil {
-		return nil, err
-	}
-
-	// 登录
-	err = o.login(uuid, req)
 	if err != nil {
 		return nil, err
 	}
@@ -123,8 +115,8 @@ func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 }
 
 func (o *of) CloseStream(accountId string, instrument exchange.InstrumentType, uuid string) error {
-	o.mux.Lock()
-	defer o.mux.Unlock()
+	o.mux.RLock()
+	defer o.mux.RUnlock()
 
 	err := o.wsm.CloseWebsocket(uuid)
 	if err != nil {
@@ -134,15 +126,15 @@ func (o *of) CloseStream(accountId string, instrument exchange.InstrumentType, u
 }
 
 func (o *of) StreamList() []streammanager.Stream {
-	o.mux.Lock()
-	defer o.mux.Unlock()
+	o.mux.RLock()
+	defer o.mux.RUnlock()
 
 	return o.streamList
 }
 
 func (o *of) Shutdown() error {
-	o.mux.Lock()
-	defer o.mux.Unlock()
+	o.mux.RLock()
+	defer o.mux.RUnlock()
 
 	err := o.wsm.Shutdown()
 	if err != nil {
@@ -151,7 +143,7 @@ func (o *of) Shutdown() error {
 	return nil
 }
 
-func (o *of) login(uuid string, req *streammanager.StreamRequest) error {
+func (o *of) login(req *streammanager.StreamRequest, conn websocket.WebSocketConn) error {
 	timestamp := time.Now().Unix()
 	preSign := fmt.Sprintf("%dGET/users/self/verify", timestamp)
 
@@ -183,7 +175,7 @@ func (o *of) login(uuid string, req *streammanager.StreamRequest) error {
 		return err
 	}
 
-	err = o.wsm.GetWebsocket(uuid).WriteMessage(gwebsocket.TextMessage, msg)
+	err = conn.WriteMessage(gwebsocket.TextMessage, msg)
 	return err
 }
 
@@ -237,14 +229,6 @@ func (o *of) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.Webso
 	return nil
 }
 
-// func pingHandler(appData string, conn websocket.WebSocketConn) error {
-// 	return conn.WriteMessage(gwebsocket.PongMessage, []byte(appData))
-// }
-
-// func pongHandler(appData string, conn websocket.WebSocketConn) error {
-// 	return conn.WriteMessage(gwebsocket.PingMessage, []byte(appData))
-// }
-
 func (o *of) createWebsocketHandler(uuid string, req *streammanager.StreamRequest, subhandler func(uuid string, req *streammanager.StreamRequest) error) func(message []byte) {
 	return func(message []byte) {
 		j, err := okhttp.NewJSON(message)
@@ -278,6 +262,17 @@ func (o *of) createWebsocketHandler(uuid string, req *streammanager.StreamReques
 		}
 		for _, te := range tes {
 			req.OrderEvent(te)
+		}
+	}
+}
+
+func (o *of) connectedHandler(req *streammanager.StreamRequest) func(id string, conn websocket.WebSocketConn) {
+	return func(id string, conn websocket.WebSocketConn) {
+		err := o.login(req, conn)
+		if err != nil {
+			if req.ErrorHandler != nil {
+				req.ErrorHandler(err)
+			}
 		}
 	}
 }
