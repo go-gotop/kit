@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	okEndpoint = "https://www.okx.com"
+	okEndpoint = "https://aws.okx.com"
 )
 
 func NewOkx(cli *okhttp.Client) exchange.Exchange {
@@ -128,13 +128,13 @@ func (o *okx) convertContractCoin(typ string, instId string, sz string, opTyp st
 func (o *okx) toOrderParams(req *exchange.CreateOrderRequest) (okhttp.Params, error) {
 	m := okhttp.Params{
 		"instId":  req.Symbol,
-		"tdMode":  OkxPosMode(exchange.PosModeCross), // 默认全仓
 		"side":    OkxSide(req.Side),
 		"ordType": OkxOrderType(req.OrderType),
 	}
 
 	if req.Instrument == exchange.InstrumentTypeFutures {
 		// 合约类型要将币转位张
+		m["tdMode"] = OkxPosMode(exchange.PosModeCross) // 默认全仓
 		opType := "open"
 		if req.Side == exchange.SideTypeSell && req.PositionSide == exchange.PositionSideLong ||
 			req.Side == exchange.SideTypeBuy && req.PositionSide == exchange.PositionSideShort {
@@ -147,8 +147,18 @@ func (o *okx) toOrderParams(req *exchange.CreateOrderRequest) (okhttp.Params, er
 		}
 		m["sz"] = sz
 
-	} else {
+	} else if req.Instrument == exchange.InstrumentTypeSpot {
+		m["tgtCcy"] = "base_ccy" // 指定size为交易币种
+		m["tdMode"] = "cash"
 		m["sz"] = fmt.Sprintf("%v", req.Size)
+	} else if req.Instrument == exchange.InstrumentTypeMargin {
+		m["tdMode"] = OkxPosMode(exchange.PosModeCross) // 默认全仓
+		m["sz"] = fmt.Sprintf("%v", req.Size)
+	}
+
+	if req.Instrument == exchange.InstrumentTypeMargin {
+		// TOFIX: 保证金模式
+		m["ccy"] = "USDT"
 	}
 
 	if !req.Price.IsZero() {

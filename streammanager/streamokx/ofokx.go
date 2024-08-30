@@ -152,9 +152,6 @@ func (o *of) Shutdown() error {
 }
 
 func (o *of) login(uuid string, req *streammanager.StreamRequest) error {
-	o.mux.Lock()
-	defer o.mux.Unlock()
-
 	timestamp := time.Now().Unix()
 	preSign := fmt.Sprintf("%dGET/users/self/verify", timestamp)
 
@@ -186,13 +183,11 @@ func (o *of) login(uuid string, req *streammanager.StreamRequest) error {
 		return err
 	}
 
-	return o.wsm.GetWebsocket(uuid).WriteMessage(gwebsocket.TextMessage, msg)
+	err = o.wsm.GetWebsocket(uuid).WriteMessage(gwebsocket.TextMessage, msg)
+	return err
 }
 
 func (o *of) subscribe(uuid string, req *streammanager.StreamRequest) error {
-	o.mux.Lock()
-	defer o.mux.Unlock()
-
 	subList := make([]string, 0)
 	if req.Instrument == exchange.InstrumentTypeFutures {
 		// 如果是合约类型，则添加永续和交割合约
