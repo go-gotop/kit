@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-gotop/kit/exchange"
 	"github.com/go-gotop/kit/requests/okhttp"
+	"github.com/shopspring/decimal"
 )
 
 const (
@@ -125,6 +126,41 @@ func (o *okx) convertContractCoin(typ string, instId string, sz string, opTyp st
 	return result.Data[0].Sz, nil
 }
 
+func (o *okx) getMarketPrice(instId string, instType string) (decimal.Decimal, error) {
+	r := &okhttp.Request{
+		Method:   "GET",
+		Endpoint: "/api/v5/public/mark-price",
+	}
+	r.SetParams(okhttp.Params{
+		"instId":   instId,
+		"instType": instType,
+	})
+	o.client.SetApiEndpoint(okEndpoint)
+	data, err := o.client.CallAPI(context.Background(), r)
+	if err != nil {
+		fmt.Println(err)
+	}
+	var result struct {
+		Code string `json:"code"`
+		Data []struct {
+			InstType  string `json:"instType"`
+			InstID    string `json:"instId"`
+			MarkPx    string `json:"markPx"`
+			Timestamp string `json:"ts"`
+		} `json:"data"`
+		Msg string `json:"msg"`
+	}
+	err = okhttp.Json.Unmarshal(data, &result)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	mkp, err := decimal.NewFromString(result.Data[0].MarkPx)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	return mkp, nil
+}
+
 func (o *okx) toOrderParams(req *exchange.CreateOrderRequest) (okhttp.Params, error) {
 	m := okhttp.Params{
 		"instId":  req.Symbol,
@@ -152,8 +188,18 @@ func (o *okx) toOrderParams(req *exchange.CreateOrderRequest) (okhttp.Params, er
 		m["tdMode"] = "cash"
 		m["sz"] = fmt.Sprintf("%v", req.Size)
 	} else if req.Instrument == exchange.InstrumentTypeMargin {
+		// okx 杠杠买入时，size 为 计价货币，所以这里要转换
 		m["tdMode"] = OkxPosMode(exchange.PosModeCross) // 默认全仓
-		m["sz"] = fmt.Sprintf("%v", req.Size)
+		if req.Side == exchange.SideTypeSell {
+			m["sz"] = fmt.Sprintf("%v", req.Size)
+		} else {
+			mkp, err := o.getMarketPrice(req.Symbol, "MARGIN")
+			if err != nil {
+				return nil, err
+			}
+			m["sz"] = fmt.Sprintf("%v", req.Size.Mul(mkp))
+		}
+
 	}
 
 	if req.Instrument == exchange.InstrumentTypeMargin {
