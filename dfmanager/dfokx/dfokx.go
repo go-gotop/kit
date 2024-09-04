@@ -219,7 +219,7 @@ func (d *df) keepAlive() {
 		case <-time.After(10 * time.Second):
 			d.mux.RLock()
 			for _, ws := range d.wsm.GetWebsockets() {
-				err := ws.WriteMessage(gwebsocket.PingMessage, nil)
+				err := ws.WriteMessage(gwebsocket.PingMessage, []byte("ping"))
 				if err != nil {
 					d.opts.logger.Error("write ping message error", err)
 				}
