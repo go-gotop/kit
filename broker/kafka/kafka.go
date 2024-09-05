@@ -1,11 +1,12 @@
 package kafka
 
 import (
-	"encoding/gob"
-	"context"
-	"errors"
-	"strconv"
 	"bytes"
+	"context"
+	"encoding/gob"
+	"errors"
+	"io"
+	"strconv"
 	"sync"
 	"time"
 
@@ -41,11 +42,11 @@ type kafkaBroker struct {
 	options      broker.Options
 	retriesCount int
 
-	subscribers *broker.SubscriberSyncMap
-	logger *log.Helper
+	subscribers    *broker.SubscriberSyncMap
+	logger         *log.Helper
 	producerTracer *tracing.Tracer
 	consumerTracer *tracing.Tracer
-	stopCh chan struct{}
+	stopCh         chan struct{}
 }
 
 func NewBroker(logger *log.Helper, opts ...broker.Option) broker.Broker {
@@ -69,7 +70,7 @@ func NewBroker(logger *log.Helper, opts ...broker.Option) broker.Broker {
 		options:      options,
 		retriesCount: 1,
 		subscribers:  broker.NewSubscriberSyncMap(),
-		stopCh: 	 make(chan struct{}),
+		stopCh:       make(chan struct{}),
 	}
 
 	return b
@@ -607,8 +608,12 @@ func (b *kafkaBroker) Subscribe(topic string, handler broker.Handler, binder bro
 			default:
 				msg, err := sub.reader.FetchMessage(options.Context)
 				if err != nil {
-					b.logger.Errorf("[kafka] FetchMessage error: %s", err.Error())
-					continue
+					if errors.Is(err, io.EOF) {
+						continue
+					} else {
+						b.logger.Errorf("[kafka] FetchMessage error: %s", err.Error())
+						continue
+					}
 				}
 
 				ctx, span := b.startConsumerSpan(options.Context, &msg)
