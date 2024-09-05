@@ -74,9 +74,6 @@ func (m *MultiLogger) Log(level log.Level, keyvals ...interface{}) error {
 
 // Log 实现了log.Logger接口。
 func (h *RedisHandler) Log(level log.Level, keyvals ...interface{}) error {
-	if level == log.LevelInfo {
-		return nil
-	}
 	levelField := levelToString(level)
 	// 开始构建日志字符串，包含日志级别
 	logStr := fmt.Sprintf("level=%s ", levelToString(level))
