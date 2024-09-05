@@ -24,7 +24,7 @@ type okx struct {
 }
 
 func (o *okx) Name() string {
-	return "okx"
+	return exchange.OkxExchange
 }
 
 func (o *okx) Assets(ctx context.Context, req *exchange.GetAssetsRequest) ([]exchange.Asset, error) {
