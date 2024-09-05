@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"sync"
@@ -56,6 +57,7 @@ func NewOkxStream(cli *okhttp.Client, redisClient *redis.Client, limiter limiter
 		),
 		streamList: make([]streammanager.Stream, 0),
 		exitChan:   make(chan struct{}),
+		exc:        okexc.NewOkx(okhttp.NewClient(okhttp.HttpClient(&http.Client{}))),
 	}
 
 	go of.keepAlive()
@@ -71,6 +73,7 @@ type of struct {
 	client     *okhttp.Client
 	limiter    limiter.Limiter
 	streamList []streammanager.Stream
+	exc        exchange.Exchange
 	wsm        wsmanager.WebsocketManager
 	mux        sync.RWMutex
 }
@@ -258,7 +261,7 @@ func (o *of) createWebsocketHandler(uuid string, req *streammanager.StreamReques
 			return
 		}
 
-		tes, err := toOrderEvent(message, req.Instrument)
+		tes, err := o.toOrderEvent(message, req.Instrument)
 		if err != nil {
 			if req.ErrorHandler != nil {
 				req.ErrorHandler(err)
@@ -310,7 +313,7 @@ func (o *of) errorHandler(id string, req *streammanager.StreamRequest) func(err 
 	}
 }
 
-func toOrderEvent(message []byte, instrument exchange.InstrumentType) ([]*exchange.OrderResultEvent, error) {
+func (o *of) toOrderEvent(message []byte, instrument exchange.InstrumentType) ([]*exchange.OrderResultEvent, error) {
 	event := &okWsOrderUpdateEvent{}
 
 	err := okhttp.Json.Unmarshal(message, event)
@@ -337,26 +340,10 @@ func toOrderEvent(message []byte, instrument exchange.InstrumentType) ([]*exchan
 		if err != nil {
 			price = decimal.Zero
 		}
-		volume, err := decimal.NewFromString(d.FillSz)
-		if err != nil {
-			volume = decimal.Zero
-		}
-		latestVolume, err := decimal.NewFromString(d.FillSz)
-		if err != nil {
-			return nil, err
-		}
-		filledVolume, err := decimal.NewFromString(d.AccFillSz)
-		if err != nil {
-			filledVolume = decimal.Zero
-		}
 		latestPrice, err := decimal.NewFromString(d.LastPx)
 		if err != nil {
 			latestPrice = decimal.Zero
 		}
-		// feeCost, err := decimal.NewFromString(d.FillFee)
-		// if err != nil {
-		// 	feeCost = decimal.Zero
-		// }
 		fee, err := decimal.NewFromString(d.Fee)
 		if err != nil {
 			fee = decimal.Zero
@@ -398,6 +385,31 @@ func toOrderEvent(message []byte, instrument exchange.InstrumentType) ([]*exchan
 		by := exchange.ByTaker
 		if d.ExecType == "M" {
 			by = exchange.ByMaker
+		}
+
+		fillSz := d.FillSz
+		accFillSz := d.AccFillSz
+
+		if instrument == exchange.InstrumentTypeFutures {
+			// 将张转换为币
+			fillSz, err = o.exc.ConvertContractCoin("2", d.InstID, d.FillSz, "open")
+			if err != nil {
+				fillSz = "0"
+			}
+			accFillSz, err = o.exc.ConvertContractCoin("2", d.InstID, d.AccFillSz, "open")
+			if err != nil {
+				accFillSz = "0"
+			}
+		}
+
+		volume, err := decimal.NewFromString(fillSz)
+		if err != nil {
+			volume = decimal.Zero
+		}
+		latestVolume := volume
+		filledVolume, err := decimal.NewFromString(accFillSz)
+		if err != nil {
+			filledVolume = decimal.Zero
 		}
 
 		ore := &exchange.OrderResultEvent{
