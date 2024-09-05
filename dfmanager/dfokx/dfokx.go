@@ -88,17 +88,21 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 	endpoint := okWsEndpoint + "/ws/v5/business"
 	wsHandler := func(instrument exchange.InstrumentType) func(message []byte) {
 		return func(message []byte) {
-			j, err := okhttp.NewJSON(message)
-			if err != nil {
-				d.opts.logger.Error("order new json error", err)
+			if string(message) == "pong" {
+				// 每隔20s发送ping过去，预期会收到pong
 				return
 			}
-			if j.Get("e").MustString() == "error" {
+			j, err := okhttp.NewJSON(message)
+			if err != nil {
+				d.opts.logger.Error("new json error", err)
+				return
+			}
+			if j.Get("event").MustString() == "error" {
 				req.ErrorHandler(errors.New(j.Get("msg").MustString()))
 				return
 			}
 
-			if j.Get("e").MustString() != "" {
+			if j.Get("event").MustString() != "" {
 				return
 			}
 
@@ -117,7 +121,7 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 		ID:               req.ID,
 		Endpoint:         endpoint,
 		MessageHandler:   wsHandler(req.Instrument),
-		ErrorHandler:     req.ErrorHandler,
+		ErrorHandler:     d.errorHandler(req.ID, req),
 		ConnectedHandler: d.connectedHandler(req),
 	}, conf)
 	if err != nil {
@@ -192,6 +196,26 @@ func (d *df) connectedHandler(req *dfmanager.DataFeedRequest) func(id string, co
 	}
 }
 
+func (d *df) errorHandler(id string, req *dfmanager.DataFeedRequest) func(err error) {
+	return func(err error) {
+		if req.ErrorHandler != nil {
+			if strings.Contains(err.Error(), "close 4004") {
+				req.ErrorHandler(manager.ErrServerClosedConn)
+				return
+			}
+			req.ErrorHandler(err)
+		}
+		if !d.wsm.GetWebsocket(id).IsConnected() {
+			// 开启一个计时器，10秒后再次检查连接状态，如果连接已经关闭，则删除连接
+			time.AfterFunc(10*time.Second, func() {
+				if !d.wsm.GetWebsocket(id).IsConnected() {
+					d.wsm.CloseWebsocket(id)
+				}
+			})
+		}
+	}
+}
+
 func (d *df) Shutdown() error {
 	d.mux.RLock()
 	defer d.mux.RUnlock()
@@ -216,10 +240,10 @@ func (d *df) keepAlive() {
 		select {
 		case <-d.exitChan:
 			return
-		case <-time.After(10 * time.Second):
+		case <-time.After(20 * time.Second):
 			d.mux.RLock()
 			for _, ws := range d.wsm.GetWebsockets() {
-				err := ws.WriteMessage(gwebsocket.PingMessage, nil)
+				err := ws.WriteMessage(gwebsocket.TextMessage, []byte("ping"))
 				if err != nil {
 					d.opts.logger.Error("write ping message error", err)
 				}

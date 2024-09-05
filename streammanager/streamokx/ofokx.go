@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -96,7 +97,7 @@ func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 		Endpoint:         endpoint,
 		ID:               uuid,
 		MessageHandler:   o.createWebsocketHandler(uuid, req, o.subscribe),
-		ErrorHandler:     req.ErrorHandler,
+		ErrorHandler:     o.errorHandler(uuid, req),
 		ConnectedHandler: o.connectedHandler(req),
 	}, conf)
 	if err != nil {
@@ -231,9 +232,13 @@ func (o *of) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.Webso
 
 func (o *of) createWebsocketHandler(uuid string, req *streammanager.StreamRequest, subhandler func(uuid string, req *streammanager.StreamRequest) error) func(message []byte) {
 	return func(message []byte) {
+		if string(message) == "pong" {
+			// 每隔10s发送ping过去，预期会收到pong
+			return
+		}
 		j, err := okhttp.NewJSON(message)
 		if err != nil {
-			o.opts.logger.Error("order new json error", err)
+			o.opts.logger.Error("new json error", err)
 			return
 		}
 
@@ -277,6 +282,34 @@ func (o *of) connectedHandler(req *streammanager.StreamRequest) func(id string, 
 	}
 }
 
+func (o *of) errorHandler(id string, req *streammanager.StreamRequest) func(err error) {
+	return func(err error) {
+		if req.ErrorHandler != nil {
+			if strings.Contains(err.Error(), "close 4004") {
+				req.ErrorHandler(manager.ErrServerClosedConn)
+				return
+			}
+			req.ErrorHandler(err)
+		}
+		if !o.wsm.GetWebsocket(id).IsConnected() {
+			// 开启一个计时器，10秒后再次检查连接状态，如果连接已经关闭，则删除连接
+			time.AfterFunc(10*time.Second, func() {
+				if !o.wsm.GetWebsocket(id).IsConnected() {
+					o.wsm.CloseWebsocket(id)
+					o.mux.Lock()
+					defer o.mux.Unlock()
+					for i, stream := range o.streamList {
+						if stream.UUID == id {
+							o.streamList = append(o.streamList[:i], o.streamList[i+1:]...)
+							break
+						}
+					}
+				}
+			})
+		}
+	}
+}
+
 func toOrderEvent(message []byte, instrument exchange.InstrumentType) ([]*exchange.OrderResultEvent, error) {
 	event := &okWsOrderUpdateEvent{}
 
@@ -299,7 +332,6 @@ func toOrderEvent(message []byte, instrument exchange.InstrumentType) ([]*exchan
 	}
 
 	orderResultEvents := make([]*exchange.OrderResultEvent, 0)
-	fmt.Printf("event: %v\n", event)
 	for _, d := range event.Data {
 		price, err := decimal.NewFromString(d.FillPx)
 		if err != nil {
@@ -321,15 +353,13 @@ func toOrderEvent(message []byte, instrument exchange.InstrumentType) ([]*exchan
 		if err != nil {
 			latestPrice = decimal.Zero
 		}
-		feeCost, err := decimal.NewFromString(d.FillFee)
+		// feeCost, err := decimal.NewFromString(d.FillFee)
+		// if err != nil {
+		// 	feeCost = decimal.Zero
+		// }
+		fee, err := decimal.NewFromString(d.Fee)
 		if err != nil {
-			// 有些市价成交单 FillFee不一定有值，所以如果没值就取该笔订单的累积手续费
-			fee, err := decimal.NewFromString(d.Fee)
-			if err != nil {
-				feeCost = decimal.Zero
-			} else {
-				feeCost = fee
-			}
+			fee = decimal.Zero
 		}
 		filledQuoteVolume, err := decimal.NewFromString(d.FillNotionalUsd)
 		if err != nil {
@@ -389,7 +419,7 @@ func toOrderEvent(message []byte, instrument exchange.InstrumentType) ([]*exchan
 			FilledVolume:      filledVolume,
 			LatestPrice:       latestPrice,
 			FeeAsset:          d.FeeCcy,
-			FeeCost:           feeCost.Abs(), // 手续费为负的，这里取绝对值
+			FeeCost:           fee.Abs(), // 手续费为负的，这里取绝对值
 			AvgPrice:          avgPrice,
 			FilledQuoteVolume: filledQuoteVolume,
 		}
@@ -405,10 +435,10 @@ func (o *of) keepAlive() {
 		select {
 		case <-o.exitChan:
 			return
-		case <-time.After(10 * time.Second):
+		case <-time.After(20 * time.Second):
 			o.mux.Lock()
 			for _, stream := range o.streamList {
-				err := o.wsm.GetWebsocket(stream.UUID).WriteMessage(gwebsocket.PingMessage, nil)
+				err := o.wsm.GetWebsocket(stream.UUID).WriteMessage(gwebsocket.TextMessage, []byte("ping"))
 				if err != nil {
 					o.opts.logger.Error("write ping message error", err)
 				}
