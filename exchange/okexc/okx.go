@@ -87,11 +87,8 @@ func (o *okx) GetMarginInventory(ctx context.Context, req *exchange.MarginInvent
 	return nil, nil
 }
 
-func (o *okx) convertContractCoin(typ string, instId string, sz string, opTyp string) (string, error) {
-	// typ 1:币转账 2:张转币
-	// instId 产品ID
-	// sz 数量
-	// opTyp open or close
+// typ：1-币转账 2-张转币; instId：产品ID; sz：数量; opTyp: open（舍位），close（四舍五入）
+func (o *okx) ConvertContractCoin(typ string, instId string, sz string, opTyp string) (string, error) {
 	r := &okhttp.Request{
 		Method:   "GET",
 		Endpoint: "/api/v5/public/convert-contract-coin",
@@ -177,7 +174,7 @@ func (o *okx) toOrderParams(req *exchange.CreateOrderRequest) (okhttp.Params, er
 			opType = "close"
 		}
 
-		sz, err := o.convertContractCoin("1", req.Symbol, fmt.Sprintf("%v", req.Size), opType)
+		sz, err := o.ConvertContractCoin("1", req.Symbol, fmt.Sprintf("%v", req.Size), opType)
 		if err != nil {
 			return nil, err
 		}

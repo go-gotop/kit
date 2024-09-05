@@ -70,7 +70,7 @@ const (
 	TransactionBySystem = "SYSTEM"
 
 	PosModeIsolated PosMode = "ISOLATED" // 逐仓
-	PosModeCross  PosMode = "CROSS"  // 全仓
+	PosModeCross    PosMode = "CROSS"    // 全仓
 
 	InstrumentTypeSpot    InstrumentType = "SPOT"
 	InstrumentTypeFutures InstrumentType = "FUTURES"
@@ -354,4 +354,6 @@ type Exchange interface {
 	MarginBorrowOrRepay(ctx context.Context, req *MarginBorrowOrRepayRequest) error
 	// 获取杠杠可用放贷库存
 	GetMarginInventory(ctx context.Context, req *MarginInventoryRequest) (*MarginInventory, error)
+	// okx 合约张币转换
+	ConvertContractCoin(typ string, instId string, sz string, opTyp string) (string, error)
 }

@@ -2,6 +2,7 @@ package moexc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -162,6 +163,10 @@ func (b *mockExchange) GetMarginInterestRate(ctx context.Context, req *exchange.
 
 func (b *mockExchange) MarginBorrowOrRepay(ctx context.Context, req *exchange.MarginBorrowOrRepayRequest) error {
 	return nil
+}
+
+func (b *mockExchange) ConvertContractCoin(typ string, instId string, sz string, opTyp string) (string, error) {
+	return "", errors.New("not implemented")
 }
 
 func (b *mockExchange) GetMarginInventory(ctx context.Context, req *exchange.MarginInventoryRequest) (*exchange.MarginInventory, error) {

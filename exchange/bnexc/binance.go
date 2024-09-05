@@ -2,6 +2,7 @@ package bnexc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -179,6 +180,10 @@ func (b *binance) GetMarginInventory(ctx context.Context, req *exchange.MarginIn
 		Assets: res.Assets,
 	}, nil
 
+}
+
+func (b *binance) ConvertContractCoin(typ string, instId string, sz string, opTyp string) (string, error) {
+	return "", errors.New("not implemented")
 }
 
 func (b *binance) getSingleFundingRate(ctx context.Context, symbol string) ([]*exchange.GetFundingRateResponse, error) {
