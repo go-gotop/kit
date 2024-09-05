@@ -231,9 +231,13 @@ func (o *of) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.Webso
 
 func (o *of) createWebsocketHandler(uuid string, req *streammanager.StreamRequest, subhandler func(uuid string, req *streammanager.StreamRequest) error) func(message []byte) {
 	return func(message []byte) {
+		if string(message) == "pong" {
+			// 每隔10s发送ping过去，预期会收到pong
+			return
+		}
 		j, err := okhttp.NewJSON(message)
 		if err != nil {
-			o.opts.logger.Error("order new json error", err)
+			o.opts.logger.Error("new json error", err)
 			return
 		}
 
@@ -299,7 +303,6 @@ func toOrderEvent(message []byte, instrument exchange.InstrumentType) ([]*exchan
 	}
 
 	orderResultEvents := make([]*exchange.OrderResultEvent, 0)
-	fmt.Printf("event: %v\n", event)
 	for _, d := range event.Data {
 		price, err := decimal.NewFromString(d.FillPx)
 		if err != nil {
@@ -408,7 +411,7 @@ func (o *of) keepAlive() {
 		case <-time.After(10 * time.Second):
 			o.mux.Lock()
 			for _, stream := range o.streamList {
-				err := o.wsm.GetWebsocket(stream.UUID).WriteMessage(gwebsocket.PingMessage, nil)
+				err := o.wsm.GetWebsocket(stream.UUID).WriteMessage(gwebsocket.TextMessage, []byte("ping"))
 				if err != nil {
 					o.opts.logger.Error("write ping message error", err)
 				}

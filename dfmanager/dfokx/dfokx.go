@@ -3,6 +3,7 @@ package dfokx
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -88,17 +89,22 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 	endpoint := okWsEndpoint + "/ws/v5/business"
 	wsHandler := func(instrument exchange.InstrumentType) func(message []byte) {
 		return func(message []byte) {
-			j, err := okhttp.NewJSON(message)
-			if err != nil {
-				d.opts.logger.Error("order new json error", err)
+			if string(message) == "pong" {
+				// 每隔10s发送ping过去，预期会收到pong
 				return
 			}
-			if j.Get("e").MustString() == "error" {
+			j, err := okhttp.NewJSON(message)
+			if err != nil {
+				d.opts.logger.Error("new json error", err)
+				return
+			}
+			fmt.Printf("message event: %s\n", j.Get("event").MustString())
+			if j.Get("event").MustString() == "error" {
 				req.ErrorHandler(errors.New(j.Get("msg").MustString()))
 				return
 			}
 
-			if j.Get("e").MustString() != "" {
+			if j.Get("event").MustString() != "" {
 				return
 			}
 
@@ -219,7 +225,7 @@ func (d *df) keepAlive() {
 		case <-time.After(10 * time.Second):
 			d.mux.RLock()
 			for _, ws := range d.wsm.GetWebsockets() {
-				err := ws.WriteMessage(gwebsocket.PingMessage, []byte("ping"))
+				err := ws.WriteMessage(gwebsocket.TextMessage, []byte("ping"))
 				if err != nil {
 					d.opts.logger.Error("write ping message error", err)
 				}
