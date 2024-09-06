@@ -88,7 +88,7 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 		fn = spotToTradeEvent
 	case exchange.InstrumentTypeMargin:
 		endpoint = fmt.Sprintf("%s/%s@trade", bnSpotWsEndpoint, symbol)
-		fn = spotToTradeEvent
+		fn = marginToTradeEvent
 	case exchange.InstrumentTypeFutures:
 		endpoint = fmt.Sprintf("%s/%s@aggTrade", bnFuturesWsEndpoint, symbol)
 		fn = futuresToTradeEvent
@@ -220,6 +220,38 @@ func spotToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
 		TradedAt:   e.TradeTime,
 		Exchange:   exchange.BinanceExchange,
 		Instrument: exchange.InstrumentTypeSpot,
+	}
+	size, err := decimal.NewFromString(e.Quantity)
+	if err != nil {
+		return nil, err
+	}
+	te.Size = size
+
+	p, err := decimal.NewFromString(e.Price)
+	if err != nil {
+		return nil, err
+	}
+	te.Price = p
+	te.Side = exchange.SideTypeBuy
+	if e.IsBuyerMaker {
+		te.Side = exchange.SideTypeSell
+	}
+	return te, nil
+}
+
+func marginToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
+	e := &binanceSpotTradeEvent{}
+	err := json.Unmarshal(message, e)
+	if err != nil {
+		return nil, err
+	}
+
+	te := &exchange.TradeEvent{
+		TradeID:    fmt.Sprintf("%d", e.TradeID),
+		Symbol:     e.Symbol,
+		TradedAt:   e.TradeTime,
+		Exchange:   exchange.BinanceExchange,
+		Instrument: exchange.InstrumentTypeMargin,
 	}
 	size, err := decimal.NewFromString(e.Quantity)
 	if err != nil {
