@@ -119,13 +119,21 @@ func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 }
 
 func (o *of) CloseStream(accountId string, instrument exchange.InstrumentType, uuid string) error {
-	o.mux.RLock()
-	defer o.mux.RUnlock()
+	o.mux.Lock()
+	defer o.mux.Unlock()
 
 	err := o.wsm.CloseWebsocket(uuid)
 	if err != nil {
 		return err
 	}
+
+	for i, stream := range o.streamList {
+		if stream.UUID == uuid {
+			o.streamList = append(o.streamList[:i], o.streamList[i+1:]...)
+			break
+		}
+	}
+
 	return nil
 }
 
