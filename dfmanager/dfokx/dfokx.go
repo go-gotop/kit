@@ -3,7 +3,6 @@ package dfokx
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -199,13 +198,16 @@ func (d *df) connectedHandler(req *dfmanager.DataFeedRequest) func(id string, co
 
 func (d *df) errorHandler(id string, req *dfmanager.DataFeedRequest) func(err error) {
 	return func(err error) {
-		fmt.Printf("okx ws error: %v\n", err)
 		if req.ErrorHandler != nil {
 			if strings.Contains(err.Error(), "close 4004") {
+				go d.wsm.Reconnect(id)
 				req.ErrorHandler(manager.ErrServerClosedConn)
-				return
+			} else if err == manager.ErrServerClosedConn {
+				go d.wsm.Reconnect(id)
+				req.ErrorHandler(err)
+			} else {
+				req.ErrorHandler(err)
 			}
-			req.ErrorHandler(err)
 		}
 		if !d.wsm.GetWebsocket(id).IsConnected() {
 			// 开启一个计时器，10秒后再次检查连接状态，如果连接已经关闭，则删除连接

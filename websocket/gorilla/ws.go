@@ -61,7 +61,9 @@ func (w *GorillaWebsocket) configure() {
 }
 
 func (w *GorillaWebsocket) readMessages(req *websocket.WebsocketRequest) {
-	defer w.doneOnce.Do(func() { close(w.doneCh) }) // 确保此方法退出时标记doneCh为已完成
+	defer w.doneOnce.Do(func() {
+		close(w.doneCh)
+	}) // 确保此方法退出时标记doneCh为已完成
 	for {
 		select {
 		case <-w.closeCh: // 如果收到关闭信号，则立即退出循环
@@ -105,9 +107,7 @@ func (w *GorillaWebsocket) Disconnect() error {
 }
 
 func (w *GorillaWebsocket) Reconnect() error {
-	if err := w.Disconnect(); err != nil {
-		return err
-	}
+	w.Disconnect();
 	// 等待读循环完全停止
 	<-w.doneCh
 
