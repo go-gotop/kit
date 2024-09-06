@@ -3,6 +3,7 @@ package dfokx
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -198,6 +199,7 @@ func (d *df) connectedHandler(req *dfmanager.DataFeedRequest) func(id string, co
 
 func (d *df) errorHandler(id string, req *dfmanager.DataFeedRequest) func(err error) {
 	return func(err error) {
+		fmt.Printf("okx ws error: %v\n", err)
 		if req.ErrorHandler != nil {
 			if strings.Contains(err.Error(), "close 4004") {
 				req.ErrorHandler(manager.ErrServerClosedConn)
