@@ -118,6 +118,8 @@ type AccountChangeEvent struct {
 	APIKey string
 	// secretKey
 	SecretKey string
+	// passphrase OKX的
+	Passphrase string
 	// 删除
 	DelStatus int8
 }
