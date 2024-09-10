@@ -167,7 +167,7 @@ type AccountUpdateEvent struct {
 }
 
 type FrameErrorEvent struct {
-	Error         string
+	Error         error
 	PositionID    string
 	TransactionID string
 	AccountID     string
