@@ -326,6 +326,7 @@ func (o *of) errorHandler(id string, req *streammanager.StreamRequest) func(err 
 }
 
 func (o *of) toOrderEvent(message []byte, instrument exchange.InstrumentType) ([]*exchange.OrderResultEvent, error) {
+	fmt.Println(string(message))
 	event := &okWsOrderUpdateEvent{}
 
 	err := okhttp.Json.Unmarshal(message, event)
@@ -402,17 +403,19 @@ func (o *of) toOrderEvent(message []byte, instrument exchange.InstrumentType) ([
 		fillSz := d.FillSz
 		accFillSz := d.AccFillSz
 
-		if instrument == exchange.InstrumentTypeFutures {
-			// 将张转换为币
-			fillSz, err = o.exc.ConvertContractCoin("2", d.InstID, d.FillSz, "open")
-			if err != nil {
-				fillSz = "0"
-			}
-			accFillSz, err = o.exc.ConvertContractCoin("2", d.InstID, d.AccFillSz, "open")
-			if err != nil {
-				accFillSz = "0"
-			}
-		}
+		// if instrument == exchange.InstrumentTypeFutures {
+		// 	// 将张转换为币
+		// 	fillSz, err = o.exc.ConvertContractCoin("2", d.InstID, d.FillSz, "open")
+		// 	if err != nil {
+		// 		fmt.Printf("convert contract coin error: %v\n", err)
+		// 		fillSz = "0"
+		// 	}
+		// 	accFillSz, err = o.exc.ConvertContractCoin("2", d.InstID, d.AccFillSz, "open")
+		// 	if err != nil {
+		// 		fmt.Printf("convert contract coin error: %v\n", err)
+		// 		accFillSz = "0"
+		// 	}
+		// }
 
 		volume, err := decimal.NewFromString(fillSz)
 		if err != nil {

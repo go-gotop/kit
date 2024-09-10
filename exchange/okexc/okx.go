@@ -87,40 +87,27 @@ func (o *okx) GetMarginInventory(ctx context.Context, req *exchange.MarginInvent
 	return nil, nil
 }
 
-// typ：1-币转账 2-张转币; instId：产品ID; sz：数量; opTyp: open（舍位），close（四舍五入）
-func (o *okx) ConvertContractCoin(typ string, instId string, sz string, opTyp string) (string, error) {
-	r := &okhttp.Request{
-		Method:   "GET",
-		Endpoint: "/api/v5/public/convert-contract-coin",
-	}
-	r.SetParams(okhttp.Params{
-		"type":   typ,
-		"instId": instId,
-		"sz":     sz,
-		"opType": opTyp,
-	})
-	o.client.SetApiEndpoint(okEndpoint)
-	data, err := o.client.CallAPI(context.Background(), r)
-	if err != nil {
-		fmt.Println(err)
+// typ：1-币转账 2-张转币; symbol: 交易对; sz：数量; opTyp: open（舍位），close（四舍五入）
+func (o *okx) ConvertContractCoin(typ string, symbol exchange.Symbol, sz string, opTyp string) (string, error) {
+	if opTyp == "" {
+		opTyp = "open"
 	}
 
-	var result struct {
-		Code string `json:"code"`
-		Data []struct {
-			Typ    string `json:"type"`
-			InstID string `json:"instId"`
-			Px     string `json:"px"`
-			Sz     string `json:"sz"`
-			Unit   string `json:"unit"`
-		} `json:"data"`
-		Msg string `json:"msg"`
-	}
-	err = okhttp.Json.Unmarshal(data, &result)
+	size, err := decimal.NewFromString(sz)
 	if err != nil {
 		return "", err
 	}
-	return result.Data[0].Sz, nil
+	if typ == "1" {
+		// 币转张, 数量除以张的面值
+		size = size.Div(symbol.CtVal)
+		size = o.sizePrecision(size, symbol, opTyp)
+		return size.String(), nil
+	} else if typ == "2" {
+		// 张转币，张的面值乘以数量
+		size = size.Mul(symbol.CtVal)
+		return size.String(), nil
+	}
+	return "", fmt.Errorf("invalid type: %v", typ)
 }
 
 func (o *okx) getMarketPrice(instId string, instType string) (decimal.Decimal, error) {
@@ -190,7 +177,7 @@ func (o *okx) toOrderParams(req *exchange.CreateOrderRequest) (okhttp.Params, er
 		if req.Side == exchange.SideTypeSell {
 			m["sz"] = fmt.Sprintf("%v", req.Size)
 		} else {
-			mkp, err := o.getMarketPrice(req.Symbol, "MARGIN")
+			mkp, err := o.getMarketPrice(req.Symbol.OriginalSymbol, "MARGIN")
 			if err != nil {
 				return nil, err
 			}
@@ -217,4 +204,27 @@ func (o *okx) toOrderParams(req *exchange.CreateOrderRequest) (okhttp.Params, er
 	}
 
 	return m, nil
+}
+
+// size 精度处理
+func (h *okx) sizePrecision(size decimal.Decimal, symbol exchange.Symbol, opType string) decimal.Decimal {
+	orderQuantity := size
+	if opType == "open" {
+		// 向下取整到指定精度
+		orderQuantity = orderQuantity.Truncate(symbol.SizePrecision)
+	} else {
+		// 四舍五入到指定精度
+		orderQuantity = orderQuantity.Round(symbol.SizePrecision)
+	}
+
+	// 2. 限制最大值
+	if orderQuantity.GreaterThan(symbol.MaxSize) {
+		orderQuantity = symbol.MaxSize
+	}
+
+	// 3. 限制最小值
+	if orderQuantity.LessThan(symbol.MinSize) {
+		orderQuantity = symbol.MinSize
+	}
+	return orderQuantity
 }

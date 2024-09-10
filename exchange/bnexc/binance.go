@@ -182,7 +182,7 @@ func (b *binance) GetMarginInventory(ctx context.Context, req *exchange.MarginIn
 
 }
 
-func (b *binance) ConvertContractCoin(typ string, instId string, sz string, opTyp string) (string, error) {
+func (b *binance) ConvertContractCoin(typ string, symbol exchange.Symbol, sz string, opTyp string) (string, error) {
 	return "", errors.New("not implemented")
 }
 

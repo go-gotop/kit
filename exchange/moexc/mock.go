@@ -165,7 +165,7 @@ func (b *mockExchange) MarginBorrowOrRepay(ctx context.Context, req *exchange.Ma
 	return nil
 }
 
-func (b *mockExchange) ConvertContractCoin(typ string, instId string, sz string, opTyp string) (string, error) {
+func (b *mockExchange) ConvertContractCoin(typ string, symbol exchange.Symbol, sz string, opTyp string) (string, error) {
 	return "", errors.New("not implemented")
 }
 

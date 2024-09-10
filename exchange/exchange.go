@@ -213,7 +213,7 @@ type CreateOrderRequest struct {
 	SecretKey        string
 	Passphrase       string // 秘钥 密码 (okex)
 	OrderTime        int64
-	Symbol           string
+	Symbol           Symbol
 	CtVal            decimal.Decimal // 合约面值； 合约张数 = 合约数量 / 合约面值
 	ClientOrderID    string
 	Side             SideType
@@ -334,6 +334,14 @@ type Symbol struct {
 	PricePrecision int32
 	// 头寸精度
 	SizePrecision int32
+	// 合约面值
+	CtVal decimal.Decimal
+	// 合约乘数
+	CtMult decimal.Decimal
+	// 上线时间
+	ListTime int64
+	// 下线时间
+	ExpTime int64
 }
 
 //go:generate mockgen -destination=../exchange/mocks/exchange.go -package=mkexchange . Exchange
@@ -355,5 +363,5 @@ type Exchange interface {
 	// 获取杠杠可用放贷库存
 	GetMarginInventory(ctx context.Context, req *MarginInventoryRequest) (*MarginInventory, error)
 	// okx 合约张币转换
-	ConvertContractCoin(typ string, instId string, sz string, opTyp string) (string, error)
+	ConvertContractCoin(typ string, symbol Symbol, sz string, opTyp string) (string, error)
 }
