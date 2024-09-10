@@ -295,6 +295,7 @@ func (o *of) createWebsocketHandler(req *streammanager.StreamRequest, rcli *redi
 			if req.Instrument == exchange.InstrumentTypeFutures {
 				return
 			}
+			o.opts.logger.Debugf("Binance WS订单事件: %s", string(message))
 			if req.IsUnifiedAccount {
 				event := &bnUniSpotWsOrderUpdateEvent{}
 
@@ -340,6 +341,7 @@ func (o *of) createWebsocketHandler(req *streammanager.StreamRequest, rcli *redi
 			if req.Instrument == exchange.InstrumentTypeSpot || req.Instrument == exchange.InstrumentTypeMargin {
 				return
 			}
+			o.opts.logger.Debugf("Binance WS订单事件: %s", string(message))
 			event := &bnFuturesWsUserDataEvent{}
 			err = bnhttp.Json.Unmarshal(message, event)
 			if err != nil {

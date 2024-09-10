@@ -326,7 +326,7 @@ func (o *of) errorHandler(id string, req *streammanager.StreamRequest) func(err 
 }
 
 func (o *of) toOrderEvent(message []byte, instrument exchange.InstrumentType) ([]*exchange.OrderResultEvent, error) {
-	fmt.Println(string(message))
+	o.opts.logger.Debugf("OKX WS订单事件: %s", string(message))
 	event := &okWsOrderUpdateEvent{}
 
 	err := okhttp.Json.Unmarshal(message, event)

@@ -99,6 +99,9 @@ func (o *okx) ConvertContractCoin(typ string, symbol exchange.Symbol, sz string,
 	}
 	if typ == "1" {
 		// 币转张, 数量除以张的面值
+		if symbol.CtVal.IsZero() {
+			return "", fmt.Errorf("invalid ctVal: %v", symbol.CtVal)
+		}
 		size = size.Div(symbol.CtVal)
 		size = o.sizePrecision(size, symbol, opTyp)
 		return size.String(), nil
