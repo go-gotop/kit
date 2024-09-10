@@ -122,7 +122,7 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 		Endpoint:         endpoint,
 		MessageHandler:   wsHandler(req.Instrument),
 		ErrorHandler:     d.errorHandler(req.ID, req),
-		ConnectedHandler: d.connectedHandler(req),
+		ConnectedHandler: d.connectedTradeAllHandler(req),
 	}, conf)
 	if err != nil {
 		return err
@@ -132,6 +132,58 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 }
 
 func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
+	d.mux.Lock()
+	defer d.mux.Unlock()
+
+	if !d.limiter.WsAllow() {
+		return ErrLimitExceed
+	}
+
+	conf := &wsmanager.WebsocketConfig{}
+
+	endpoint := okWsEndpoint + "/ws/v5/public"
+	wsHandler := func(instrument exchange.InstrumentType) func(message []byte) {
+		return func(message []byte) {
+			if string(message) == "pong" {
+				// 每隔20s发送ping过去，预期会收到pong
+				return
+			}
+			j, err := okhttp.NewJSON(message)
+			if err != nil {
+				d.opts.logger.Error("new json error", err)
+				return
+			}
+			if j.Get("event").MustString() == "error" {
+				req.ErrorHandler(errors.New(j.Get("msg").MustString()))
+				return
+			}
+
+			if j.Get("event").MustString() != "" {
+				return
+			}
+
+			te, err := toMarkPriceEvent(message, instrument)
+			if err != nil {
+				if req.ErrorHandler != nil {
+					req.ErrorHandler(err)
+				}
+				return
+			}
+			req.Event(te)
+		}
+	}
+
+	err := d.addWebsocket(&websocket.WebsocketRequest{
+		ID:               req.ID,
+		Endpoint:         endpoint,
+		MessageHandler:   wsHandler(req.Instrument),
+		ErrorHandler:     d.errorMarkPriceHandler(req.ID, req),
+		ConnectedHandler: d.connectedMarketPriceHandler(req),
+	}, conf)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -164,7 +216,7 @@ func (d *df) DataFeedList() []string {
 }
 
 // 连接成功后订阅交易数据
-func (d *df) connectedHandler(req *dfmanager.DataFeedRequest) func(id string, conn websocket.WebSocketConn) {
+func (d *df) connectedTradeAllHandler(req *dfmanager.DataFeedRequest) func(id string, conn websocket.WebSocketConn) {
 	return func(id string, conn websocket.WebSocketConn) {
 		// ws := d.wsm.GetWebsocket(id)
 		sub := wsSub{
@@ -196,7 +248,64 @@ func (d *df) connectedHandler(req *dfmanager.DataFeedRequest) func(id string, co
 	}
 }
 
+// 连接成功后订阅交易数据
+func (d *df) connectedMarketPriceHandler(req *dfmanager.MarkPriceRequest) func(id string, conn websocket.WebSocketConn) {
+	return func(id string, conn websocket.WebSocketConn) {
+		// ws := d.wsm.GetWebsocket(id)
+		sub := wsSub{
+			Op: "subscribe",
+			Args: []struct {
+				Channel string `json:"channel"`
+				InstID  string `json:"instId"`
+			}{
+				{
+					Channel: "mark-price",
+					InstID:  req.Symbol,
+				},
+			},
+		}
+
+		str, err := json.Marshal(sub)
+		if err != nil {
+			if req.ErrorHandler != nil {
+				req.ErrorHandler(err)
+			}
+		}
+
+		err = conn.WriteMessage(gwebsocket.TextMessage, str)
+		if err != nil {
+			if req.ErrorHandler != nil {
+				req.ErrorHandler(err)
+			}
+		}
+	}
+}
+
 func (d *df) errorHandler(id string, req *dfmanager.DataFeedRequest) func(err error) {
+	return func(err error) {
+		if req.ErrorHandler != nil {
+			if strings.Contains(err.Error(), "close 4004") {
+				go d.wsm.Reconnect(id)
+				req.ErrorHandler(manager.ErrServerClosedConn)
+			} else if err == manager.ErrServerClosedConn {
+				go d.wsm.Reconnect(id)
+				req.ErrorHandler(err)
+			} else {
+				req.ErrorHandler(err)
+			}
+		}
+		if !d.wsm.GetWebsocket(id).IsConnected() {
+			// 开启一个计时器，10秒后再次检查连接状态，如果连接已经关闭，则删除连接
+			time.AfterFunc(10*time.Second, func() {
+				if !d.wsm.GetWebsocket(id).IsConnected() {
+					d.wsm.CloseWebsocket(id)
+				}
+			})
+		}
+	}
+}
+
+func (d *df) errorMarkPriceHandler(id string, req *dfmanager.MarkPriceRequest) func(err error) {
 	return func(err error) {
 		if req.ErrorHandler != nil {
 			if strings.Contains(err.Error(), "close 4004") {
@@ -297,5 +406,37 @@ func toTradeEvent(message []byte, instrument exchange.InstrumentType) (*exchange
 
 	te.Side = exchange.SideType(strings.ToUpper(trade.Side))
 
+	return te, nil
+}
+
+func toMarkPriceEvent(message []byte, instrument exchange.InstrumentType) (*exchange.MarkPriceEvent, error) {
+	e := &okxMarkPriceEvent{}
+	err := json.Unmarshal(message, e)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(e.Data) == 0 {
+		return nil, errors.New("data is empty")
+	}
+
+	trade := e.Data[0]
+
+	// 字符串转成int64
+	ts, err := strconv.ParseInt(trade.Timestamp, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	mk, err := decimal.NewFromString(trade.MarkPx)
+	if err != nil {
+		return nil, err
+	}
+
+	te := &exchange.MarkPriceEvent{
+		Symbol:    trade.InstID,
+		Time:      ts,
+		MarkPrice: mk,
+	}
 	return te, nil
 }

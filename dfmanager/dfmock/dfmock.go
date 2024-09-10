@@ -99,46 +99,47 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 }
 
 func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
-	var (
-		endpoint string
-		fn       func(message []byte) ([]*exchange.MarkPriceEvent, error)
-	)
-	d.mux.Lock()
-	defer d.mux.Unlock()
+	return errors.New("not implemented")
+	// var (
+	// 	endpoint string
+	// 	fn       func(message []byte) ([]*exchange.MarkPriceEvent, error)
+	// )
+	// d.mux.Lock()
+	// defer d.mux.Unlock()
 
-	if !d.limiter.WsAllow() {
-		return ErrLimitExceed
-	}
+	// if !d.limiter.WsAllow() {
+	// 	return ErrLimitExceed
+	// }
 
-	conf := &wsmanager.WebsocketConfig{
-		PingHandler: pingHandler,
-		PongHandler: pongHandler,
-	}
-	switch req.Instrument {
-	case exchange.InstrumentTypeFutures:
-		endpoint = fmt.Sprintf("%s?streams=fundingrate&startTime=%v&endTime=%v", d.opts.wsEndpoint, req.StartTime, req.EndTime)
-		fn = futuresMarkPriceToMarkPrice
-	}
-	wsHandler := func(message []byte) {
-		te, err := fn(message)
-		if err != nil {
-			if req.ErrorHandler != nil {
-				req.ErrorHandler(err)
-			}
-			return
-		}
-		req.Event(te)
-	}
-	err := d.addWebsocket(&websocket.WebsocketRequest{
-		ID:             req.ID,
-		Endpoint:       endpoint,
-		MessageHandler: wsHandler,
-		ErrorHandler:   req.ErrorHandler,
-	}, conf)
-	if err != nil {
-		return err
-	}
-	return nil
+	// conf := &wsmanager.WebsocketConfig{
+	// 	PingHandler: pingHandler,
+	// 	PongHandler: pongHandler,
+	// }
+	// switch req.Instrument {
+	// case exchange.InstrumentTypeFutures:
+	// 	endpoint = fmt.Sprintf("%s?streams=fundingrate&startTime=%v&endTime=%v", d.opts.wsEndpoint, req.StartTime, req.EndTime)
+	// 	fn = futuresMarkPriceToMarkPrice
+	// }
+	// wsHandler := func(message []byte) {
+	// 	te, err := fn(message)
+	// 	if err != nil {
+	// 		if req.ErrorHandler != nil {
+	// 			req.ErrorHandler(err)
+	// 		}
+	// 		return
+	// 	}
+	// 	req.Event(te)
+	// }
+	// err := d.addWebsocket(&websocket.WebsocketRequest{
+	// 	ID:             req.ID,
+	// 	Endpoint:       endpoint,
+	// 	MessageHandler: wsHandler,
+	// 	ErrorHandler:   req.ErrorHandler,
+	// }, conf)
+	// if err != nil {
+	// 	return err
+	// }
+	// return nil
 }
 
 func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {

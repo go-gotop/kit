@@ -42,3 +42,8 @@ type binanceFuturesMarkPriceStream struct {
 	Stream string                          `json:"stream"`
 	Data   []*binanceFuntureMarkPriceEvent `json:"data"`
 }
+
+type binanceFuturesMarkPriceSingleStream struct {
+	Stream string                        `json:"stream"`
+	Data   *binanceFuntureMarkPriceEvent `json:"data"`
+}

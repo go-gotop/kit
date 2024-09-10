@@ -118,7 +118,7 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
 	var (
 		endpoint string
-		fn       func(message []byte) ([]*exchange.MarkPriceEvent, error)
+		fn       func(message []byte) (*exchange.MarkPriceEvent, error)
 	)
 	d.mux.Lock()
 	defer d.mux.Unlock()
@@ -133,7 +133,8 @@ func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
 	}
 	switch req.Instrument {
 	case exchange.InstrumentTypeFutures:
-		endpoint = fmt.Sprintf("%s?streams=!markPrice@arr", bnFunturesStreamEndpoint)
+		symbol:= strings.ToLower(req.Symbol)
+		endpoint = fmt.Sprintf("%s?streams=%s@markPrice@1s", bnFunturesStreamEndpoint, symbol)
 		fn = futuresMarkPriceToMarkPrice
 	}
 	wsHandler := func(message []byte) {
@@ -302,43 +303,40 @@ func futuresToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
 	return te, nil
 }
 
-func futuresMarkPriceToMarkPrice(message []byte) ([]*exchange.MarkPriceEvent, error) {
-	var e binanceFuturesMarkPriceStream
+func futuresMarkPriceToMarkPrice(message []byte) (*exchange.MarkPriceEvent, error) {
+	var e binanceFuturesMarkPriceSingleStream
 	err := json.Unmarshal(message, &e)
 	if err != nil {
 		return nil, err
 	}
-	var list []*exchange.MarkPriceEvent
-	for _, v := range e.Data {
-		markPrice, err := decimal.NewFromString(v.MarkPrice)
-		if err != nil {
-			markPrice = decimal.Zero
-		}
-		indexPrice, err := decimal.NewFromString(v.IndexPrice)
-		if err != nil {
-			indexPrice = decimal.Zero
-		}
-		estimatedSettlePrice, err := decimal.NewFromString(v.EstimatedSettlePrice)
-		if err != nil {
-			estimatedSettlePrice = decimal.Zero
-		}
-		lastFundingRate, err := decimal.NewFromString(v.LastFundingRate)
-		if err != nil {
-			lastFundingRate = decimal.Zero
-		}
-
-		te := &exchange.MarkPriceEvent{
-			Symbol:               v.Symbol,
-			MarkPrice:            markPrice,
-			IndexPrice:           indexPrice,
-			EstimatedSettlePrice: estimatedSettlePrice,
-			LastFundingRate:      lastFundingRate,
-			NextFundingTime:      v.NextFundingTime,
-			Time:                 v.Time,
-		}
-		list = append(list, te)
+	data:= e.Data
+	markPrice, err := decimal.NewFromString(data.MarkPrice)
+	if err != nil {
+		markPrice = decimal.Zero
+	}
+	indexPrice, err := decimal.NewFromString(data.IndexPrice)
+	if err != nil {
+		indexPrice = decimal.Zero
+	}
+	estimatedSettlePrice, err := decimal.NewFromString(data.EstimatedSettlePrice)
+	if err != nil {
+		estimatedSettlePrice = decimal.Zero
+	}
+	lastFundingRate, err := decimal.NewFromString(data.LastFundingRate)
+	if err != nil {
+		lastFundingRate = decimal.Zero
 	}
 
-	return list, nil
+	te := &exchange.MarkPriceEvent{
+		Symbol:               data.Symbol,
+		MarkPrice:            markPrice,
+		IndexPrice:           indexPrice,
+		EstimatedSettlePrice: estimatedSettlePrice,
+		LastFundingRate:      lastFundingRate,
+		NextFundingTime:      data.NextFundingTime,
+		Time:                 data.Time,
+	}
+
+	return te, nil
 
 }
