@@ -716,7 +716,7 @@ func bnSpotAssetsToAssets(s *bnSpotAccount) ([]exchange.Asset, error) {
 
 func toBnFuturesOrderParams(o *exchange.CreateOrderRequest) bnhttp.Params {
 	m := bnhttp.Params{
-		"symbol":           o.Symbol,
+		"symbol":           o.Symbol.OriginalSymbol,
 		"side":             o.Side,
 		"type":             o.OrderType,
 		"quantity":         o.Size,
@@ -741,7 +741,7 @@ func toBnFuturesOrderParams(o *exchange.CreateOrderRequest) bnhttp.Params {
 func toBnSpotOrderParams(o *exchange.CreateOrderRequest) bnhttp.Params {
 	// TODO: 公共参数和每个交易所的参数之间的变换，这个得后面根据具体情况再来完善
 	m := bnhttp.Params{
-		"symbol": o.Symbol,
+		"symbol": o.Symbol.OriginalSymbol,
 		"side":   o.Side,
 		"type":   o.OrderType,
 	}
@@ -762,7 +762,7 @@ func toBnSpotOrderParams(o *exchange.CreateOrderRequest) bnhttp.Params {
 
 func toBnMarginOrderParams(o *exchange.CreateOrderRequest) bnhttp.Params {
 	m := bnhttp.Params{
-		"symbol": o.Symbol,
+		"symbol": o.Symbol.OriginalSymbol,
 		"side":   o.Side,
 		"type":   o.OrderType,
 	}

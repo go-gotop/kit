@@ -118,7 +118,7 @@ func (m *mockExchange) CreateOrder(ctx context.Context, o *exchange.CreateOrderR
 	m.client.SetApiEndpoint(m.opts.mockExchangEndpoint)
 	params := mohttp.Params{
 		"orderTime":     o.OrderTime,
-		"symbol":        o.Symbol,
+		"symbol":        o.Symbol.OriginalSymbol,
 		"clientOrderId": o.ClientOrderID,
 		"side":          o.Side,
 		"orderType":     o.OrderType,

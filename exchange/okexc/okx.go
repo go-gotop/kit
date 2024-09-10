@@ -150,7 +150,7 @@ func (o *okx) getMarketPrice(instId string, instType string) (decimal.Decimal, e
 
 func (o *okx) toOrderParams(req *exchange.CreateOrderRequest) (okhttp.Params, error) {
 	m := okhttp.Params{
-		"instId":  req.Symbol,
+		"instId":  req.Symbol.OriginalSymbol,
 		"side":    OkxSide(req.Side),
 		"ordType": OkxOrderType(req.OrderType),
 	}
