@@ -306,22 +306,22 @@ func (o *of) errorHandler(id string, req *streammanager.StreamRequest) func(err 
 				req.ErrorHandler(err)
 			}
 		}
-		if !o.wsm.GetWebsocket(id).IsConnected() {
-			// 开启一个计时器，10秒后再次检查连接状态，如果连接已经关闭，则删除连接
-			time.AfterFunc(10*time.Second, func() {
-				if !o.wsm.GetWebsocket(id).IsConnected() {
-					o.wsm.CloseWebsocket(id)
-					o.mux.Lock()
-					defer o.mux.Unlock()
-					for i, stream := range o.streamList {
-						if stream.UUID == id {
-							o.streamList = append(o.streamList[:i], o.streamList[i+1:]...)
-							break
-						}
+
+		// 开启一个计时器，10秒后再次检查连接状态，如果连接已经关闭，则删除连接
+		time.AfterFunc(10*time.Second, func() {
+			if !o.wsm.GetWebsocket(id).IsConnected() {
+				o.wsm.CloseWebsocket(id)
+				o.mux.Lock()
+				defer o.mux.Unlock()
+				for i, stream := range o.streamList {
+					if stream.UUID == id {
+						o.streamList = append(o.streamList[:i], o.streamList[i+1:]...)
+						break
 					}
 				}
-			})
-		}
+			}
+		})
+
 	}
 }
 
