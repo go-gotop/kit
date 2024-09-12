@@ -290,15 +290,13 @@ func (d *df) errorHandler(id string, req *dfmanager.DataFeedRequest) func(err er
 				req.ErrorHandler(err)
 			}
 		}
-		if !d.wsm.GetWebsocket(id).IsConnected() {
-			// 开启一个计时器，10秒后再次检查连接状态，如果连接已经关闭，则删除连接
-			time.AfterFunc(10*time.Second, func() {
-				if !d.wsm.GetWebsocket(id).IsConnected() {
-					req.ErrorHandler(manager.ErrReconnectFailed)
-					d.wsm.CloseWebsocket(id)
-				}
-			})
-		}
+		// 开启一个计时器，10秒后再次检查连接状态，如果连接已经关闭，则删除连接
+		time.AfterFunc(10*time.Second, func() {
+			if !d.wsm.GetWebsocket(id).IsConnected() {
+				req.ErrorHandler(manager.ErrReconnectFailed)
+				d.wsm.CloseWebsocket(id)
+			}
+		})
 	}
 }
 
