@@ -19,10 +19,6 @@ import (
 
 var _ dfmanager.DataFeedManager = (*df)(nil)
 
-var (
-	ErrLimitExceed = errors.New("websocket request too frequent, please try again later")
-)
-
 func NewMockDataFeed(limiter limiter.Limiter, opts ...Option) dfmanager.DataFeedManager {
 	// 默认配置
 	o := &options{
@@ -151,7 +147,7 @@ func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
 	defer d.mux.Unlock()
 
 	if !d.limiter.WsAllow() {
-		return ErrLimitExceed
+		return manager.ErrLimitExceed
 	}
 
 	conf := &wsmanager.WebsocketConfig{

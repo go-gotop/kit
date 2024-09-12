@@ -17,6 +17,8 @@ var (
 	ErrMaxConnReached   = errors.New("max connection reached")
 	ErrWSNotFound       = errors.New("websocket not found")
 	ErrServerClosedConn = errors.New("server closed connection")
+	ErrLimitExceed = errors.New("websocket request too frequent, please try again later")
+	ErrReconnectFailed = errors.New("reconnect failed")
 )
 
 type Manager struct {

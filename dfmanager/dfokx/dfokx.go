@@ -24,11 +24,6 @@ const (
 	okWsEndpoint = "wss://ws.okx.com:8443"
 )
 
-var (
-	ErrLimitExceed = errors.New("websocket request too frequent, please try again later")
-	ErrConnectionFailed = errors.New("websocket connection failed")
-)
-
 type wsSub struct {
 	Op   string `json:"op"`
 	Args []struct {
@@ -81,7 +76,7 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 	defer d.mux.Unlock()
 
 	if !d.limiter.WsAllow() {
-		return ErrLimitExceed
+		return manager.ErrLimitExceed
 	}
 
 	conf := &wsmanager.WebsocketConfig{}
@@ -137,7 +132,7 @@ func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
 	defer d.mux.Unlock()
 
 	if !d.limiter.WsAllow() {
-		return ErrLimitExceed
+		return manager.ErrLimitExceed
 	}
 
 	conf := &wsmanager.WebsocketConfig{}
@@ -299,7 +294,7 @@ func (d *df) errorHandler(id string, req *dfmanager.DataFeedRequest) func(err er
 			// 开启一个计时器，10秒后再次检查连接状态，如果连接已经关闭，则删除连接
 			time.AfterFunc(10*time.Second, func() {
 				if !d.wsm.GetWebsocket(id).IsConnected() {
-					req.ErrorHandler(ErrConnectionFailed)
+					req.ErrorHandler(manager.ErrReconnectFailed)
 					d.wsm.CloseWebsocket(id)
 				}
 			})

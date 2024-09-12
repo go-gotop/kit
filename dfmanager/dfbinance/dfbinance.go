@@ -21,10 +21,6 @@ import (
 
 var _ dfmanager.DataFeedManager = (*df)(nil)
 
-var (
-	ErrLimitExceed = errors.New("websocket request too frequent, please try again later")
-)
-
 const (
 	bnSpotWsEndpoint         = "wss://stream.binance.com:9443/ws"
 	bnFuturesWsEndpoint      = "wss://fstream.binance.com/ws"
@@ -74,7 +70,7 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 	defer d.mux.Unlock()
 
 	if !d.limiter.WsAllow() {
-		return ErrLimitExceed
+		return manager.ErrLimitExceed
 	}
 
 	symbol = strings.ToLower(req.Symbol)
@@ -124,7 +120,7 @@ func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
 	defer d.mux.Unlock()
 
 	if !d.limiter.WsAllow() {
-		return ErrLimitExceed
+		return manager.ErrLimitExceed
 	}
 
 	conf := &wsmanager.WebsocketConfig{
@@ -133,7 +129,7 @@ func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
 	}
 	switch req.Instrument {
 	case exchange.InstrumentTypeFutures:
-		symbol:= strings.ToLower(req.Symbol)
+		symbol := strings.ToLower(req.Symbol)
 		endpoint = fmt.Sprintf("%s?streams=%s@markPrice@1s", bnFunturesStreamEndpoint, symbol)
 		fn = futuresMarkPriceToMarkPrice
 	}
@@ -309,7 +305,7 @@ func futuresMarkPriceToMarkPrice(message []byte) (*exchange.MarkPriceEvent, erro
 	if err != nil {
 		return nil, err
 	}
-	data:= e.Data
+	data := e.Data
 	markPrice, err := decimal.NewFromString(data.MarkPrice)
 	if err != nil {
 		markPrice = decimal.Zero
