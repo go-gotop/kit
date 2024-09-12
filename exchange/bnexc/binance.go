@@ -436,7 +436,6 @@ func (b *binance) searchSpotOrder(ctx context.Context, o *exchange.SearchOrderRe
 		FilledQuoteVolume: filledQuoteVolume,
 		FilledVolume:      filledVolume,
 		Side:              exchange.SideType(res.Side),
-		PositionSide:      exchange.PositionSideLong,
 		TimeInForce:       exchange.TimeInForce(res.TimeInForce),
 		OrderType:         exchange.OrderType(res.OrderType),
 		CreatedTime:       res.CreatedTime,

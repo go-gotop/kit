@@ -26,6 +26,7 @@ const (
 
 var (
 	ErrLimitExceed = errors.New("websocket request too frequent, please try again later")
+	ErrConnectionFailed = errors.New("websocket connection failed")
 )
 
 type wsSub struct {
@@ -298,6 +299,7 @@ func (d *df) errorHandler(id string, req *dfmanager.DataFeedRequest) func(err er
 			// 开启一个计时器，10秒后再次检查连接状态，如果连接已经关闭，则删除连接
 			time.AfterFunc(10*time.Second, func() {
 				if !d.wsm.GetWebsocket(id).IsConnected() {
+					req.ErrorHandler(ErrConnectionFailed)
 					d.wsm.CloseWebsocket(id)
 				}
 			})
