@@ -3,6 +3,7 @@ package okexc
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/go-gotop/kit/exchange"
 	"github.com/go-gotop/kit/requests/okhttp"
@@ -28,6 +29,24 @@ func (o *okx) Name() string {
 }
 
 func (o *okx) Assets(ctx context.Context, req *exchange.GetAssetsRequest) ([]exchange.Asset, error) {
+	r := &okhttp.Request{
+		APIKey:     req.APIKey,
+		SecretKey:  req.SecretKey,
+		Passphrase: req.Passphrase,
+		Method:     "GET",
+		Endpoint:   "/api/v5/account/balance",
+		SecType:    okhttp.SecTypeSigned,
+	}
+
+	o.client.SetApiEndpoint(okEndpoint)
+
+	data, err := o.client.CallAPI(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println(string(data))
+
 	return nil, nil
 }
 
@@ -64,7 +83,122 @@ func (o *okx) CancelOrder(ctx context.Context, req *exchange.CancelOrderRequest)
 }
 
 func (o *okx) SearchOrder(ctx context.Context, req *exchange.SearchOrderRequest) (*exchange.SearchOrderResponse, error) {
-	return nil, nil
+	r := &okhttp.Request{
+		APIKey:     req.APIKey,
+		SecretKey:  req.SecretKey,
+		Passphrase: req.Passphrase,
+		Method:     "GET",
+		Endpoint:   "/api/v5/trade/order",
+		SecType:    okhttp.SecTypeSigned,
+	}
+
+	o.client.SetApiEndpoint(okEndpoint)
+
+	params := okhttp.Params{
+		"instId":  req.Symbol.OriginalSymbol,
+		"clOrdId": req.ClientOrderID,
+	}
+
+	// var err error
+
+	r.SetParams(params)
+	data, err := o.client.CallAPI(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	type result struct {
+		Code string      `json:"code"`
+		Data []OrderInfo `json:"data"`
+		Msg  string      `json:"msg"`
+	}
+
+	orderInfoRes := result{}
+
+	err = okhttp.Json.Unmarshal(data, &orderInfoRes)
+	if err != nil {
+		return nil, err
+	}
+
+	if orderInfoRes.Code != "0" {
+		return nil, fmt.Errorf("error: %v", orderInfoRes.Msg)
+	}
+
+	if len(orderInfoRes.Data) == 0 {
+		return nil, fmt.Errorf("order not found")
+	}
+
+	orderInfo := orderInfoRes.Data[0]
+
+	state := exchange.OrderStateNew
+	switch orderInfo.State {
+	case "partially_filled":
+		state = exchange.OrderStatePartiallyFilled
+	case "filled":
+		state = exchange.OrderStateFilled
+	case "canceled":
+		state = exchange.OrderStateCanceled
+	case "rejected":
+		state = exchange.OrderStateRejected
+	case "expired":
+		state = exchange.OrderStateExpired
+	}
+
+	avgPrice, err := decimal.NewFromString(orderInfo.AvgPx)
+	if err != nil {
+		return nil, err
+	}
+
+	if orderInfo.InstType == "FUTURES" || orderInfo.InstType == "SWAP" {
+		// 合约类型要将张转位币
+		orderInfo.AccFillSz, err = o.ConvertContractCoin("2", req.Symbol, orderInfo.AccFillSz, "close")
+		if err != nil {
+			return nil, err
+		}
+	}
+	filledVolume, err := decimal.NewFromString(orderInfo.AccFillSz)
+	if err != nil {
+		return nil, err
+	}
+
+	px, err := decimal.NewFromString(orderInfo.Px)
+	if err != nil {
+		px = decimal.Zero
+	}
+
+	fee, err := decimal.NewFromString(orderInfo.Fee)
+	if err != nil {
+		fee = decimal.Zero
+	}
+
+	updateTime, err := strconv.ParseInt(orderInfo.UpdateTime, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	createdTime, err := strconv.ParseInt(orderInfo.CreateTime, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	return &exchange.SearchOrderResponse{
+		OrderID:           orderInfo.OrderID,
+		ClientOrderID:     orderInfo.ClientOrderID,
+		State:             state,
+		Symbol:            orderInfo.InstID,
+		AvgPrice:          avgPrice,
+		Volume:            filledVolume,
+		Price:             px,
+		FilledQuoteVolume: filledVolume.Mul(avgPrice),
+		FilledVolume:      filledVolume,
+		FeeCost:           fee,
+		FeeAsset:          orderInfo.FeeCcy,
+		Side:              exchange.SideType(OkxTSide(orderInfo.Side)),
+		PositionSide:      exchange.PositionSide(OkxTPositionSide(orderInfo.PosSide)),
+		OrderType:         exchange.OrderType(OkxTOrderType(orderInfo.OrderType)),
+		CreatedTime:       createdTime,
+		UpdateTime:        updateTime,
+	}, nil
 }
 
 func (o *okx) SearchTrades(ctx context.Context, req *exchange.SearchTradesRequest) ([]*exchange.SearchTradesResponse, error) {

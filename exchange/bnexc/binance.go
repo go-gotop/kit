@@ -394,7 +394,7 @@ func (b *binance) searchSpotOrder(ctx context.Context, o *exchange.SearchOrderRe
 	}
 	b.client.SetApiEndpoint(bnSpotEndpoint)
 	params := bnhttp.Params{
-		"symbol":            o.Symbol,
+		"symbol":            o.Symbol.OriginalSymbol,
 		"origClientOrderId": o.ClientOrderID,
 	}
 	r = r.SetParams(params)
@@ -447,7 +447,7 @@ func (b *binance) searchSpotOrder(ctx context.Context, o *exchange.SearchOrderRe
 	trades, err := b.SearchTrades(ctx, &exchange.SearchTradesRequest{
 		APIKey:         o.APIKey,
 		SecretKey:      o.SecretKey,
-		Symbol:         o.Symbol,
+		Symbol:         o.Symbol.OriginalSymbol,
 		OrderID:        result.OrderID,
 		InstrumentType: exchange.InstrumentTypeSpot,
 	})
@@ -479,7 +479,7 @@ func (b *binance) searchFuturesOrder(ctx context.Context, o *exchange.SearchOrde
 	}
 	b.client.SetApiEndpoint(bnSpotEndpoint)
 	params := bnhttp.Params{
-		"symbol":            o.Symbol,
+		"symbol":            o.Symbol.OriginalSymbol,
 		"origClientOrderId": o.ClientOrderID,
 	}
 	r = r.SetParams(params)
@@ -535,7 +535,7 @@ func (b *binance) searchFuturesOrder(ctx context.Context, o *exchange.SearchOrde
 	trades, err := b.SearchTrades(ctx, &exchange.SearchTradesRequest{
 		APIKey:         o.APIKey,
 		SecretKey:      o.SecretKey,
-		Symbol:         o.Symbol,
+		Symbol:         o.Symbol.OriginalSymbol,
 		OrderID:        result.OrderID,
 		InstrumentType: exchange.InstrumentTypeSpot,
 	})

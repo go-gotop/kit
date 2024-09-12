@@ -205,6 +205,7 @@ type GetFundingRateResponse struct {
 type GetAssetsRequest struct {
 	APIKey         string
 	SecretKey      string
+	Passphrase     string
 	InstrumentType InstrumentType
 }
 
@@ -242,9 +243,10 @@ type CreateOrderResponse struct {
 type SearchOrderRequest struct {
 	APIKey         string
 	SecretKey      string
+	Passphrase     string
 	ClientOrderID  string
 	InstrumentType InstrumentType
-	Symbol         string
+	Symbol         Symbol
 }
 
 type SearchOrderResponse struct {
