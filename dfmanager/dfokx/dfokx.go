@@ -280,20 +280,15 @@ func (d *df) connectedMarketPriceHandler(req *dfmanager.MarkPriceRequest) func(i
 func (d *df) errorHandler(id string, req *dfmanager.DataFeedRequest) func(err error) {
 	return func(err error) {
 		if req.ErrorHandler != nil {
-			if strings.Contains(err.Error(), "close 4004") {
-				go d.wsm.Reconnect(id)
-				req.ErrorHandler(manager.ErrServerClosedConn)
-			} else if err == manager.ErrServerClosedConn {
-				go d.wsm.Reconnect(id)
-				req.ErrorHandler(err)
-			} else {
-				req.ErrorHandler(err)
-			}
+			req.ErrorHandler(err)
 		}
+		go d.wsm.Reconnect(id)
 		// 开启一个计时器，10秒后再次检查连接状态，如果连接已经关闭，则删除连接
 		time.AfterFunc(10*time.Second, func() {
 			if !d.wsm.GetWebsocket(id).IsConnected() {
-				req.ErrorHandler(manager.ErrReconnectFailed)
+				if req.ErrorHandler != nil {
+					req.ErrorHandler(manager.ErrReconnectFailed)
+				}
 				d.wsm.CloseWebsocket(id)
 			}
 		})
@@ -303,24 +298,18 @@ func (d *df) errorHandler(id string, req *dfmanager.DataFeedRequest) func(err er
 func (d *df) errorMarkPriceHandler(id string, req *dfmanager.MarkPriceRequest) func(err error) {
 	return func(err error) {
 		if req.ErrorHandler != nil {
-			if strings.Contains(err.Error(), "close 4004") {
-				go d.wsm.Reconnect(id)
-				req.ErrorHandler(manager.ErrServerClosedConn)
-			} else if err == manager.ErrServerClosedConn {
-				go d.wsm.Reconnect(id)
-				req.ErrorHandler(err)
-			} else {
-				req.ErrorHandler(err)
-			}
+			req.ErrorHandler(err)
 		}
-		if !d.wsm.GetWebsocket(id).IsConnected() {
-			// 开启一个计时器，10秒后再次检查连接状态，如果连接已经关闭，则删除连接
-			time.AfterFunc(10*time.Second, func() {
-				if !d.wsm.GetWebsocket(id).IsConnected() {
-					d.wsm.CloseWebsocket(id)
+		go d.wsm.Reconnect(id)
+		// 开启一个计时器，10秒后再次检查连接状态，如果连接已经关闭，则删除连接
+		time.AfterFunc(10*time.Second, func() {
+			if !d.wsm.GetWebsocket(id).IsConnected() {
+				if req.ErrorHandler != nil {
+					req.ErrorHandler(manager.ErrReconnectFailed)
 				}
-			})
-		}
+				d.wsm.CloseWebsocket(id)
+			}
+		})
 	}
 }
 

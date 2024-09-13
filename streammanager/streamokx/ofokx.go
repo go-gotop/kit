@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -296,16 +295,9 @@ func (o *of) connectedHandler(req *streammanager.StreamRequest) func(id string, 
 func (o *of) errorHandler(id string, req *streammanager.StreamRequest) func(err error) {
 	return func(err error) {
 		if req.ErrorHandler != nil {
-			if strings.Contains(err.Error(), "close 4004") {
-				go o.wsm.Reconnect(id)
-				req.ErrorHandler(manager.ErrServerClosedConn)
-			} else if err == manager.ErrServerClosedConn {
-				go o.wsm.Reconnect(id)
-				req.ErrorHandler(err)
-			} else {
-				req.ErrorHandler(err)
-			}
+			req.ErrorHandler(err)
 		}
+		go o.wsm.Reconnect(id)
 
 		// 开启一个计时器，10秒后再次检查连接状态，如果连接已经关闭，则删除连接
 		time.AfterFunc(10*time.Second, func() {
@@ -318,6 +310,9 @@ func (o *of) errorHandler(id string, req *streammanager.StreamRequest) func(err 
 						o.streamList = append(o.streamList[:i], o.streamList[i+1:]...)
 						break
 					}
+				}
+				if req.ErrorHandler != nil {
+					req.ErrorHandler(manager.ErrReconnectFailed)
 				}
 			}
 		})

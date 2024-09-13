@@ -19,6 +19,7 @@ var (
 	ErrServerClosedConn = errors.New("server closed connection")
 	ErrLimitExceed = errors.New("websocket request too frequent, please try again later")
 	ErrReconnectFailed = errors.New("reconnect failed")
+	ErrUndefinedError = errors.New("undefined error")
 )
 
 type Manager struct {
@@ -90,8 +91,12 @@ func (b *Manager) AddWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.
 
 	errorH := func(err error) {
 		if req.ErrorHandler != nil {
-			// 如果包含 1006 错误码，说明服务端主动关闭连接
+			// 如果包含 1006\4004 错误码，说明服务端主动关闭连接
 			if strings.Contains(err.Error(), "close 1006") {
+				req.ErrorHandler(ErrServerClosedConn)
+				return
+			}
+			if strings.Contains(err.Error(), "close 4004") {
 				req.ErrorHandler(ErrServerClosedConn)
 				return
 			}
