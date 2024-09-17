@@ -463,6 +463,7 @@ func (o *of) keepAlive() {
 				err := o.wsm.GetWebsocket(stream.UUID).WriteMessage(gwebsocket.TextMessage, []byte("ping"))
 				if err != nil {
 					o.opts.logger.Error("write ping message error", err)
+					o.wsm.Reconnect(stream.UUID)
 				}
 			}
 			o.mux.Unlock()

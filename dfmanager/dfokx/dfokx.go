@@ -3,6 +3,7 @@ package dfokx
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -215,6 +216,7 @@ func (d *df) DataFeedList() []string {
 func (d *df) connectedTradeAllHandler(req *dfmanager.DataFeedRequest) func(id string, conn websocket.WebSocketConn) {
 	return func(id string, conn websocket.WebSocketConn) {
 		// ws := d.wsm.GetWebsocket(id)
+		fmt.Printf("链接建立成功")
 		sub := wsSub{
 			Op: "subscribe",
 			Args: []struct {
@@ -343,6 +345,7 @@ func (d *df) keepAlive() {
 				err := ws.WriteMessage(gwebsocket.TextMessage, []byte("ping"))
 				if err != nil {
 					d.opts.logger.Error("write ping message error", err)
+					ws.Reconnect()
 				}
 			}
 			d.mux.RUnlock()

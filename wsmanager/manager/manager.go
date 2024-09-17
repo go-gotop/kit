@@ -2,6 +2,7 @@ package manager
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -17,16 +18,16 @@ var (
 	ErrMaxConnReached   = errors.New("max connection reached")
 	ErrWSNotFound       = errors.New("websocket not found")
 	ErrServerClosedConn = errors.New("server closed connection")
-	ErrLimitExceed = errors.New("websocket request too frequent, please try again later")
-	ErrReconnectFailed = errors.New("reconnect failed")
-	ErrUndefinedError = errors.New("undefined error")
+	ErrLimitExceed      = errors.New("websocket request too frequent, please try again later")
+	ErrReconnectFailed  = errors.New("reconnect failed")
+	ErrUndefinedError   = errors.New("undefined error")
 )
 
 type Manager struct {
 	exitChan         chan struct{}                  // 退出通道
 	config           *connConfig                    // 连接配置
 	currentConnCount int                            // 当前连接数
-	mux              sync.RWMutex                     // 互斥锁
+	mux              sync.RWMutex                   // 互斥锁
 	wsSets           map[string]websocket.Websocket // websocket 集合
 }
 
@@ -93,10 +94,12 @@ func (b *Manager) AddWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.
 		if req.ErrorHandler != nil {
 			// 如果包含 1006\4004 错误码，说明服务端主动关闭连接
 			if strings.Contains(err.Error(), "close 1006") {
+				fmt.Println("error: ", err)
 				req.ErrorHandler(ErrServerClosedConn)
 				return
 			}
 			if strings.Contains(err.Error(), "close 4004") {
+				fmt.Println("error: ", err)
 				req.ErrorHandler(ErrServerClosedConn)
 				return
 			}
@@ -110,10 +113,10 @@ func (b *Manager) AddWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.
 	})
 
 	err := ws.Connect(&websocket.WebsocketRequest{
-		ID:             req.ID,
-		Endpoint:       req.Endpoint,
-		MessageHandler: req.MessageHandler,
-		ErrorHandler:   errorH,
+		ID:               req.ID,
+		Endpoint:         req.Endpoint,
+		MessageHandler:   req.MessageHandler,
+		ErrorHandler:     errorH,
 		ConnectedHandler: req.ConnectedHandler,
 	})
 
