@@ -1,11 +1,13 @@
 package gorilla
 
 import (
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/go-gotop/kit/websocket"
+	gwebsocket "github.com/gorilla/websocket"
 )
 
 func NewGorillaWebsocket(conn websocket.WebSocketConn, config *websocket.WebsocketConfig) *GorillaWebsocket {
@@ -107,7 +109,7 @@ func (w *GorillaWebsocket) Disconnect() error {
 }
 
 func (w *GorillaWebsocket) Reconnect() error {
-	w.Disconnect();
+	w.Disconnect()
 	// 等待读循环完全停止
 	<-w.doneCh
 

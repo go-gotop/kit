@@ -283,6 +283,7 @@ func (o *of) createWebsocketHandler(uuid string, req *streammanager.StreamReques
 
 func (o *of) connectedHandler(req *streammanager.StreamRequest) func(id string, conn websocket.WebSocketConn) {
 	return func(id string, conn websocket.WebSocketConn) {
+		fmt.Println("连接成功回调：", req.AccountId, req.Instrument)
 		err := o.login(req, conn)
 		if err != nil {
 			if req.ErrorHandler != nil {
@@ -295,6 +296,7 @@ func (o *of) connectedHandler(req *streammanager.StreamRequest) func(id string, 
 func (o *of) errorHandler(id string, req *streammanager.StreamRequest) func(err error) {
 	return func(err error) {
 		if req.ErrorHandler != nil {
+			fmt.Println("连接错误回调: ", req.AccountId, req.Instrument, err)
 			req.ErrorHandler(err)
 		}
 		go o.wsm.Reconnect(id)
@@ -457,16 +459,18 @@ func (o *of) keepAlive() {
 		select {
 		case <-o.exitChan:
 			return
-		case <-time.After(20 * time.Second):
-			o.mux.Lock()
+		case <-time.After(10 * time.Second):
+
 			for _, stream := range o.streamList {
+				o.mux.RLock()
 				err := o.wsm.GetWebsocket(stream.UUID).WriteMessage(gwebsocket.TextMessage, []byte("ping"))
 				if err != nil {
 					o.opts.logger.Error("write ping message error", err)
 					o.wsm.Reconnect(stream.UUID)
 				}
+				o.mux.RUnlock()
 			}
-			o.mux.Unlock()
+
 		}
 	}
 }

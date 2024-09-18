@@ -216,7 +216,7 @@ func (d *df) DataFeedList() []string {
 func (d *df) connectedTradeAllHandler(req *dfmanager.DataFeedRequest) func(id string, conn websocket.WebSocketConn) {
 	return func(id string, conn websocket.WebSocketConn) {
 		// ws := d.wsm.GetWebsocket(id)
-		fmt.Printf("链接建立成功")
+		fmt.Println("tradeall链接成功回调:", req.Symbol)
 		sub := wsSub{
 			Op: "subscribe",
 			Args: []struct {
@@ -250,6 +250,7 @@ func (d *df) connectedTradeAllHandler(req *dfmanager.DataFeedRequest) func(id st
 func (d *df) connectedMarketPriceHandler(req *dfmanager.MarkPriceRequest) func(id string, conn websocket.WebSocketConn) {
 	return func(id string, conn websocket.WebSocketConn) {
 		// ws := d.wsm.GetWebsocket(id)
+		fmt.Println("markprice链接成功回调:", req.Symbol)
 		sub := wsSub{
 			Op: "subscribe",
 			Args: []struct {
@@ -282,6 +283,7 @@ func (d *df) connectedMarketPriceHandler(req *dfmanager.MarkPriceRequest) func(i
 func (d *df) errorHandler(id string, req *dfmanager.DataFeedRequest) func(err error) {
 	return func(err error) {
 		if req.ErrorHandler != nil {
+			fmt.Println("连接错误回调:", req.Symbol, err)
 			req.ErrorHandler(err)
 		}
 		go d.wsm.Reconnect(id)
@@ -339,16 +341,16 @@ func (d *df) keepAlive() {
 		select {
 		case <-d.exitChan:
 			return
-		case <-time.After(20 * time.Second):
-			d.mux.RLock()
+		case <-time.After(10 * time.Second):
 			for _, ws := range d.wsm.GetWebsockets() {
+				d.mux.RLock()
 				err := ws.WriteMessage(gwebsocket.TextMessage, []byte("ping"))
 				if err != nil {
 					d.opts.logger.Error("write ping message error", err)
 					ws.Reconnect()
 				}
+				d.mux.RUnlock()
 			}
-			d.mux.RUnlock()
 		}
 	}
 }
