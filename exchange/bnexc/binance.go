@@ -31,6 +31,10 @@ func (b *binance) Name() string {
 	return exchange.BinanceExchange
 }
 
+func (b *binance) SetLeverage(ctx context.Context, req *exchange.SetLeverageRequest) error {
+	return nil
+}
+
 func (b *binance) Assets(ctx context.Context, req *exchange.GetAssetsRequest) ([]exchange.Asset, error) {
 	if req.InstrumentType == exchange.InstrumentTypeSpot {
 		result, err := b.spotAssets(ctx, req)
@@ -180,6 +184,10 @@ func (b *binance) GetMarginInventory(ctx context.Context, req *exchange.MarginIn
 		Assets: res.Assets,
 	}, nil
 
+}
+
+func (m *binance) GetPosition(ctx context.Context, req *exchange.GetPositionRequest) ([]*exchange.GetPositionResponse, error) {
+	return nil, nil
 }
 
 func (b *binance) ConvertContractCoin(typ string, symbol exchange.Symbol, sz string, opTyp string) (string, error) {

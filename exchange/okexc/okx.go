@@ -2,6 +2,7 @@ package okexc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -73,8 +74,24 @@ func (o *okx) CreateOrder(ctx context.Context, req *exchange.CreateOrderRequest)
 		return err
 	}
 
-	fmt.Println(string(data))
+	var responseData CreateOrderResponse
+	if err := json.Unmarshal(data, &responseData); err != nil {
+		return fmt.Errorf("error parsing response data: %v", err)
+	}
 
+	fmt.Println("创建订单结果:", responseData)
+
+	// 检查 code 值
+	if responseData.Code != "0" || len(responseData.Data) == 0 || responseData.Data[0].SCode != "0" {
+		// 处理错误或特定条件
+		msg := responseData.Msg
+		code := responseData.Code
+		if len(responseData.Data) > 0 {
+			msg = responseData.Data[0].SMsg
+			code = responseData.Data[0].SCode
+		}
+		return fmt.Errorf("operation failed, code: %s, message: %s", code, msg)
+	}
 	return nil
 }
 
@@ -219,6 +236,49 @@ func (o *okx) MarginBorrowOrRepay(ctx context.Context, req *exchange.MarginBorro
 
 func (o *okx) GetMarginInventory(ctx context.Context, req *exchange.MarginInventoryRequest) (*exchange.MarginInventory, error) {
 	return nil, nil
+}
+
+func (o *okx) GetPosition(ctx context.Context, req *exchange.GetPositionRequest) ([]*exchange.GetPositionResponse, error) {
+	r := &okhttp.Request{
+		APIKey:     req.APIKey,
+		SecretKey:  req.SecretKey,
+		Passphrase: req.Passphrase,
+		Method:     "GET",
+		Endpoint:   "/api/v5/account/positions-history",
+		SecType:    okhttp.SecTypeSigned,
+	}
+	r.SetParam("before", "1725942111000")
+	o.client.SetApiEndpoint(okEndpoint)
+	data, err := o.client.CallAPI(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(string(data))
+	return nil, nil
+}
+
+func (o *okx) SetLeverage(ctx context.Context, req *exchange.SetLeverageRequest) error {
+	r := &okhttp.Request{
+		APIKey:     req.APIKey,
+		SecretKey:  req.SecretKey,
+		Passphrase: req.Passphrase,
+		Method:     "POST",
+		Endpoint:   "/api/v5/account/set-leverage",
+		SecType:    okhttp.SecTypeSigned,
+	}
+	params := okhttp.Params{
+		"instId":  req.Symbol,
+		"lever":   req.Lever,
+		"mgnMode": req.Mode,
+	}
+	r.SetJSONBody(params)
+	o.client.SetApiEndpoint(okEndpoint)
+	data, err := o.client.CallAPI(ctx, r)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(data))
+	return nil
 }
 
 // typ：1-币转账 2-张转币; symbol: 交易对; sz：数量; opTyp: open（舍位），close（四舍五入）

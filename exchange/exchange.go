@@ -182,6 +182,31 @@ type GetMarginInterestRateRequest struct {
 	IsIsolated bool   // 是否逐仓
 }
 
+type GetPositionRequest struct {
+	APIKey     string
+	SecretKey  string
+	Passphrase string
+}
+
+type SetLeverageRequest struct {
+	APIKey     string
+	SecretKey  string
+	Passphrase string
+	Mode       string
+	Lever      string
+	Symbol    string
+}
+
+type GetPositionResponse struct {
+	Symbol        string
+	OpenAvgPrice  decimal.Decimal
+	CloseAvgPrice decimal.Decimal
+	Fee           decimal.Decimal
+	FundingFee    decimal.Decimal
+	Pnl           decimal.Decimal
+	PositionSide  PositionSide
+}
+
 type GetMarginInterestRateResponse struct {
 	Asset                  string
 	NextHourlyInterestRate decimal.Decimal
@@ -366,4 +391,8 @@ type Exchange interface {
 	GetMarginInventory(ctx context.Context, req *MarginInventoryRequest) (*MarginInventory, error)
 	// okx 合约张币转换
 	ConvertContractCoin(typ string, symbol Symbol, sz string, opTyp string) (string, error)
+	// 获取持仓
+	GetPosition(ctx context.Context, req *GetPositionRequest) ([]*GetPositionResponse, error)
+	// 批量设置杠杠
+	SetLeverage(ctx context.Context, req *SetLeverageRequest) error
 }
