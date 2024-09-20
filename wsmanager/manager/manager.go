@@ -144,10 +144,16 @@ func (b *Manager) CloseWebsocket(uniq string) error {
 }
 
 func (b *Manager) GetWebsocket(uniq string) websocket.Websocket {
+	b.mux.RLock()
+	defer b.mux.RUnlock()
+
 	return b.wsSets[uniq]
 }
 
 func (b *Manager) GetWebsockets() map[string]websocket.Websocket {
+	b.mux.RLock()
+	defer b.mux.RUnlock()
+
 	return b.wsSets
 }
 

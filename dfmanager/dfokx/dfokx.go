@@ -189,8 +189,8 @@ func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
 }
 
 func (d *df) CloseDataFeed(id string) error {
-	d.mux.RLock()
-	defer d.mux.RUnlock()
+	d.mux.Lock()
+	defer d.mux.Unlock()
 
 	err := d.wsm.CloseWebsocket(id)
 	if err != nil {
@@ -344,12 +344,14 @@ func (d *df) keepAlive() {
 		case <-time.After(10 * time.Second):
 			for _, ws := range d.wsm.GetWebsockets() {
 				d.mux.RLock()
-				err := ws.WriteMessage(gwebsocket.TextMessage, []byte("ping"))
-				if err != nil {
-					d.opts.logger.Error("write ping message error", err)
-					ws.Reconnect()
+				if ws != nil {
+					err := ws.WriteMessage(gwebsocket.TextMessage, []byte("ping"))
+					if err != nil {
+						d.opts.logger.Error("write ping message error", err)
+						ws.Reconnect()
+					}
+					d.mux.RUnlock()
 				}
-				d.mux.RUnlock()
 			}
 		}
 	}
