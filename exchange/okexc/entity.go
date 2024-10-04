@@ -80,3 +80,26 @@ type CreateOrderResponse struct {
 	Msg     string `json:"msg"`
 	OutTime string `json:"outTime"`
 }
+
+type AssetsResponse struct {
+	Code string `json:"code"`
+	Data []struct {
+		Details []struct {
+			AssetsName string `json:"ccy"`
+			Free       string `json:"availBal"`
+			Locked     string `json:"frozenBal"`
+		} `json:"details"`
+	} `json:"data"`
+	Msg string `json:"msg"`
+}
+
+type AccountConfigResponse struct {
+	Code string `json:"code"`
+	Data []struct {
+		Uid        string `json:"uid"`
+		AcctLv     string `json:"acctLv"`
+		PosMod     string `json:"posMode"`
+		AutoBorrow bool   `json:"autoLoan"`
+	} `json:"data"`
+	Msg string `json:"msg"`
+}

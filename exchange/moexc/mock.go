@@ -107,6 +107,10 @@ func (m *mockExchange) Assets(ctx context.Context, req *exchange.GetAssetsReques
 	return result, nil
 }
 
+func (m *mockExchange) GetAccountConfig(ctx context.Context, req *exchange.GetAccountConfigRequest) (exchange.GetAccountConfigResponse, error) {
+	return exchange.GetAccountConfigResponse{}, errors.New("not implemented")
+}
+
 func (m *mockExchange) CreateOrder(ctx context.Context, o *exchange.CreateOrderRequest) error {
 	r := &mohttp.Request{
 		Method:    http.MethodPost,

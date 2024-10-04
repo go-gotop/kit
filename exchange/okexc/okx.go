@@ -46,9 +46,82 @@ func (o *okx) Assets(ctx context.Context, req *exchange.GetAssetsRequest) ([]exc
 		return nil, err
 	}
 
-	fmt.Println(string(data))
+	var response AssetsResponse
+	if err := json.Unmarshal(data, &response); err != nil {
+		return nil, fmt.Errorf("error parsing response data: %v", err)
+	}
 
-	return nil, nil
+	if response.Code != "0" {
+		return nil, fmt.Errorf("operation failed, code: %s, message: %s", response.Code, response.Msg)
+	}
+
+	var assets []exchange.Asset
+	fmt.Printf("%+v\n", response)
+	for _, item := range response.Data {
+		if item.Details == nil || len(item.Details) == 0 {
+			continue
+		}
+
+		for _, detail := range item.Details {
+			free, err := decimal.NewFromString(detail.Free)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			locked, err := decimal.NewFromString(detail.Locked)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			asset := exchange.Asset{
+				Exchange:  exchange.OkxExchange,
+				AssetName: detail.AssetsName,
+				Free:      free,
+				Locked:    locked,
+			}
+			assets = append(assets, asset)
+		}
+	}
+
+	return assets, nil
+}
+
+func (o *okx) GetAccountConfig(ctx context.Context, req *exchange.GetAccountConfigRequest) (exchange.GetAccountConfigResponse, error) {
+	r := &okhttp.Request{
+		APIKey:     req.APIKey,
+		SecretKey:  req.SecretKey,
+		Passphrase: req.Passphrase,
+		Method:     "GET",
+		Endpoint:   "/api/v5/account/config",
+		SecType:    okhttp.SecTypeSigned,
+	}
+
+	o.client.SetApiEndpoint(okEndpoint)
+
+	data, err := o.client.CallAPI(ctx, r)
+	if err != nil {
+		return exchange.GetAccountConfigResponse{}, err
+	}
+
+	var response AccountConfigResponse
+	if err := json.Unmarshal(data, &response); err != nil {
+		return exchange.GetAccountConfigResponse{}, fmt.Errorf("error parsing response data: %v", err)
+	}
+
+	if response.Code != "0" {
+		return exchange.GetAccountConfigResponse{}, fmt.Errorf("operation failed, code: %s, message: %s", response.Code, response.Msg)
+	}
+
+	if response.Data == nil || len(response.Data) == 0 {
+		return exchange.GetAccountConfigResponse{}, nil
+	}
+
+	return exchange.GetAccountConfigResponse{
+		Uid:        response.Data[0].Uid,
+		AcctLv:     response.Data[0].AcctLv,
+		PosMod:     response.Data[0].PosMod,
+		AutoBorrow: response.Data[0].AutoBorrow,
+	}, nil
 }
 
 func (o *okx) CreateOrder(ctx context.Context, req *exchange.CreateOrderRequest) error {

@@ -155,6 +155,19 @@ var (
 	ErrListenKeyExpired = errors.New("listen key expired")
 )
 
+type GetAccountConfigRequest struct {
+	APIKey    string
+	SecretKey string
+	Passphrase string
+}
+
+type GetAccountConfigResponse struct {
+	Uid 		string
+	AcctLv 		string // 账户模式
+	PosMod 		string // 持仓方式
+	AutoBorrow 	bool // 是否自动借币
+}
+
 type MarginInventoryRequest struct {
 	APIKey    string
 	SecretKey string
@@ -395,4 +408,6 @@ type Exchange interface {
 	GetPosition(ctx context.Context, req *GetPositionRequest) ([]*GetPositionResponse, error)
 	// 批量设置杠杠
 	SetLeverage(ctx context.Context, req *SetLeverageRequest) error
+	// 获取账户配置
+	GetAccountConfig(ctx context.Context, req *GetAccountConfigRequest) (GetAccountConfigResponse, error)
 }

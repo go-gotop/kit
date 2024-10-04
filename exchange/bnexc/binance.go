@@ -58,6 +58,10 @@ func (b *binance) Assets(ctx context.Context, req *exchange.GetAssetsRequest) ([
 	return data, nil
 }
 
+func (b *binance) GetAccountConfig(ctx context.Context, req *exchange.GetAccountConfigRequest) (exchange.GetAccountConfigResponse, error) {
+	return exchange.GetAccountConfigResponse{}, errors.New("not implemented")
+}
+
 func (b *binance) CreateOrder(ctx context.Context, o *exchange.CreateOrderRequest) error {
 	if o.Instrument == exchange.InstrumentTypeSpot {
 		return b.createSpotOrder(ctx, o)
