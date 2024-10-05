@@ -103,3 +103,54 @@ type AccountConfigResponse struct {
 	} `json:"data"`
 	Msg string `json:"msg"`
 }
+
+type PositionsResponse struct {
+	Code string `json:"code"`
+	Data []struct {
+		InstType    string `json:"instType"`
+		InstID      string `json:"instId"`
+		Ccy         string `json:"ccy"`    // 占用保证金币种
+		PosCcy      string `json:"posCcy"` // 仓位币种
+		MgnMode     string `json:"mgnMode"`
+		PosID       string `json:"posId"`
+		PosSide     string `json:"posSide"`
+		Pos         string `json:"pos"`
+		AvailPos    string `json:"availPos"`
+		AvgPx       string `json:"avgPx"`
+		Upl         string `json:"upl"`
+		Lever       string `json:"lever"`
+		LiqPx       string `json:"liqPx"`
+		MarkPx      string `json:"markPx"`
+		Imr         string `json:"imr"`
+		Margin      string `json:"margin"`
+		Liab        string `json:"liab"`        // 仓位的负债
+		Interest    string `json:"interest"`    // 仓位的利息
+		BePx        string `json:"bePx"`        // 盈亏平衡价
+		RealizedPnl string `json:"realizedPnl"` // 已实现盈亏
+		Pnl         string `json:"pnl"`         // 平仓订单累积收益额
+		Fee         string `json:"fee"`         // 仓位交易累计的手续费与返佣
+		FundingFee  string `json:"fundingFee"`  // 累积资金费用
+		CTime       string `json:"cTime"`       // 创建时间
+		UTime       string `json:"uTime"`       // 更新时间
+	} `json:"data"`
+	Msg string `json:"msg"`
+}
+
+type LeverageResponse struct {
+	Code string `json:"code"`
+	Data []struct {
+		Lever string `json:"lever"`
+	} `json:"data"`
+	Msg string `json:"msg"`
+}
+
+type MaxSizeResponse struct {
+	Code string `json:"code"`
+	Data []struct {
+		InstID  string `json:"instId"`
+		Ccy     string `json:"ccy"`
+		MaxBuy  string `json:"maxBuy"`
+		MaxSell string `json:"maxSell"`
+	} `json:"data"`
+	Msg string `json:"msg"`
+}

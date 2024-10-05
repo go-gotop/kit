@@ -187,11 +187,18 @@ func (b *binance) GetMarginInventory(ctx context.Context, req *exchange.MarginIn
 	return &exchange.MarginInventory{
 		Assets: res.Assets,
 	}, nil
-
 }
 
-func (m *binance) GetPosition(ctx context.Context, req *exchange.GetPositionRequest) ([]*exchange.GetPositionResponse, error) {
+func (b *binance) GetMaxSize(ctx context.Context, req *exchange.GetMaxSizeRequest) ([]exchange.GetMaxSizeResponse, error) {
 	return nil, nil
+}
+
+func (b *binance) GetPosition(ctx context.Context, req *exchange.GetPositionRequest) ([]*exchange.GetPositionResponse, error) {
+	return nil, nil
+}
+
+func (b *binance) GetHistoryPosition(ctx context.Context, req *exchange.GetPositionHistoryRequest) error {
+	return nil
 }
 
 func (b *binance) ConvertContractCoin(typ string, symbol exchange.Symbol, sz string, opTyp string) (string, error) {

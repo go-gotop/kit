@@ -317,6 +317,139 @@ func (o *okx) GetPosition(ctx context.Context, req *exchange.GetPositionRequest)
 		SecretKey:  req.SecretKey,
 		Passphrase: req.Passphrase,
 		Method:     "GET",
+		Endpoint:   "/api/v5/account/positions",
+		SecType:    okhttp.SecTypeSigned,
+	}
+	o.client.SetApiEndpoint(okEndpoint)
+	data, err := o.client.CallAPI(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	response := PositionsResponse{}
+	if err := json.Unmarshal(data, &response); err != nil {
+		return nil, fmt.Errorf("error parsing response data: %v", err)
+	}
+
+	if response.Code != "0" {
+		return nil, fmt.Errorf("operation failed, code: %s, message: %s", response.Code, response.Msg)
+	}
+
+	var positions []*exchange.GetPositionResponse
+	for _, item := range response.Data {
+
+		avgPx, err := decimal.NewFromString(item.AvgPx)
+		if err != nil {
+			return nil, err
+		}
+
+		fee, err := decimal.NewFromString(item.Fee)
+		if err != nil {
+			fee = decimal.Zero
+		}
+
+		fundingFee, err := decimal.NewFromString(item.FundingFee)
+		if err != nil {
+			fundingFee = decimal.Zero
+		}
+
+		pos, err := decimal.NewFromString(item.Pos)
+		if err != nil {
+			pos = decimal.Zero
+		}
+
+		upl, err := decimal.NewFromString(item.Upl)
+		if err != nil {
+			upl = decimal.Zero
+		}
+
+		pnl, err := decimal.NewFromString(item.Pnl)
+		if err != nil {
+			pnl = decimal.Zero
+		}
+
+		realizedPnl, err := decimal.NewFromString(item.RealizedPnl)
+		if err != nil {
+			realizedPnl = decimal.Zero
+		}
+
+		liqPx, err := decimal.NewFromString(item.LiqPx)
+		if err != nil {
+			liqPx = decimal.Zero
+		}
+
+		margin, err := decimal.NewFromString(item.Margin)
+		if err != nil {
+			margin = decimal.Zero
+		}
+
+		interest, err := decimal.NewFromString(item.Interest)
+		if err != nil {
+			interest = decimal.Zero
+		}
+
+		liab, err := decimal.NewFromString(item.Liab)
+		if err != nil {
+			liab = decimal.Zero
+		}
+
+		bePx, err := decimal.NewFromString(item.BePx)
+		if err != nil {
+			bePx = decimal.Zero
+		}
+
+		ctime, err := strconv.ParseInt(item.CTime, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+
+		utime, err := strconv.ParseInt(item.UTime, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+
+		positionSide, err := o.posSideToPositionSide(item.InstType, item.PosSide, item.Pos, item.PosCcy, item.Ccy)
+		if err != nil {
+			return nil, err
+		}
+
+		instrumentType := exchange.InstrumentTypeFutures
+		if item.InstType == "MARGIN" {
+			instrumentType = exchange.InstrumentTypeMargin
+		}
+
+		position := exchange.GetPositionResponse{
+			Symbol:         item.InstID,
+			InstrumentType: instrumentType,
+			AvgPrice:       avgPx,
+			Fee:            fee,
+			FundingFee:     fundingFee,
+			Size:           pos,
+			Upl:            upl,
+			Pnl:            pnl,
+			RealizedPnl:    realizedPnl,
+			Lever:          item.Lever,
+			LiqPx:          liqPx,
+			Margin:         margin,
+			Liab:           liab,
+			Interest:       interest,
+			BePx:           bePx,
+			PositionSide:   positionSide,
+			CreateTime:     ctime,
+			UpdateTime:     utime,
+		}
+		positions = append(positions, &position)
+	}
+
+	return positions, nil
+}
+
+func (o *okx) GetHistoryPosition(ctx context.Context, req *exchange.GetPositionHistoryRequest) error {
+	r := &okhttp.Request{
+		APIKey:     req.APIKey,
+		SecretKey:  req.SecretKey,
+		Passphrase: req.Passphrase,
+		Method:     "GET",
 		Endpoint:   "/api/v5/account/positions-history",
 		SecType:    okhttp.SecTypeSigned,
 	}
@@ -324,10 +457,10 @@ func (o *okx) GetPosition(ctx context.Context, req *exchange.GetPositionRequest)
 	o.client.SetApiEndpoint(okEndpoint)
 	data, err := o.client.CallAPI(ctx, r)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	fmt.Println(string(data))
-	return nil, nil
+	return nil
 }
 
 func (o *okx) SetLeverage(ctx context.Context, req *exchange.SetLeverageRequest) error {
@@ -350,8 +483,82 @@ func (o *okx) SetLeverage(ctx context.Context, req *exchange.SetLeverageRequest)
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(data))
+
+	var response LeverageResponse
+	if err := json.Unmarshal(data, &response); err != nil {
+		return fmt.Errorf("error parsing response data: %v", err)
+	}
+
+	if response.Code != "0" {
+		return fmt.Errorf("operation failed, code: %s, message: %s", response.Code, response.Msg)
+	}
+
+	if response.Data == nil || len(response.Data) == 0 {
+		return fmt.Errorf("operation failed, code: %s, message: %s", response.Code, response.Msg)
+	}
+
+	if response.Data[0].Lever != req.Lever {
+		return fmt.Errorf("operation failed, code: %s, message: %s", response.Code, response.Msg)
+	}
 	return nil
+}
+
+func (o *okx) GetMaxSize(ctx context.Context, req *exchange.GetMaxSizeRequest) ([]exchange.GetMaxSizeResponse, error) {
+	r := &okhttp.Request{
+		APIKey:     req.APIKey,
+		SecretKey:  req.SecretKey,
+		Passphrase: req.Passphrase,
+		Method:     "GET",
+		Endpoint:   "/api/v5/account/max-size",
+		SecType:    okhttp.SecTypeSigned,
+	}
+
+	o.client.SetApiEndpoint(okEndpoint)
+	httpParams := okhttp.Params{
+		"instId":   req.InstIds,
+		"ccy":      req.Ccy,
+		"tdMode":   req.TdMode,
+		"leverage": req.Leverage,
+	}
+	r.SetParams(httpParams)
+	data, err := o.client.CallAPI(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	var response MaxSizeResponse
+	if err := json.Unmarshal(data, &response); err != nil {
+		return nil, fmt.Errorf("error parsing response data: %v", err)
+	}
+
+	if response.Code != "0" {
+		return nil, fmt.Errorf("operation failed, code: %s, message: %s", response.Code, response.Msg)
+	}
+
+	if response.Data == nil || len(response.Data) == 0 {
+		return nil, nil
+	}
+
+	var maxSize []exchange.GetMaxSizeResponse
+	for _, item := range response.Data {
+		maxBuy, err := decimal.NewFromString(item.MaxBuy)
+		if err != nil {
+			return nil, err
+		}
+
+		maxSell, err := decimal.NewFromString(item.MaxSell)
+		if err != nil {
+			return nil, err
+		}
+		maxSize = append(maxSize, exchange.GetMaxSizeResponse{
+			InstId:  item.InstID,
+			Ccy:     item.Ccy,
+			MaxBuy:  maxBuy,
+			MaxSell: maxSell,
+		})
+	}
+
+	return maxSize, nil
 }
 
 // typ：1-币转账 2-张转币; symbol: 交易对; sz：数量; opTyp: open（舍位），close（四舍五入）
@@ -497,4 +704,38 @@ func (h *okx) sizePrecision(size decimal.Decimal, symbol exchange.Symbol, opType
 		orderQuantity = symbol.MinSize
 	}
 	return orderQuantity
+}
+
+func (h *okx) posSideToPositionSide(instType string, posSide string, pos string, posCcy string, ccy string) (exchange.PositionSide, error) {
+	// 持仓方向
+	// long：开平仓模式开多，pos为正
+	// short：开平仓模式开空，pos为正
+	// net：买卖模式（交割/永续/期权：pos为正代表开多，pos为负代表开空。币币杠杆时，pos均为正，posCcy为交易货币时，代表开多；posCcy为计价货币时，代表开空。）
+	size, err := decimal.NewFromString(pos)
+	if err != nil {
+		return exchange.PositionSide(""), err
+	}
+	if posSide == "long" {
+		// 开多
+		return exchange.PositionSideLong, nil
+	} else if posSide == "short" {
+		// 开空
+		return exchange.PositionSideShort, nil
+	} else if posSide == "net" {
+		if instType == "MARGIN" {
+			if posCcy == ccy {
+				// 保证金默认是计价货币 usdt，如果仓位币种是 usdt，代表开空
+				return exchange.PositionSideShort, nil
+			} else {
+				return exchange.PositionSideLong, nil
+			}
+		} else {
+			if size.GreaterThan(decimal.Zero) {
+				return exchange.PositionSideLong, nil
+			} else {
+				return exchange.PositionSideShort, nil
+			}
+		}
+	}
+	return exchange.PositionSide(""), fmt.Errorf("invalid posSide: %v", posSide)
 }

@@ -156,16 +156,33 @@ var (
 )
 
 type GetAccountConfigRequest struct {
-	APIKey    string
-	SecretKey string
+	APIKey     string
+	SecretKey  string
 	Passphrase string
 }
 
+type GetMaxSizeRequest = struct {
+	APIKey     string
+	SecretKey  string
+	Passphrase string
+	InstIds    string
+	TdMode     string
+	Ccy        string
+	Leverage   string
+}
+
+type GetMaxSizeResponse = struct {
+	InstId  string
+	Ccy     string
+	MaxBuy  decimal.Decimal
+	MaxSell decimal.Decimal
+}
+
 type GetAccountConfigResponse struct {
-	Uid 		string
-	AcctLv 		string // 账户模式
-	PosMod 		string // 持仓方式
-	AutoBorrow 	bool // 是否自动借币
+	Uid        string
+	AcctLv     string // 账户模式
+	PosMod     string // 持仓方式
+	AutoBorrow bool   // 是否自动借币
 }
 
 type MarginInventoryRequest struct {
@@ -201,23 +218,43 @@ type GetPositionRequest struct {
 	Passphrase string
 }
 
+type GetPositionHistoryRequest struct {
+	APIKey     string
+	SecretKey  string
+	Passphrase string
+	Start      string
+	End        string
+}
+
 type SetLeverageRequest struct {
 	APIKey     string
 	SecretKey  string
 	Passphrase string
 	Mode       string
 	Lever      string
-	Symbol    string
+	Symbol     string
 }
 
 type GetPositionResponse struct {
-	Symbol        string
-	OpenAvgPrice  decimal.Decimal
-	CloseAvgPrice decimal.Decimal
-	Fee           decimal.Decimal
-	FundingFee    decimal.Decimal
-	Pnl           decimal.Decimal
-	PositionSide  PositionSide
+	Symbol         string
+	InstrumentType InstrumentType
+	AvgPrice       decimal.Decimal // 开仓均价
+	Fee            decimal.Decimal
+	FundingFee     decimal.Decimal
+	PositionSide   PositionSide
+	Size           decimal.Decimal // 仓位数量
+	Upl            decimal.Decimal // 未实现盈亏
+	Pnl            decimal.Decimal // 平仓订单累积收益额
+	RealizedPnl    decimal.Decimal // 已实现盈亏
+	Lever          string          // 杠杆倍数
+	LiqPx          decimal.Decimal // 强平价格
+	Margin         decimal.Decimal // 保证金率
+	Liab           decimal.Decimal // 仓位的负债
+	Interest       decimal.Decimal // 仓位的利息
+	BePx           decimal.Decimal // 盈亏平衡价
+	CreateTime     int64           // 创建时间
+	UpdateTime     int64           // 更新时间
+
 }
 
 type GetMarginInterestRateResponse struct {
@@ -404,10 +441,14 @@ type Exchange interface {
 	GetMarginInventory(ctx context.Context, req *MarginInventoryRequest) (*MarginInventory, error)
 	// okx 合约张币转换
 	ConvertContractCoin(typ string, symbol Symbol, sz string, opTyp string) (string, error)
-	// 获取持仓
+	// 获取当前持仓
 	GetPosition(ctx context.Context, req *GetPositionRequest) ([]*GetPositionResponse, error)
+	// 获取历史持仓
+	GetHistoryPosition(ctx context.Context, req *GetPositionHistoryRequest) error
 	// 批量设置杠杠
 	SetLeverage(ctx context.Context, req *SetLeverageRequest) error
 	// 获取账户配置
 	GetAccountConfig(ctx context.Context, req *GetAccountConfigRequest) (GetAccountConfigResponse, error)
+	// 获取最大下单量
+	GetMaxSize(ctx context.Context, req *GetMaxSizeRequest) ([]GetMaxSizeResponse, error)
 }

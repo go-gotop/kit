@@ -145,12 +145,20 @@ func (m *mockExchange) CreateOrder(ctx context.Context, o *exchange.CreateOrderR
 	return nil
 }
 
+func (m *mockExchange) GetMaxSize(ctx context.Context, req *exchange.GetMaxSizeRequest) ([]exchange.GetMaxSizeResponse, error) {
+	return nil, nil
+}
+
 func (m *mockExchange) SetLeverage(ctx context.Context, req *exchange.SetLeverageRequest) error {
 	return nil
 }
 
 func (m *mockExchange) GetPosition(ctx context.Context, req *exchange.GetPositionRequest) ([]*exchange.GetPositionResponse, error) {
 	return nil, nil
+}
+
+func (m *mockExchange) GetHistoryPosition(ctx context.Context, req *exchange.GetPositionHistoryRequest) error {
+	return nil
 }
 
 func (m *mockExchange) CancelOrder(ctx context.Context, o *exchange.CancelOrderRequest) error {
