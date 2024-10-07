@@ -145,6 +145,11 @@ func (m *mockExchange) CreateOrder(ctx context.Context, o *exchange.CreateOrderR
 	return nil
 }
 
+
+func (m *mockExchange) GetMarkPriceKline(ctx context.Context, req *exchange.GetMarkPriceKlineRequest) ([]exchange.GetMarkPriceKlineResponse, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (m *mockExchange) GetMaxSize(ctx context.Context, req *exchange.GetMaxSizeRequest) ([]exchange.GetMaxSizeResponse, error) {
 	return nil, nil
 }

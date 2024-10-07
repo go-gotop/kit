@@ -154,3 +154,9 @@ type MaxSizeResponse struct {
 	} `json:"data"`
 	Msg string `json:"msg"`
 }
+
+type MarkPriceKlineResponse struct {
+	Code string     `json:"code"`
+	Data [][]string `json:"data"`
+	Msg  string     `json:"msg"`
+}

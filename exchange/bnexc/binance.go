@@ -35,6 +35,10 @@ func (b *binance) SetLeverage(ctx context.Context, req *exchange.SetLeverageRequ
 	return nil
 }
 
+func (b *binance) GetMarkPriceKline(ctx context.Context, req *exchange.GetMarkPriceKlineRequest) ([]exchange.GetMarkPriceKlineResponse, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (b *binance) Assets(ctx context.Context, req *exchange.GetAssetsRequest) ([]exchange.Asset, error) {
 	if req.InstrumentType == exchange.InstrumentTypeSpot {
 		result, err := b.spotAssets(ctx, req)

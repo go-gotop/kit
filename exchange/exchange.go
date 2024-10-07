@@ -161,7 +161,24 @@ type GetAccountConfigRequest struct {
 	Passphrase string
 }
 
-type GetMaxSizeRequest = struct {
+type GetMarkPriceKlineRequest struct {
+	Symbol string
+	Start  int64
+	End    int64
+	Period string
+}
+
+type GetMarkPriceKlineResponse struct {
+	Symbol   string
+	OpenTime int64
+	Open     decimal.Decimal
+	High     decimal.Decimal
+	Low      decimal.Decimal
+	Close    decimal.Decimal
+	Confirm  string // 0：未完结，1：已完结
+}
+
+type GetMaxSizeRequest struct {
 	APIKey     string
 	SecretKey  string
 	Passphrase string
@@ -171,7 +188,7 @@ type GetMaxSizeRequest = struct {
 	Leverage   string
 }
 
-type GetMaxSizeResponse = struct {
+type GetMaxSizeResponse struct {
 	InstId  string
 	Ccy     string
 	MaxBuy  decimal.Decimal
@@ -451,4 +468,6 @@ type Exchange interface {
 	GetAccountConfig(ctx context.Context, req *GetAccountConfigRequest) (GetAccountConfigResponse, error)
 	// 获取最大下单量
 	GetMaxSize(ctx context.Context, req *GetMaxSizeRequest) ([]GetMaxSizeResponse, error)
+	// 下载标记价格K线数据
+	GetMarkPriceKline(ctx context.Context, req *GetMarkPriceKlineRequest) ([]GetMarkPriceKlineResponse, error)
 }

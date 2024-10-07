@@ -159,6 +159,14 @@ func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
 	return errors.New("not implemented")
 }
 
+func (d *df) AddMarketKlineDataFeed(req *dfmanager.KlineMarketRequest) error {
+	return fmt.Errorf("not implemented")
+}
+
+func (d *df) AddSymbolUpdateDataFeed(req *dfmanager.SymbolUpdateRequest) error {
+	return fmt.Errorf("not implemented")
+}
+
 func (d *df) CloseDataFeed(id string) error {
 	d.mux.Lock()
 	defer d.mux.Unlock()

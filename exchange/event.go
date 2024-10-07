@@ -161,6 +161,47 @@ type KlineEvent struct {
 	TakerBuyQuoteAssetVolume decimal.Decimal
 }
 
+type KlineMarketEvent struct {
+	Symbol   string
+	OpenTime int64
+	Open     decimal.Decimal
+	High     decimal.Decimal
+	Low      decimal.Decimal
+	Close    decimal.Decimal
+	Confirm  string // 0 代表 K 线未完结，1 代表 K 线已完结。
+}
+
+type SymbolUpdateEvent struct {
+	// 种类
+	InstrumentType InstrumentType
+	// 原始交易对名称
+	OriginalSymbol string
+	// 原始交易对资产名称
+	OriginalAsset string
+	// 最小头寸
+	MinSize decimal.Decimal
+	// 最大头寸
+	MaxSize decimal.Decimal
+	// 最小价格
+	MinPrice decimal.Decimal
+	// 最大价格
+	MaxPrice decimal.Decimal
+	// 价格精度
+	PricePrecision int32
+	// 头寸精度
+	SizePrecision int32
+	// 合约面值
+	CtVal decimal.Decimal
+	// 合约乘数
+	CtMult decimal.Decimal
+	// 上线时间
+	ListTime int64
+	// 下线时间
+	ExpTime int64
+	// 状态 live:交易中，suspend:暂停交易，expired:已下线，preopen:预开放, test:测试
+	State string 
+}
+
 type AccountUpdateEvent struct {
 	Asset   string
 	Balance decimal.Decimal
