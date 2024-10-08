@@ -655,7 +655,6 @@ func toMarkPriceEvent(message []byte, instrument exchange.InstrumentType) (*exch
 }
 
 func toMarkKlineEvent(message []byte, instrument exchange.InstrumentType) (*exchange.KlineMarketEvent, error) {
-	fmt.Println(string(message))
 	e := &okxMarkKlineEvent{}
 	err := json.Unmarshal(message, e)
 	if err != nil {
