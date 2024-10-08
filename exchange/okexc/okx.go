@@ -112,7 +112,6 @@ func (o *okx) GetMarkPriceKline(ctx context.Context, req *exchange.GetMarkPriceK
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(string(data))
 	var response MarkPriceKlineResponse
 	if err := json.Unmarshal(data, &response); err != nil {
 		return nil, fmt.Errorf("error parsing response data: %v", err)
