@@ -391,6 +391,7 @@ func (o *okx) GetPosition(ctx context.Context, req *exchange.GetPositionRequest)
 		Endpoint:   "/api/v5/account/positions",
 		SecType:    okhttp.SecTypeSigned,
 	}
+
 	o.client.SetApiEndpoint(okEndpoint)
 	data, err := o.client.CallAPI(ctx, r)
 	if err != nil {

@@ -48,7 +48,9 @@ func (t *Tracer) Inject(ctx context.Context, carrier propagation.TextMapCarrier)
 
 func (t *Tracer) Start(ctx context.Context, carrier propagation.TextMapCarrier, attrs ...attribute.KeyValue) (context.Context, trace.Span) {
 	if t.opt.kind == trace.SpanKindServer || t.opt.kind == trace.SpanKindConsumer {
-		ctx = t.opt.propagator.Extract(ctx, carrier)
+		if carrier != nil {
+			ctx = t.opt.propagator.Extract(ctx, carrier)
+		}
 	}
 
 	opts := []trace.SpanStartOption{
@@ -59,7 +61,9 @@ func (t *Tracer) Start(ctx context.Context, carrier propagation.TextMapCarrier, 
 	ctx, span := t.tracer.Start(ctx, t.opt.spanName, opts...)
 
 	if t.opt.kind == trace.SpanKindClient || t.opt.kind == trace.SpanKindProducer {
-		t.Inject(ctx, carrier)
+		if carrier != nil {
+			t.Inject(ctx, carrier)
+		}
 	}
 
 	return ctx, span
