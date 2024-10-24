@@ -29,6 +29,104 @@ func (o *okx) Name() string {
 	return exchange.OkxExchange
 }
 
+func (o *okx) GetDepth(ctx context.Context, req *exchange.GetDepthRequest) (exchange.GetDepthResponse, error) {
+	r := &okhttp.Request{
+		Method:   "GET",
+		Endpoint: "/api/v5/market/books",
+		SecType:  okhttp.SecTypeNone,
+	}
+
+	o.client.SetApiEndpoint(okEndpoint)
+
+	params := okhttp.Params{
+		"instId": req.Symbol.OriginalSymbol,
+		"sz":     fmt.Sprintf("%d", req.Limit),
+	}
+
+	r.SetParams(params)
+
+	data, err := o.client.CallAPI(ctx, r)
+	if err != nil {
+		return exchange.GetDepthResponse{}, err
+	}
+
+	var response DepthResponse
+	if err := json.Unmarshal(data, &response); err != nil {
+		return exchange.GetDepthResponse{}, fmt.Errorf("error parsing response data: %v", err)
+	}
+
+	if response.Code != "0" {
+		return exchange.GetDepthResponse{}, fmt.Errorf("operation failed, code: %s, message: %s", response.Code, response.Msg)
+	}
+
+	if response.Data == nil || len(response.Data) == 0 {
+		return exchange.GetDepthResponse{}, fmt.Errorf("no data")
+	}
+
+	var result exchange.GetDepthResponse
+
+	resultData := response.Data[0]
+
+	asks := make([][]decimal.Decimal, 0)
+
+	for _, item := range resultData.Asks {
+		price, err := decimal.NewFromString(item[0])
+		if err != nil {
+			return exchange.GetDepthResponse{}, err
+		}
+		var volume decimal.Decimal
+		if req.InstrumentType == exchange.InstrumentTypeFutures {
+			// 合约类型要将张转位币
+			sz, err := o.ConvertContractCoin("2", req.Symbol, item[1], "close")
+			if err != nil {
+				return exchange.GetDepthResponse{}, err
+			}
+			volume, err = decimal.NewFromString(sz)
+			if err != nil {
+				return exchange.GetDepthResponse{}, err
+			}
+		} else {
+			volume, err = decimal.NewFromString(item[1])
+			if err != nil {
+				return exchange.GetDepthResponse{}, err
+			}
+		}
+		asks = append(asks, []decimal.Decimal{price, volume})
+	}
+
+	bids := make([][]decimal.Decimal, 0)
+
+	for _, item := range resultData.Bids {
+		price, err := decimal.NewFromString(item[0])
+		if err != nil {
+			return exchange.GetDepthResponse{}, err
+		}
+		var volume decimal.Decimal
+		if req.InstrumentType == exchange.InstrumentTypeFutures {
+			// 合约类型要将张转位币
+			sz, err := o.ConvertContractCoin("2", req.Symbol, item[1], "close")
+			if err != nil {
+				return exchange.GetDepthResponse{}, err
+			}
+			volume, err = decimal.NewFromString(sz)
+			if err != nil {
+				return exchange.GetDepthResponse{}, err
+			}
+		} else {
+			volume, err = decimal.NewFromString(item[1])
+			if err != nil {
+				return exchange.GetDepthResponse{}, err
+			}
+		}
+		bids = append(bids, []decimal.Decimal{price, volume})
+	}
+
+	result.Asks = asks
+	result.Bids = bids
+
+	return result, nil
+}
+
 func (o *okx) Assets(ctx context.Context, req *exchange.GetAssetsRequest) ([]exchange.Asset, error) {
 	r := &okhttp.Request{
 		APIKey:     req.APIKey,
@@ -397,7 +495,7 @@ func (o *okx) GetPosition(ctx context.Context, req *exchange.GetPositionRequest)
 	if err != nil {
 		return nil, err
 	}
-
+	fmt.Println(string(data))
 	response := PositionsResponse{}
 	if err := json.Unmarshal(data, &response); err != nil {
 		return nil, fmt.Errorf("error parsing response data: %v", err)

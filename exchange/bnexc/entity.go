@@ -360,3 +360,9 @@ type bnMarginInventory struct {
 	Assets     map[string]string `json:"assets"` // 假设所有资产值都是字符串类型
 	UpdateTime int64             `json:"updateTime"`
 }
+
+type bnDepthResponse struct {
+	Ts  int64      `json:"T"`
+	Bid [][]string `json:"bids"`
+	Ask [][]string `json:"asks"`
+}

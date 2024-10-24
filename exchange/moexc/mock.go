@@ -43,6 +43,10 @@ func (m *mockExchange) Name() string {
 	return exchange.MockExchange
 }
 
+func (m *mockExchange) GetDepth(ctx context.Context, req *exchange.GetDepthRequest) (exchange.GetDepthResponse, error) {
+	return exchange.GetDepthResponse{}, errors.New("not implemented")
+}
+
 func (m *mockExchange) Assets(ctx context.Context, req *exchange.GetAssetsRequest) ([]exchange.Asset, error) {
 	var response ApiResponse
 	r := &mohttp.Request{
@@ -144,7 +148,6 @@ func (m *mockExchange) CreateOrder(ctx context.Context, o *exchange.CreateOrderR
 	}
 	return nil
 }
-
 
 func (m *mockExchange) GetMarkPriceKline(ctx context.Context, req *exchange.GetMarkPriceKlineRequest) ([]exchange.GetMarkPriceKlineResponse, error) {
 	return nil, errors.New("not implemented")

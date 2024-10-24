@@ -155,6 +155,18 @@ var (
 	ErrListenKeyExpired = errors.New("listen key expired")
 )
 
+type GetDepthRequest struct {
+	Symbol         Symbol
+	Limit          uint8
+	InstrumentType InstrumentType
+}
+
+type GetDepthResponse struct {
+	Asks [][]decimal.Decimal
+	Bids [][]decimal.Decimal
+	Ts   int64
+}
+
 type GetAccountConfigRequest struct {
 	APIKey     string
 	SecretKey  string
@@ -470,4 +482,6 @@ type Exchange interface {
 	GetMaxSize(ctx context.Context, req *GetMaxSizeRequest) ([]GetMaxSizeResponse, error)
 	// 下载标记价格K线数据
 	GetMarkPriceKline(ctx context.Context, req *GetMarkPriceKlineRequest) ([]GetMarkPriceKlineResponse, error)
+	// 获取产品深度
+	GetDepth(ctx context.Context, req *GetDepthRequest) (GetDepthResponse, error)
 }

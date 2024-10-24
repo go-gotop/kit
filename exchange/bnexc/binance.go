@@ -31,6 +31,64 @@ func (b *binance) Name() string {
 	return exchange.BinanceExchange
 }
 
+func (b *binance) GetDepth(ctx context.Context, req *exchange.GetDepthRequest) (exchange.GetDepthResponse, error) {
+	r := &bnhttp.Request{
+		Method:   http.MethodGet,
+		Endpoint: "/api/v3/depth",
+		SecType:  bnhttp.SecTypeNone,
+	}
+	r = r.SetParams(bnhttp.Params{"symbol": req.Symbol.OriginalSymbol, "limit": req.Limit})
+	if req.InstrumentType == exchange.InstrumentTypeFutures {
+		r.Endpoint = "/fapi/v1/depth"
+		b.client.SetApiEndpoint(bnFuturesEndpoint)
+	} else {
+		b.client.SetApiEndpoint(bnSpotEndpoint)
+	}
+	data, err := b.client.CallAPI(ctx, r)
+	if err != nil {
+		return exchange.GetDepthResponse{}, err
+	}
+
+	var response bnDepthResponse
+
+	err = bnhttp.Json.Unmarshal(data, &response)
+	if err != nil {
+		return exchange.GetDepthResponse{}, err
+	}
+
+	asks := make([][]decimal.Decimal, 0, len(response.Ask))
+	for _, v := range response.Ask {
+		price, err := decimal.NewFromString(v[0])
+		if err != nil {
+			return exchange.GetDepthResponse{}, err
+		}
+		quantity, err := decimal.NewFromString(v[1])
+		if err != nil {
+			return exchange.GetDepthResponse{}, err
+		}
+		asks = append(asks, []decimal.Decimal{price, quantity})
+	}
+
+	bids := make([][]decimal.Decimal, 0, len(response.Bid))
+	for _, v := range response.Bid {
+		price, err := decimal.NewFromString(v[0])
+		if err != nil {
+			return exchange.GetDepthResponse{}, err
+		}
+		quantity, err := decimal.NewFromString(v[1])
+		if err != nil {
+			return exchange.GetDepthResponse{}, err
+		}
+		bids = append(bids, []decimal.Decimal{price, quantity})
+	}
+
+	return exchange.GetDepthResponse{
+		Asks: asks,
+		Bids: bids,
+		Ts:   response.Ts,
+	}, nil
+}
+
 func (b *binance) SetLeverage(ctx context.Context, req *exchange.SetLeverageRequest) error {
 	return nil
 }
