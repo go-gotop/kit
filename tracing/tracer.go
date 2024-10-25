@@ -42,6 +42,10 @@ func NewTracer(kind trace.SpanKind, spanName string, opts ...Option) *Tracer {
 	}
 }
 
+func (t *Tracer) Kind() trace.SpanKind {
+	return t.opt.kind
+}
+
 func (t *Tracer) Inject(ctx context.Context, carrier propagation.TextMapCarrier) {
 	t.opt.propagator.Inject(ctx, carrier)
 }
