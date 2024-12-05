@@ -22,7 +22,7 @@ var _ dfmanager.DataFeedManager = (*df)(nil)
 func NewMockDataFeed(limiter limiter.Limiter, opts ...Option) dfmanager.DataFeedManager {
 	// 默认配置
 	o := &options{
-		wsEndpoint:      "ws://192.168.100.3:8072/ws/data",
+		wsEndpoint:      "ws://10.0.0.6:8072/ws/data",
 		logger:          log.NewHelper(log.DefaultLogger),
 		maxConnDuration: 24*time.Hour - 5*time.Minute,
 	}

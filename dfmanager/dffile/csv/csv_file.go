@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/shopspring/decimal"
@@ -61,11 +62,6 @@ func (c *CsvFile) ReadCSVFile(filePath string) ([]*TradeData, error) {
 }
 
 func (c *CsvFile) readCSVFiles(req *StreamRequest, files []string, start int64, end int64) {
-	path := c.dir
-	if !strings.HasSuffix(path, "/") {
-		path = path + "/"
-	}
-
 	eventChan := make(chan *TradeEvent, 1)
 	finishedEventChan := make(chan struct{}, 1)
 
@@ -78,7 +74,7 @@ func (c *CsvFile) readCSVFiles(req *StreamRequest, files []string, start int64, 
 			case <-req.Ctx.Done():
 				return
 			default:
-				if err := c.processFile(req.Ctx, path+f, eventChan, start, end); err != nil {
+				if err := c.processFile(req.Ctx, f, eventChan, start, end); err != nil {
 					return
 				}
 			}
@@ -155,11 +151,12 @@ func readCSVFile(f string) ([]*TradeData, error) {
 	if err != nil {
 		return nil, err
 	}
+	headers = append(headers, "ignore")
 
 	rows := make([]*TradeData, 0, 3000)
 	for {
 		record, err := r.Read()
-		if err != nil {
+		if err != nil && record == nil {
 			if err == io.EOF {
 				break
 			}
@@ -174,7 +171,7 @@ func readCSVFile(f string) ([]*TradeData, error) {
 	return rows, nil
 }
 
-func readCSVFileNames(path string, start int64, end int64) ([]string, error) {
+func readCSVFileNamesBackup(path string, start int64, end int64) ([]string, error) {
 	// 确保路径以斜杠结尾
 	if !strings.HasSuffix(path, "/") {
 		path = path + "/"
@@ -224,6 +221,79 @@ func readCSVFileNames(path string, start int64, end int64) ([]string, error) {
 	for _, ts := range fileTimestamps {
 		fileNames = append(fileNames, strconv.FormatInt(ts, 10)+".csv")
 	}
+	return fileNames, nil
+}
+
+func readCSVFileNames(path string, start, end int64) ([]string, error) {
+	// 确保路径以斜杠结尾
+	if !strings.HasSuffix(path, "/") {
+		path += "/"
+	}
+
+	// 转换start和end为时间对象
+	startTime := time.UnixMilli(start)
+	endTime := time.UnixMilli(end)
+
+	var fileNames []string
+
+	// 根据start和end遍历每一天
+	for d := startTime; !d.After(endTime); d = d.AddDate(0, 0, 1) {
+		year := d.Format("2006")
+		date := d.Format("20060102")
+
+		// 构建当天的目录路径
+		dayPath := filepath.Join(path, year, date)
+
+		// 打开目录
+		dir, err := os.Open(dayPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// 如果目录不存在，跳过
+				continue
+			}
+			return nil, err
+		}
+		defer dir.Close()
+
+		// 获取目录下所有文件
+		files, err := dir.Readdir(0)
+		if err != nil {
+			return nil, err
+		}
+
+		// 匹配文件名格式是否包含csv:
+		re := regexp.MustCompile(`^(\d+)\.csv$`)
+
+		for _, file := range files {
+			if file.IsDir() {
+				continue
+			}
+
+			match := re.FindStringSubmatch(file.Name())
+			if len(match) != 2 {
+				// 文件名不符合格式，跳过
+				continue
+			}
+
+			// 从文件名解析时间戳
+			timestamp, err := strconv.Atoi(match[1])
+			if err != nil {
+				return nil, err
+			}
+
+			// 转换时间戳为时间对象
+			fileTime := time.UnixMilli(int64(timestamp))
+
+			// 检查文件时间是否在指定范围内
+			if !fileTime.Before(startTime) && !fileTime.After(endTime) {
+				filePath := filepath.Join(dayPath, file.Name())
+				fileNames = append(fileNames, filePath)
+			}
+		}
+	}
+
+	// 按文件名排序
+	sort.Strings(fileNames)
 	return fileNames, nil
 }
 
