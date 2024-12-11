@@ -426,8 +426,8 @@ type Symbol struct {
 	Exchange string
 	// 种类: SPOT, FUTURES
 	Instrument InstrumentType
-	// 状态: TRANSACTION_TRADING, TRANSACTION_SUSPEND, TRANSACTION_CLOSE, TRANSACTION_FINISH
-	Status TransactionStatus
+	// 状态: ENABLED, DISABLED
+	Status string
 	// 最小头寸
 	MinSize decimal.Decimal
 	// 最大头寸
