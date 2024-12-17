@@ -140,6 +140,10 @@ func (o *of) StreamList() []streammanager.Stream {
 	o.mux.RLock()
 	defer o.mux.RUnlock()
 
+	for i := range o.streamList {
+		o.streamList[i].IsConnected = o.wsm.IsConnected(o.streamList[i].UUID)
+	}
+
 	return o.streamList
 }
 
@@ -243,7 +247,7 @@ func (o *of) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.Webso
 func (o *of) createWebsocketHandler(uuid string, req *streammanager.StreamRequest, subhandler func(uuid string, req *streammanager.StreamRequest) error) func(message []byte) {
 	return func(message []byte) {
 		if string(message) == "pong" {
-			// 每隔10s发送ping过去，预期会收到pong
+			// 每隔10s发��ping过去，预期会收到pong
 			return
 		}
 		j, err := okhttp.NewJSON(message)

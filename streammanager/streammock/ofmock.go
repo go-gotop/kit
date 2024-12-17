@@ -192,11 +192,12 @@ func (o *of) StreamList() []streammanager.Stream {
 	for _, v := range o.listenKeySets {
 		for _, uuid := range v.uuidList {
 			list = append(list, streammanager.Stream{
-				UUID:       uuid,
-				AccountId:  v.AccountID,
-				APIKey:     v.APIKey,
-				Exchange:   o.name,
-				Instrument: v.Instrument,
+				UUID:        uuid,
+				AccountId:   v.AccountID,
+				APIKey:      v.APIKey,
+				Exchange:    o.name,
+				Instrument:  v.Instrument,
+				IsConnected: o.wsm.IsConnected(uuid),
 			})
 		}
 	}

@@ -23,6 +23,7 @@ type Stream struct {
 	APIKey     string
 	Exchange   string
 	Instrument exchange.InstrumentType
+	IsConnected bool
 }
 
 type StreamManager interface {
