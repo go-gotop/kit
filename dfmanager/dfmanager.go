@@ -49,6 +49,14 @@ type SymbolUpdateRequest struct {
 	ErrorHandler func(err error)
 }
 
+type Stream struct {
+	UUID        string
+	Instrument  exchange.InstrumentType
+	DataType    string
+	Symbol      string
+	IsConnected bool
+}
+
 type DataFeedManager interface {
 	Name() string
 	AddDataFeed(req *DataFeedRequest) error
@@ -57,6 +65,6 @@ type DataFeedManager interface {
 	AddKlineDataFeed(req *KlineRequest) error
 	AddSymbolUpdateDataFeed(req *SymbolUpdateRequest) error // 产品更新推送
 	CloseDataFeed(id string) error
-	DataFeedList() []string
+	DataFeedList() []Stream
 	Shutdown() error
 }

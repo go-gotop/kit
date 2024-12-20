@@ -200,11 +200,13 @@ func (d *df) CloseDataFeed(id string) error {
 	return nil
 }
 
-func (d *df) DataFeedList() []string {
+func (d *df) DataFeedList() []dfmanager.Stream {
 	mapList := d.wsm.GetWebsockets()
-	list := make([]string, 0, len(mapList))
+	list := make([]dfmanager.Stream, 0, len(mapList))
 	for k := range mapList {
-		list = append(list, k)
+		list = append(list, dfmanager.Stream{
+			UUID: k,
+		})
 	}
 	return list
 }

@@ -73,6 +73,7 @@ type df struct {
 	opts     *options
 	limiter  limiter.Limiter
 	wsm      wsmanager.WebsocketManager
+	streams  map[string]dfmanager.Stream
 	mux      sync.RWMutex
 }
 
@@ -133,6 +134,14 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 		return err
 	}
 
+	d.streams[req.ID] = dfmanager.Stream{
+		UUID:        req.ID,
+		Instrument:  req.Instrument,
+		Symbol:      req.Symbol,
+		DataType:    "trade",
+		IsConnected: true,
+	}
+
 	return nil
 }
 
@@ -189,6 +198,14 @@ func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
 		return err
 	}
 
+	d.streams[req.ID] = dfmanager.Stream{
+		UUID:        req.ID,
+		Instrument:  req.Instrument,
+		Symbol:      req.Symbol,
+		DataType:    "markprice",
+		IsConnected: true,
+	}
+
 	return nil
 }
 
@@ -243,6 +260,14 @@ func (d *df) AddMarketKlineDataFeed(req *dfmanager.KlineMarketRequest) error {
 	}, conf)
 	if err != nil {
 		return err
+	}
+
+	d.streams[req.ID] = dfmanager.Stream{
+		UUID:        req.ID,
+		Instrument:  req.Instrument,
+		Symbol:      req.Symbol,
+		DataType:    "markkline",
+		IsConnected: true,
 	}
 
 	return nil
@@ -320,14 +345,14 @@ func (d *df) CloseDataFeed(id string) error {
 	return nil
 }
 
-func (d *df) DataFeedList() []string {
+func (d *df) DataFeedList() []dfmanager.Stream {
 	d.mux.RLock()
 	defer d.mux.RUnlock()
 
-	mapList := d.wsm.GetWebsockets()
-	list := make([]string, 0, len(mapList))
-	for k := range mapList {
-		list = append(list, k)
+	list := make([]dfmanager.Stream, 0, len(d.streams))
+	for _, v := range d.streams {
+		v.IsConnected = d.wsm.IsConnected(v.UUID)
+		list = append(list, v)
 	}
 	return list
 }

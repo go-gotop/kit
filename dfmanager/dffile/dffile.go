@@ -135,13 +135,15 @@ func (d *df) CloseDataFeed(id string) error {
 	return nil
 }
 
-func (d *df) DataFeedList() []string {
+func (d *df) DataFeedList() []dfmanager.Stream {
 	d.mux.Lock()
 	defer d.mux.Unlock()
 
-	var list []string
-	for k := range d.streams {
-		list = append(list, k)
+	list := make([]dfmanager.Stream, 0, len(d.streams))
+	for _, v := range d.streams {
+		list = append(list, dfmanager.Stream{
+			UUID: v.uuid,
+		})
 	}
 	return list
 }

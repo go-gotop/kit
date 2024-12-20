@@ -42,6 +42,7 @@ func NewBinanceDataFeed(limiter limiter.Limiter, opts ...Option) dfmanager.DataF
 		name:    exchange.BinanceExchange,
 		opts:    o,
 		limiter: limiter,
+		streams: make(map[string]dfmanager.Stream),
 		wsm: manager.NewManager(
 			manager.WithMaxConnDuration(o.maxConnDuration),
 		),
@@ -53,7 +54,8 @@ type df struct {
 	opts    *options
 	limiter limiter.Limiter
 	wsm     wsmanager.WebsocketManager
-	mux     sync.Mutex
+	streams map[string]dfmanager.Stream
+	mux     sync.RWMutex
 }
 
 func (d *df) Name() string {
@@ -108,6 +110,13 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 	if err != nil {
 		return err
 	}
+	d.streams[req.ID] = dfmanager.Stream{
+		UUID:        req.ID,
+		Symbol:      symbol,
+		Instrument:  req.Instrument,
+		DataType:    "trade",
+		IsConnected: true,
+	}
 	return nil
 }
 
@@ -152,6 +161,13 @@ func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
 	if err != nil {
 		return err
 	}
+	d.streams[req.ID] = dfmanager.Stream{
+		UUID:        req.ID,
+		Symbol:      req.Symbol,
+		Instrument:  req.Instrument,
+		DataType:    "markPrice",
+		IsConnected: true,
+	}
 	return nil
 }
 
@@ -179,11 +195,14 @@ func (d *df) CloseDataFeed(id string) error {
 	return nil
 }
 
-func (d *df) DataFeedList() []string {
-	mapList := d.wsm.GetWebsockets()
-	list := make([]string, 0, len(mapList))
-	for k := range mapList {
-		list = append(list, k)
+func (d *df) DataFeedList() []dfmanager.Stream {
+	d.mux.RLock()
+	defer d.mux.RUnlock()
+
+	list := make([]dfmanager.Stream, 0, len(d.streams))
+	for _, v := range d.streams {
+		v.IsConnected = d.wsm.IsConnected(v.UUID)
+		list = append(list, v)
 	}
 	return list
 }
