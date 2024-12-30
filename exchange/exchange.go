@@ -63,11 +63,11 @@ const (
 	ByMaker = "MAKER"
 	ByTaker = "TAKER"
 
-	CreatedByUser   = "USER"
-	CreatedBySystem = "SYSTEM"
+	CreatedByUser   = "BY_USER"
+	CreatedBySystem = "BY_SYSTEM"
 
-	TransactionByUser   = "USER"
-	TransactionBySystem = "SYSTEM"
+	TransactionByUser   = "BY_USER"
+	TransactionBySystem = "BY_SYSTEM"
 
 	PosModeIsolated PosMode = "ISOLATED" // 逐仓
 	PosModeCross    PosMode = "CROSS"    // 全仓
