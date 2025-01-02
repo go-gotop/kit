@@ -110,7 +110,7 @@ const (
 	PositionStatusOpening PositionStatus = "OPENING_POSITION"
 	PositionStatusHolding PositionStatus = "HOlDING_POSITION"
 	PositionStatusClosing PositionStatus = "CLOSING_POSITION"
-	PositionStatusClosed  PositionStatus = "CLOSED_P0SITION"
+	PositionStatusClosed  PositionStatus = "CLOSED_POSITION"
 
 	PositionSideLong  PositionSide = "LONG"
 	PositionSideShort PositionSide = "SHORT"
