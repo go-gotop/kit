@@ -173,6 +173,27 @@ type GetAccountConfigRequest struct {
 	Passphrase string
 }
 
+type GetKlineRequest struct {
+	Symbol         Symbol
+	Start          int64
+	End            int64
+	Period         string
+	Limit          uint8
+	InstrumentType InstrumentType
+}
+
+type GetKlineResponse struct {
+	Symbol      string
+	OpenTime    int64
+	Open        decimal.Decimal
+	High        decimal.Decimal
+	Low         decimal.Decimal
+	Close       decimal.Decimal
+	Volume      decimal.Decimal
+	QuoteVolume decimal.Decimal
+	Confirm     string // 0：未完结，1：已完结
+}
+
 type GetMarkPriceKlineRequest struct {
 	Symbol string
 	Start  int64
@@ -482,6 +503,8 @@ type Exchange interface {
 	GetMaxSize(ctx context.Context, req *GetMaxSizeRequest) ([]GetMaxSizeResponse, error)
 	// 下载标记价格K线数据
 	GetMarkPriceKline(ctx context.Context, req *GetMarkPriceKlineRequest) ([]GetMarkPriceKlineResponse, error)
+	// 获取K线数据
+	GetKline(ctx context.Context, req *GetKlineRequest) ([]GetKlineResponse, error)
 	// 获取产品深度
 	GetDepth(ctx context.Context, req *GetDepthRequest) (GetDepthResponse, error)
 }

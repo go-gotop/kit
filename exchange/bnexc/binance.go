@@ -97,6 +97,94 @@ func (b *binance) GetMarkPriceKline(ctx context.Context, req *exchange.GetMarkPr
 	return nil, errors.New("not implemented")
 }
 
+func (b *binance) GetKline(ctx context.Context, req *exchange.GetKlineRequest) ([]exchange.GetKlineResponse, error) {
+	var r *bnhttp.Request
+
+	if req.InstrumentType == exchange.InstrumentTypeSpot {
+		r = &bnhttp.Request{
+			Method:   http.MethodGet,
+			Endpoint: "/api/v3/klines",
+			SecType:  bnhttp.SecTypeNone,
+		}
+		b.client.SetApiEndpoint(bnSpotEndpoint)
+	} else if req.InstrumentType == exchange.InstrumentTypeFutures {
+		r = &bnhttp.Request{
+			Method:   http.MethodGet,
+			Endpoint: "/fapi/v1/klines",
+			SecType:  bnhttp.SecTypeNone,
+		}
+		b.client.SetApiEndpoint(bnFuturesEndpoint)
+	}
+
+	params := bnhttp.Params{
+		"symbol":   req.Symbol.OriginalSymbol,
+		"interval": req.Period,
+	}
+
+	if req.Start != 0 {
+		params["startTime"] = req.Start
+	}
+	if req.End != 0 {
+		params["endTime"] = req.End
+	}
+	if req.Limit != 0 {
+		params["limit"] = req.Limit
+	}
+
+	r = r.SetParams(params)
+	data, err := b.client.CallAPI(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	var klines [][]interface{}
+	err = bnhttp.Json.Unmarshal(data, &klines)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]exchange.GetKlineResponse, 0, len(klines))
+	for _, k := range klines {
+		open, err := decimal.NewFromString(k[1].(string))
+		if err != nil {
+			return nil, err
+		}
+		high, err := decimal.NewFromString(k[2].(string))
+		if err != nil {
+			return nil, err
+		}
+		low, err := decimal.NewFromString(k[3].(string))
+		if err != nil {
+			return nil, err
+		}
+		close, err := decimal.NewFromString(k[4].(string))
+		if err != nil {
+			return nil, err
+		}
+		volume, err := decimal.NewFromString(k[5].(string))
+		if err != nil {
+			return nil, err
+		}
+		quoteVolume, err := decimal.NewFromString(k[7].(string))
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, exchange.GetKlineResponse{
+			Symbol:      req.Symbol.UnifiedSymbol,
+			OpenTime:    int64(k[0].(float64)),
+			Open:        open,
+			High:        high,
+			Low:         low,
+			Close:       close,
+			Volume:      volume,
+			QuoteVolume: quoteVolume,
+			Confirm:     "1",
+		})
+	}
+	return result, nil
+}
+
 func (b *binance) Assets(ctx context.Context, req *exchange.GetAssetsRequest) ([]exchange.Asset, error) {
 	if req.InstrumentType == exchange.InstrumentTypeSpot {
 		result, err := b.spotAssets(ctx, req)

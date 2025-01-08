@@ -153,6 +153,10 @@ func (m *mockExchange) GetMarkPriceKline(ctx context.Context, req *exchange.GetM
 	return nil, errors.New("not implemented")
 }
 
+func (m *mockExchange) GetKline(ctx context.Context, req *exchange.GetKlineRequest) ([]exchange.GetKlineResponse, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (m *mockExchange) GetMaxSize(ctx context.Context, req *exchange.GetMaxSizeRequest) ([]exchange.GetMaxSizeResponse, error) {
 	return nil, nil
 }

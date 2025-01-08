@@ -161,6 +161,12 @@ type MarkPriceKlineResponse struct {
 	Msg  string     `json:"msg"`
 }
 
+type KlineResponse struct {
+	Code string     `json:"code"`
+	Data [][]string `json:"data"`
+	Msg  string     `json:"msg"`
+}
+
 type DepthResponse struct {
 	Code string `json:"code"`
 	Msg  string `json:"msg"`

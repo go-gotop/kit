@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/go-gotop/kit/exchange"
 	"github.com/go-gotop/kit/requests/okhttp"
@@ -252,6 +253,104 @@ func (o *okx) GetMarkPriceKline(ctx context.Context, req *exchange.GetMarkPriceK
 		}
 		klines = append(klines, kline)
 	}
+	return klines, nil
+}
+
+func (o *okx) GetKline(ctx context.Context, req *exchange.GetKlineRequest) ([]exchange.GetKlineResponse, error) {
+	r := &okhttp.Request{
+		Method:   "GET",
+		Endpoint: "/api/v5/market/candles",
+		SecType:  okhttp.SecTypeNone,
+	}
+
+	o.client.SetApiEndpoint(okEndpoint)
+
+	params := okhttp.Params{
+		"instId": req.Symbol.OriginalSymbol,
+		"bar":    strings.ToUpper(req.Period),
+	}
+
+	if req.Start > 0 {
+		params["before"] = req.Start
+	}
+
+	if req.End > 0 {
+		params["after"] = req.End
+	}
+
+	if req.Limit > 0 {
+		params["limit"] = req.Limit
+	}
+
+	r.SetParams(params)
+
+	data, err := o.client.CallAPI(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+
+	var response KlineResponse
+	if err := json.Unmarshal(data, &response); err != nil {
+		return nil, fmt.Errorf("error parsing response data: %v", err)
+	}
+
+	if response.Code != "0" {
+		return nil, fmt.Errorf("operation failed, code: %s, message: %s", response.Code, response.Msg)
+	}
+
+	if len(response.Data) == 0 {
+		return nil, fmt.Errorf("no data")
+	}
+
+	var klines []exchange.GetKlineResponse
+	for _, item := range response.Data {
+		openTime, err := strconv.ParseInt(item[0], 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		open, err := decimal.NewFromString(item[1])
+		if err != nil {
+			return nil, err
+		}
+		high, err := decimal.NewFromString(item[2])
+		if err != nil {
+			return nil, err
+		}
+		low, err := decimal.NewFromString(item[3])
+		if err != nil {
+			return nil, err
+		}
+		close, err := decimal.NewFromString(item[4])
+		if err != nil {
+			return nil, err
+		}
+		volume, err := decimal.NewFromString(item[5])
+		if err != nil {
+			return nil, err
+		}
+		if req.InstrumentType == exchange.InstrumentTypeFutures {
+			volume, err = decimal.NewFromString(item[6])
+			if err != nil {
+				return nil, err
+			}
+		}
+		quoteVolume, err := decimal.NewFromString(item[7])
+		if err != nil {
+			return nil, err
+		}
+		kline := exchange.GetKlineResponse{
+			OpenTime:    openTime,
+			Open:        open,
+			High:        high,
+			Low:         low,
+			Close:       close,
+			Volume:      volume,
+			QuoteVolume: quoteVolume,
+			Confirm:     item[8],
+		}
+		klines = append(klines, kline)
+	}
+
 	return klines, nil
 }
 
