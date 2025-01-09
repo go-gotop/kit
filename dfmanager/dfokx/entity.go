@@ -10,6 +10,11 @@ type okxMarkPriceEvent struct {
 	Data []okxMarkPriceData `json:"data"`
 }
 
+type okxKlineEvent struct {
+	Arg  okxAllTradeArg `json:"arg"`
+	Data [][]string     `json:"data"`
+}
+
 type okxMarkKlineEvent struct {
 	Arg  okxAllTradeArg `json:"arg"`
 	Data [][]string     `json:"data"`

@@ -161,3 +161,7 @@ func (d *df) Shutdown() error {
 	}
 	return nil
 }
+
+func (d *df) WriteMessage(id string, message []byte) error {
+	return errors.New("not implemented")
+}

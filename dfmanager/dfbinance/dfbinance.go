@@ -172,7 +172,57 @@ func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
 }
 
 func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
-	return errors.New("not implemented")
+	var (
+		endpoint string
+		symbol   string
+		fn       func(message []byte, instrument exchange.InstrumentType) (*exchange.KlineEvent, error)
+	)
+	d.mux.Lock()
+	defer d.mux.Unlock()
+
+	if !d.limiter.WsAllow() {
+		return manager.ErrLimitExceed
+	}
+
+	symbol = req.Symbol
+	conf := &wsmanager.WebsocketConfig{
+		PingHandler: pingHandler,
+		PongHandler: pongHandler,
+	}
+	fn = toKlineEvent
+	switch req.Instrument {
+	case exchange.InstrumentTypeSpot:
+		endpoint = bnSpotWsEndpoint
+	case exchange.InstrumentTypeFutures:
+		endpoint = bnFuturesWsEndpoint
+	}
+	wsHandler := func(message []byte) {
+		te, err := fn(message, req.Instrument)
+		if err != nil {
+			if req.ErrorHandler != nil {
+				req.ErrorHandler(err)
+			}
+			return
+		}
+		req.Event(te)
+	}
+	err := d.addWebsocket(&websocket.WebsocketRequest{
+		ID:             req.ID,
+		Endpoint:       endpoint,
+		MessageHandler: wsHandler,
+		ErrorHandler:   req.ErrorHandler,
+	}, conf)
+	if err != nil {
+		return err
+	}
+	d.streams[req.ID] = dfmanager.Stream{
+		UUID:        req.ID,
+		Symbol:      symbol,
+		Instrument:  req.Instrument,
+		DataType:    "kline",
+		IsConnected: true,
+	}
+	return nil
 }
 
 func (d *df) AddMarketKlineDataFeed(req *dfmanager.KlineMarketRequest) error {
@@ -181,6 +231,14 @@ func (d *df) AddMarketKlineDataFeed(req *dfmanager.KlineMarketRequest) error {
 
 func (d *df) AddSymbolUpdateDataFeed(req *dfmanager.SymbolUpdateRequest) error {
 	return fmt.Errorf("not implemented")
+}
+
+func (d *df) WriteMessage(id string, message []byte) error {
+	conn := d.wsm.GetWebsocket(id)
+	if conn == nil {
+		return errors.New("websocket not found")
+	}
+	return conn.WriteMessage(gwebsocket.TextMessage, message)
 }
 
 func (d *df) CloseDataFeed(id string) error {
@@ -229,6 +287,71 @@ func pingHandler(appData string, conn websocket.WebSocketConn) error {
 
 func pongHandler(appData string, conn websocket.WebSocketConn) error {
 	return conn.WriteMessage(gwebsocket.PingMessage, []byte(appData))
+}
+
+func toKlineEvent(message []byte, instrument exchange.InstrumentType) (*exchange.KlineEvent, error) {
+	e := &binanceKlineEvent{}
+	err := json.Unmarshal(message, e)
+	if err != nil {
+		return nil, err
+	}
+
+	open, err := decimal.NewFromString(e.KlineData.OpenPrice)
+	if err != nil {
+		return nil, err
+	}
+	high, err := decimal.NewFromString(e.KlineData.HighPrice)
+	if err != nil {
+		return nil, err
+	}
+	low, err := decimal.NewFromString(e.KlineData.LowPrice)
+	if err != nil {
+		return nil, err
+	}
+	close, err := decimal.NewFromString(e.KlineData.ClosePrice)
+	if err != nil {
+		return nil, err
+	}
+	volume, err := decimal.NewFromString(e.KlineData.Volume)
+	if err != nil {
+		return nil, err
+	}
+	quoteVolume, err := decimal.NewFromString(e.KlineData.QuoteVolume)
+	if err != nil {
+		return nil, err
+	}
+	tradeNum := int64(e.KlineData.TradeNum)
+
+	takeBuyBaseAssetVolume, err := decimal.NewFromString(e.KlineData.TakerVolume)
+	if err != nil {
+		return nil, err
+	}
+	takeBuyQuoteAssetVolume, err := decimal.NewFromString(e.KlineData.TakerQuote)
+	if err != nil {
+		return nil, err
+	}
+	confirm := "0"
+	if e.KlineData.IsClosed {
+		confirm = "1"
+	}
+
+	te := &exchange.KlineEvent{
+		Symbol:                   e.Symbol,
+		InstrumentType:           instrument,
+		Open:                     open,
+		High:                     high,
+		Low:                      low,
+		Close:                    close,
+		Volume:                   volume,
+		OpenTime:                 e.KlineData.StartTime,
+		CloseTime:                e.KlineData.EndTime,
+		QuoteAssetVolume:         quoteVolume,
+		NumberOfTrades:           tradeNum,
+		TakerBuyBaseAssetVolume:  takeBuyBaseAssetVolume,
+		TakerBuyQuoteAssetVolume: takeBuyQuoteAssetVolume,
+		Confirm:                  confirm,
+	}
+	return te, nil
 }
 
 func spotToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
@@ -361,5 +484,4 @@ func futuresMarkPriceToMarkPrice(message []byte) (*exchange.MarkPriceEvent, erro
 	}
 
 	return te, nil
-
 }

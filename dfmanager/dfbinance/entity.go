@@ -47,3 +47,28 @@ type binanceFuturesMarkPriceSingleStream struct {
 	Stream string                        `json:"stream"`
 	Data   *binanceFuntureMarkPriceEvent `json:"data"`
 }
+
+type binanceKlineEvent struct {
+	Event     string `json:"e"`
+	Time      int64  `json:"E"`
+	Symbol    string `json:"s"`
+	KlineData struct {
+		StartTime    int64  `json:"t"`
+		EndTime      int64  `json:"T"`
+		Symbol       string `json:"s"`
+		Interval     string `json:"i"`
+		FirstTradeID int64  `json:"f"`
+		LastTradeID  int64  `json:"L"`
+		OpenPrice    string `json:"o"`
+		ClosePrice   string `json:"c"`
+		HighPrice    string `json:"h"`
+		LowPrice     string `json:"l"`
+		Volume       string `json:"v"`
+		TradeNum     int64  `json:"n"`
+		IsClosed     bool   `json:"x"`
+		QuoteVolume  string `json:"q"`
+		TakerVolume  string `json:"V"`
+		TakerQuote   string `json:"Q"`
+		Ignore       string `json:"B"`
+	} `json:"k"`
+}

@@ -159,6 +159,8 @@ type KlineEvent struct {
 	NumberOfTrades           int64
 	TakerBuyBaseAssetVolume  decimal.Decimal
 	TakerBuyQuoteAssetVolume decimal.Decimal
+	InstrumentType           InstrumentType
+	Confirm                  string // 0 代表 K 线未完结，1 代表 K 线已完结。
 }
 
 type KlineMarketEvent struct {
@@ -199,7 +201,7 @@ type SymbolUpdateEvent struct {
 	// 下线时间
 	ExpTime int64
 	// 状态 live:交易中，suspend:暂停交易，expired:已下线，preopen:预开放, test:测试
-	State string 
+	State string
 }
 
 type AccountUpdateEvent struct {

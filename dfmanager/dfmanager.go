@@ -66,5 +66,6 @@ type DataFeedManager interface {
 	AddSymbolUpdateDataFeed(req *SymbolUpdateRequest) error // 产品更新推送
 	CloseDataFeed(id string) error
 	DataFeedList() []Stream
+	WriteMessage(id string, message []byte) error
 	Shutdown() error
 }

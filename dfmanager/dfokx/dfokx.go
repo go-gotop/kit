@@ -59,6 +59,7 @@ func NewOkxDataFeed(limiter limiter.Limiter, opts ...Option) dfmanager.DataFeedM
 		wsm: manager.NewManager(
 			manager.WithMaxConnDuration(o.maxConnDuration),
 		),
+		streams:  make(map[string]dfmanager.Stream),
 		exitChan: make(chan struct{}),
 	}
 
@@ -274,6 +275,65 @@ func (d *df) AddMarketKlineDataFeed(req *dfmanager.KlineMarketRequest) error {
 }
 
 func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
+	d.mux.Lock()
+	defer d.mux.Unlock()
+
+	if !d.limiter.WsAllow() {
+		return manager.ErrLimitExceed
+	}
+
+	conf := &wsmanager.WebsocketConfig{}
+
+	endpoint := okWsEndpoint + "/ws/v5/business"
+	wsHandler := func(instrument exchange.InstrumentType) func(message []byte) {
+		return func(message []byte) {
+			if string(message) == "pong" {
+				// 每隔20s发送ping过去，预期会收到pong
+				return
+			}
+			j, err := okhttp.NewJSON(message)
+			if err != nil {
+				d.opts.logger.Error("new json error", err)
+				return
+			}
+			if j.Get("event").MustString() == "error" {
+				req.ErrorHandler(errors.New(j.Get("msg").MustString()))
+				return
+			}
+
+			if j.Get("event").MustString() != "" {
+				return
+			}
+
+			te, err := toKlineEvent(message, instrument)
+			if err != nil {
+				if req.ErrorHandler != nil {
+					req.ErrorHandler(err)
+				}
+				return
+			}
+			req.Event(te)
+		}
+	}
+
+	err := d.addWebsocket(&websocket.WebsocketRequest{
+		ID:             req.ID,
+		Endpoint:       endpoint,
+		MessageHandler: wsHandler(req.Instrument),
+		ErrorHandler:   d.errorKlineHandler(req.ID, req),
+	}, conf)
+	if err != nil {
+		return err
+	}
+
+	d.streams[req.ID] = dfmanager.Stream{
+		UUID:        req.ID,
+		Instrument:  req.Instrument,
+		Symbol:      req.Symbol,
+		DataType:    "kline",
+		IsConnected: true,
+	}
+
 	return nil
 }
 
@@ -355,6 +415,14 @@ func (d *df) DataFeedList() []dfmanager.Stream {
 		list = append(list, v)
 	}
 	return list
+}
+
+func (d *df) WriteMessage(id string, message []byte) error {
+	conn := d.wsm.GetWebsocket(id)
+	if conn == nil {
+		return errors.New("websocket not found")
+	}
+	return conn.WriteMessage(gwebsocket.TextMessage, message)
 }
 
 // 连接成功后订阅交易数据
@@ -529,6 +597,24 @@ func (d *df) errorMarkPriceHandler(id string, req *dfmanager.MarkPriceRequest) f
 }
 
 func (d *df) errorMarkKlineHandler(id string, req *dfmanager.KlineMarketRequest) func(err error) {
+	return func(err error) {
+		if req.ErrorHandler != nil {
+			req.ErrorHandler(err)
+		}
+		go d.wsm.Reconnect(id)
+		// 开启一个计时器，10秒后再次检查连接状态，如果连接已经关闭，则删除连接
+		time.AfterFunc(10*time.Second, func() {
+			if !d.wsm.GetWebsocket(id).IsConnected() {
+				if req.ErrorHandler != nil {
+					req.ErrorHandler(manager.ErrReconnectFailed)
+				}
+				d.wsm.CloseWebsocket(id)
+			}
+		})
+	}
+}
+
+func (d *df) errorKlineHandler(id string, req *dfmanager.KlineRequest) func(err error) {
 	return func(err error) {
 		if req.ErrorHandler != nil {
 			req.ErrorHandler(err)
@@ -726,6 +812,64 @@ func toMarkKlineEvent(message []byte, instrument exchange.InstrumentType) (*exch
 		Low:      low,
 		Close:    close,
 		Confirm:  trade[5],
+	}
+	return te, nil
+}
+
+func toKlineEvent(message []byte, instrument exchange.InstrumentType) (*exchange.KlineEvent, error) {
+	e := &okxMarkKlineEvent{}
+	err := json.Unmarshal(message, e)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(e.Data) == 0 {
+		return nil, errors.New("data is empty")
+	}
+
+	trade := e.Data[0]
+
+	// 字符串转成int64
+	ts, err := strconv.ParseInt(trade[0], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	open, err := decimal.NewFromString(trade[1])
+	if err != nil {
+		return nil, err
+	}
+
+	high, err := decimal.NewFromString(trade[2])
+	if err != nil {
+		return nil, err
+	}
+
+	low, err := decimal.NewFromString(trade[3])
+	if err != nil {
+		return nil, err
+	}
+
+	close, err := decimal.NewFromString(trade[4])
+	if err != nil {
+		return nil, err
+	}
+
+	volume, err := decimal.NewFromString(trade[5])
+	if err != nil {
+		return nil, err
+	}
+
+	te := &exchange.KlineEvent{
+		Symbol:         e.Arg.InstID,
+		OpenTime:       ts,
+		Open:           open,
+		High:           high,
+		Low:            low,
+		Close:          close,
+		Volume:         volume,
+		InstrumentType: instrument,
+		Confirm:        trade[6],
 	}
 	return te, nil
 }

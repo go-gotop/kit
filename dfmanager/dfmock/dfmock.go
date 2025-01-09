@@ -180,6 +180,10 @@ func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
 	return nil
 }
 
+func (d *df) WriteMessage(id string, message []byte) error {
+	return errors.New("not implemented")
+}
+
 func (d *df) AddMarketKlineDataFeed(req *dfmanager.KlineMarketRequest) error {
 	return fmt.Errorf("not implemented")
 }
