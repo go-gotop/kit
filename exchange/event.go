@@ -223,3 +223,9 @@ type StreamErrorEvent struct {
 	Error     error
 	AccountID string
 }
+
+// 服务主节点变更事件
+type MasterNodeSwitch struct {
+	ServiceName string
+	ServiceID   string
+}
