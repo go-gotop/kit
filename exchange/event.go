@@ -229,3 +229,9 @@ type MasterNodeSwitch struct {
 	ServiceName string
 	ServiceID   string
 }
+
+// 服务挂掉事件
+type ServiceDownEvent struct {
+	ServiceName string
+	ServiceID   string
+}
