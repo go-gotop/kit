@@ -57,7 +57,7 @@ func (m *mockExchange) Assets(ctx context.Context, req *exchange.GetAssetsReques
 		SecretKey: req.SecretKey,
 	}
 	m.client.SetApiEndpoint(m.opts.mockExchangEndpoint)
-	r.SetParam("instrumentType", req.InstrumentType)
+	r.SetParam("marketType", req.MarketType)
 	data, err := m.client.CallAPI(ctx, r)
 	if err != nil {
 		return nil, err
@@ -102,7 +102,7 @@ func (m *mockExchange) Assets(ctx context.Context, req *exchange.GetAssetsReques
 		result = append(result, exchange.Asset{
 			AssetName:  v.AssetName,
 			Exchange:   v.Exchange,
-			Instrument: exchange.InstrumentType(v.Instrument),
+			MarketType: exchange.MarketType(v.Instrument),
 			Free:       free,
 			Locked:     locked,
 		})
@@ -132,7 +132,7 @@ func (m *mockExchange) CreateOrder(ctx context.Context, o *exchange.CreateOrderR
 		"orderType":     o.OrderType,
 		"positionSide":  o.PositionSide,
 		"timeInForce":   o.TimeInForce,
-		"instrument":    o.Instrument,
+		"instrument":    o.MarketType,
 		"size":          o.Size,
 		"price":         o.Price,
 	}

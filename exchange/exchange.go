@@ -28,8 +28,20 @@ type PositionSide string
 // PositionStatus OpeningPosition, HoldingPosition, ClosingPosition, ClosedPosition
 type PositionStatus string
 
-// InstrumentType SPOT，FUTURES, MARGIN
-type InstrumentType string
+// MarketType 市场类型
+// 可扩展为：
+// 1. SPOT: 现货市场
+// 2. MARGIN: 杠杆/保证金市场
+// 3. FUTURES_USD_MARGINED: U本位期货（如 Binance USDT-M合约）
+// 4. FUTURES_COIN_MARGINED: 币本位期货（如 Binance COIN-M合约）
+// 5. PERPETUAL_USD_MARGINED: U本位永续合约
+// 6. PERPETUAL_COIN_MARGINED: 币本位永续合约
+// 7. OPTIONS: 期权市场
+// 8. LEVERAGED_TOKENS: 杠杆代币
+// 9. P2P: 点对点市场
+// 10. ETF: ETF类产品市场
+// 11. NFT: NFT数字藏品市场
+type MarketType string
 
 // MarginType MARGIN,ISOLATED 全仓，逐仓
 type MarginType string
@@ -72,9 +84,10 @@ const (
 	PosModeIsolated PosMode = "ISOLATED" // 逐仓
 	PosModeCross    PosMode = "CROSS"    // 全仓
 
-	InstrumentTypeSpot    InstrumentType = "SPOT"
-	InstrumentTypeFutures InstrumentType = "FUTURES"
-	InstrumentTypeMargin  InstrumentType = "MARGIN"
+	MarketTypeSpot                 MarketType = "SPOT"                   // 现货
+	MarketTypeFuturesUSDMargined   MarketType = "FUTURES_USD_MARGINED"   // 期货
+	MarketTypePerpetualUSDMargined MarketType = "PERPETUAL_USD_MARGINED" // 永续
+	MarketTypeMargin               MarketType = "MARGIN"                 // 杠杆
 
 	MarginTypeMargin   MarginType = "MARGIN"
 	MarginTypeIsolated MarginType = "ISOLATED"
@@ -158,7 +171,7 @@ var (
 type GetDepthRequest struct {
 	Symbol         Symbol
 	Limit          uint8
-	InstrumentType InstrumentType
+	MarketType     MarketType
 }
 
 type GetDepthResponse struct {
@@ -179,7 +192,7 @@ type GetKlineRequest struct {
 	End            int64
 	Period         string
 	Limit          uint8
-	InstrumentType InstrumentType
+	MarketType     MarketType
 }
 
 type GetKlineResponse struct {
@@ -287,7 +300,7 @@ type SetLeverageRequest struct {
 
 type GetPositionResponse struct {
 	Symbol         string
-	InstrumentType InstrumentType
+	MarketType     MarketType
 	AvgPrice       decimal.Decimal // 开仓均价
 	Fee            decimal.Decimal
 	FundingFee     decimal.Decimal
@@ -331,7 +344,7 @@ type GetAssetsRequest struct {
 	APIKey         string
 	SecretKey      string
 	Passphrase     string
-	InstrumentType InstrumentType
+	MarketType     MarketType
 }
 
 type CreateOrderRequest struct {
@@ -346,7 +359,7 @@ type CreateOrderRequest struct {
 	OrderType        OrderType
 	PositionSide     PositionSide
 	TimeInForce      TimeInForce
-	Instrument       InstrumentType
+	MarketType       MarketType
 	Size             decimal.Decimal
 	Price            decimal.Decimal
 	IsUnifiedAccount bool // 统一账户, 默认 false
@@ -370,7 +383,7 @@ type SearchOrderRequest struct {
 	SecretKey      string
 	Passphrase     string
 	ClientOrderID  string
-	InstrumentType InstrumentType
+	MarketType     MarketType
 	Symbol         Symbol
 }
 
@@ -401,7 +414,7 @@ type SearchTradesRequest struct {
 	SecretKey      string
 	Symbol         string
 	OrderID        string
-	InstrumentType InstrumentType
+	MarketType     MarketType
 }
 
 type SearchTradesResponse struct {
@@ -429,7 +442,7 @@ type CancelOrderResponse struct {
 type Asset struct {
 	AssetName  string
 	Exchange   string
-	Instrument InstrumentType
+	MarketType MarketType
 	Free       decimal.Decimal
 	Locked     decimal.Decimal
 }
@@ -446,7 +459,7 @@ type Symbol struct {
 	// 交易所
 	Exchange string
 	// 种类: SPOT, FUTURES
-	Instrument InstrumentType
+	MarketType MarketType
 	// 状态: ENABLED, DISABLED
 	Status string
 	// 最小头寸

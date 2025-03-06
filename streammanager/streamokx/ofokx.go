@@ -108,7 +108,7 @@ func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 
 	o.streamList = append(o.streamList, streammanager.Stream{
 		Exchange:   exchange.OkxExchange,
-		Instrument: req.Instrument,
+		MarketType: req.MarketType,
 		UUID:       uuid,
 		APIKey:     req.APIKey,
 		AccountId:  req.AccountId,
@@ -117,7 +117,7 @@ func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 	return []string{uuid}, nil
 }
 
-func (o *of) CloseStream(accountId string, instrument exchange.InstrumentType, uuid string) error {
+func (o *of) CloseStream(accountId string, marketType exchange.MarketType, uuid string) error {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 
@@ -196,12 +196,12 @@ func (o *of) login(req *streammanager.StreamRequest, conn websocket.WebSocketCon
 
 func (o *of) subscribe(uuid string, req *streammanager.StreamRequest) error {
 	subList := make([]string, 0)
-	if req.Instrument == exchange.InstrumentTypeFutures {
+	if req.MarketType == exchange.MarketTypeFuturesUSDMargined || req.MarketType == exchange.MarketTypePerpetualUSDMargined {
 		// 如果是合约类型，则添加永续和交割合约
 		subList = append(subList, "SWAP")
 		subList = append(subList, "FUTURES")
 	} else {
-		subList = append(subList, string(req.Instrument))
+		subList = append(subList, string(req.MarketType))
 	}
 
 	args := make([]struct {
@@ -272,7 +272,7 @@ func (o *of) createWebsocketHandler(uuid string, req *streammanager.StreamReques
 			return
 		}
 
-		tes, err := o.toOrderEvent(message, req.Instrument)
+		tes, err := o.toOrderEvent(message, req.MarketType)
 		if err != nil {
 			if req.ErrorHandler != nil {
 				req.ErrorHandler(err)
@@ -287,7 +287,7 @@ func (o *of) createWebsocketHandler(uuid string, req *streammanager.StreamReques
 
 func (o *of) connectedHandler(req *streammanager.StreamRequest) func(id string, conn websocket.WebSocketConn) {
 	return func(id string, conn websocket.WebSocketConn) {
-		fmt.Println("连接成功回调：", req.AccountId, req.Instrument)
+		fmt.Println("连接成功回调：", req.AccountId, req.MarketType)
 		err := o.login(req, conn)
 		if err != nil {
 			if req.ErrorHandler != nil {
@@ -300,7 +300,7 @@ func (o *of) connectedHandler(req *streammanager.StreamRequest) func(id string, 
 func (o *of) errorHandler(id string, req *streammanager.StreamRequest) func(err error) {
 	return func(err error) {
 		if req.ErrorHandler != nil {
-			fmt.Println("连接错误回调: ", req.AccountId, req.Instrument, err)
+			fmt.Println("连接错误回调: ", req.AccountId, req.MarketType, err)
 			req.ErrorHandler(err)
 		}
 		go o.wsm.Reconnect(id)
@@ -326,7 +326,7 @@ func (o *of) errorHandler(id string, req *streammanager.StreamRequest) func(err 
 	}
 }
 
-func (o *of) toOrderEvent(message []byte, instrument exchange.InstrumentType) ([]*exchange.OrderResultEvent, error) {
+func (o *of) toOrderEvent(message []byte, marketType exchange.MarketType) ([]*exchange.OrderResultEvent, error) {
 	o.opts.logger.Debugf("OKX WS订单事件: %s", string(message))
 	event := &okWsOrderUpdateEvent{}
 
@@ -341,9 +341,9 @@ func (o *of) toOrderEvent(message []byte, instrument exchange.InstrumentType) ([
 	}
 
 	// 如果是合约，则判断 instType 是否为 FUTURES 或 SWAP
-	if instrument == exchange.InstrumentTypeFutures && (event.Arg.InstType != "FUTURES" && event.Arg.InstType != "SWAP") {
+	if (marketType == exchange.MarketTypeFuturesUSDMargined || marketType == exchange.MarketTypePerpetualUSDMargined) && (event.Arg.InstType != "FUTURES" && event.Arg.InstType != "SWAP") {
 		return nil, nil
-	} else if instrument != exchange.InstrumentTypeFutures && string(instrument) != event.Arg.InstType {
+	} else if marketType != exchange.MarketTypeFuturesUSDMargined && marketType != exchange.MarketTypePerpetualUSDMargined && string(marketType) != event.Arg.InstType {
 		// 其他直接判断 instType 是否与 instrument 相等
 		return nil, nil
 	}
@@ -439,7 +439,7 @@ func (o *of) toOrderEvent(message []byte, instrument exchange.InstrumentType) ([
 			TransactionTime:   updateTime,
 			Side:              okexc.OkxTSide(d.Side),
 			Type:              okexc.OkxTMarketType(d.OrderType),
-			Instrument:        instrument,
+			MarketType:        marketType,
 			Volume:            volume,
 			By:                by,
 			Price:             price,

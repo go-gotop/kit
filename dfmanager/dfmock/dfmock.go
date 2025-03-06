@@ -67,10 +67,10 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 		PingHandler: pingHandler,
 		PongHandler: pongHandler,
 	}
-	endpoint = fmt.Sprintf("%s?streams=trade&instrument=%s&symbol=%s&startTime=%v&endTime=%v", d.opts.wsEndpoint, req.Instrument, symbol, req.StartTime, req.EndTime)
+	endpoint = fmt.Sprintf("%s?streams=trade&marketType=%s&symbol=%s&startTime=%v&endTime=%v", d.opts.wsEndpoint, req.MarketType, symbol, req.StartTime, req.EndTime)
 
 	fn = spotToTradeEvent
-	if req.Instrument == exchange.InstrumentTypeFutures {
+	if req.MarketType == exchange.MarketTypeFuturesUSDMargined || req.MarketType == exchange.MarketTypePerpetualUSDMargined {
 		fn = funturesToTradeEvent
 	}
 
@@ -155,7 +155,7 @@ func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
 		PongHandler: pongHandler,
 	}
 
-	endpoint = fmt.Sprintf("%s?streams=kline&instrument=%v&symbol=%v&period=%v&startTime=%v&endTime=%v", d.opts.wsEndpoint, req.Instrument, req.Symbol, req.Period, req.StartTime, req.EndTime)
+	endpoint = fmt.Sprintf("%s?streams=kline&marketType=%v&symbol=%v&period=%v&startTime=%v&endTime=%v", d.opts.wsEndpoint, req.MarketType, req.Symbol, req.Period, req.StartTime, req.EndTime)
 	fn = klineToEvent
 	fmt.Printf("endpoint: %v\n", endpoint)
 	wsHandler := func(message []byte) {
@@ -251,7 +251,7 @@ func spotToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
 		Symbol:     e.Symbol,
 		TradedAt:   e.TradeTime,
 		Exchange:   exchange.MockExchange,
-		Instrument: exchange.InstrumentTypeSpot,
+		MarketType: exchange.MarketTypeSpot,
 	}
 	size, err := decimal.NewFromString(e.Size)
 	if err != nil {
@@ -280,7 +280,7 @@ func funturesToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
 		Symbol:     e.Symbol,
 		TradedAt:   e.TradeTime,
 		Exchange:   exchange.MockExchange,
-		Instrument: exchange.InstrumentTypeFutures,
+		MarketType: exchange.MarketTypePerpetualUSDMargined,
 	}
 	size, err := decimal.NewFromString(e.Size)
 	if err != nil {

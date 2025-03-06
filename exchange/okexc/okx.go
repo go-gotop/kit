@@ -76,7 +76,7 @@ func (o *okx) GetDepth(ctx context.Context, req *exchange.GetDepthRequest) (exch
 			return exchange.GetDepthResponse{}, err
 		}
 		var volume decimal.Decimal
-		if req.InstrumentType == exchange.InstrumentTypeFutures {
+		if req.MarketType == exchange.MarketTypeFuturesUSDMargined || req.MarketType == exchange.MarketTypePerpetualUSDMargined {
 			// 合约类型要将张转位币
 			sz, err := o.ConvertContractCoin("2", req.Symbol, item[1], "close")
 			if err != nil {
@@ -103,7 +103,7 @@ func (o *okx) GetDepth(ctx context.Context, req *exchange.GetDepthRequest) (exch
 			return exchange.GetDepthResponse{}, err
 		}
 		var volume decimal.Decimal
-		if req.InstrumentType == exchange.InstrumentTypeFutures {
+		if req.MarketType == exchange.MarketTypeFuturesUSDMargined || req.MarketType == exchange.MarketTypePerpetualUSDMargined {
 			// 合约类型要将张转位币
 			sz, err := o.ConvertContractCoin("2", req.Symbol, item[1], "close")
 			if err != nil {
@@ -328,7 +328,7 @@ func (o *okx) GetKline(ctx context.Context, req *exchange.GetKlineRequest) ([]ex
 		if err != nil {
 			return nil, err
 		}
-		if req.InstrumentType == exchange.InstrumentTypeFutures {
+		if req.MarketType == exchange.MarketTypeFuturesUSDMargined || req.MarketType == exchange.MarketTypePerpetualUSDMargined {
 			volume, err = decimal.NewFromString(item[6])
 			if err != nil {
 				return nil, err
@@ -682,14 +682,14 @@ func (o *okx) GetPosition(ctx context.Context, req *exchange.GetPositionRequest)
 			return nil, err
 		}
 
-		instrumentType := exchange.InstrumentTypeFutures
+		marketType := exchange.MarketTypeFuturesUSDMargined
 		if item.InstType == "MARGIN" {
-			instrumentType = exchange.InstrumentTypeMargin
+			marketType = exchange.MarketTypeMargin
 		}
 
 		position := exchange.GetPositionResponse{
 			Symbol:         item.InstID,
-			InstrumentType: instrumentType,
+			MarketType:     marketType,
 			AvgPrice:       avgPx,
 			Fee:            fee,
 			FundingFee:     fundingFee,
@@ -898,7 +898,7 @@ func (o *okx) toOrderParams(req *exchange.CreateOrderRequest) (okhttp.Params, er
 		"ordType": OkxOrderType(req.OrderType),
 	}
 
-	if req.Instrument == exchange.InstrumentTypeFutures {
+	if req.MarketType == exchange.MarketTypeFuturesUSDMargined || req.MarketType == exchange.MarketTypePerpetualUSDMargined {
 		// 合约类型要将币转位张
 		m["tdMode"] = OkxPosMode(exchange.PosModeCross) // 默认全仓
 		opType := "open"
@@ -913,11 +913,11 @@ func (o *okx) toOrderParams(req *exchange.CreateOrderRequest) (okhttp.Params, er
 		}
 		m["sz"] = sz
 
-	} else if req.Instrument == exchange.InstrumentTypeSpot {
+	} else if req.MarketType == exchange.MarketTypeSpot {
 		m["tgtCcy"] = "base_ccy" // 指定size为交易币种
 		m["tdMode"] = "cash"
 		m["sz"] = fmt.Sprintf("%v", req.Size)
-	} else if req.Instrument == exchange.InstrumentTypeMargin {
+	} else if req.MarketType == exchange.MarketTypeMargin {
 		// okx 杠杠买入时，size 为 计价货币，所以这里要转换
 		m["tdMode"] = OkxPosMode(exchange.PosModeCross) // 默认全仓
 		if req.Side == exchange.SideTypeSell {
@@ -932,7 +932,7 @@ func (o *okx) toOrderParams(req *exchange.CreateOrderRequest) (okhttp.Params, er
 
 	}
 
-	if req.Instrument == exchange.InstrumentTypeMargin {
+	if req.MarketType == exchange.MarketTypeMargin {
 		// TOFIX: 保证金模式
 		m["ccy"] = "USDT"
 	}
@@ -945,7 +945,7 @@ func (o *okx) toOrderParams(req *exchange.CreateOrderRequest) (okhttp.Params, er
 		m["clOrdId"] = req.ClientOrderID
 	}
 
-	if req.Instrument == exchange.InstrumentTypeFutures && req.PositionSide != "" {
+	if (req.MarketType == exchange.MarketTypeFuturesUSDMargined || req.MarketType == exchange.MarketTypePerpetualUSDMargined) && req.PositionSide != "" {
 		m["posSide"] = OkxPositionSide(req.PositionSide)
 	}
 

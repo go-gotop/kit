@@ -93,7 +93,7 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 	conf := &wsmanager.WebsocketConfig{}
 
 	endpoint := okWsEndpoint + "/ws/v5/business"
-	wsHandler := func(instrument exchange.InstrumentType) func(message []byte) {
+	wsHandler := func(marketType exchange.MarketType) func(message []byte) {
 		return func(message []byte) {
 			if string(message) == "pong" {
 				// 每隔20s发送ping过去，预期会收到pong
@@ -113,7 +113,7 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 				return
 			}
 
-			te, err := toTradeEvent(message, instrument)
+			te, err := toTradeEvent(message, marketType)
 			if err != nil {
 				if req.ErrorHandler != nil {
 					req.ErrorHandler(err)
@@ -127,7 +127,7 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 	err := d.addWebsocket(&websocket.WebsocketRequest{
 		ID:               req.ID,
 		Endpoint:         endpoint,
-		MessageHandler:   wsHandler(req.Instrument),
+		MessageHandler:   wsHandler(req.MarketType),
 		ErrorHandler:     d.errorHandler(req.ID, req),
 		ConnectedHandler: d.connectedTradeAllHandler(req),
 	}, conf)
@@ -137,7 +137,7 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 
 	d.streams[req.ID] = dfmanager.Stream{
 		UUID:        req.ID,
-		Instrument:  req.Instrument,
+		MarketType:  req.MarketType,
 		Symbol:      req.Symbol,
 		DataType:    "trade",
 		IsConnected: true,
@@ -157,7 +157,7 @@ func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
 	conf := &wsmanager.WebsocketConfig{}
 
 	endpoint := okWsEndpoint + "/ws/v5/public"
-	wsHandler := func(instrument exchange.InstrumentType) func(message []byte) {
+	wsHandler := func(marketType exchange.MarketType) func(message []byte) {
 		return func(message []byte) {
 			if string(message) == "pong" {
 				// 每隔20s发送ping过去，预期会收到pong
@@ -177,7 +177,7 @@ func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
 				return
 			}
 
-			te, err := toMarkPriceEvent(message, instrument)
+			te, err := toMarkPriceEvent(message, marketType)
 			if err != nil {
 				if req.ErrorHandler != nil {
 					req.ErrorHandler(err)
@@ -191,7 +191,7 @@ func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
 	err := d.addWebsocket(&websocket.WebsocketRequest{
 		ID:               req.ID,
 		Endpoint:         endpoint,
-		MessageHandler:   wsHandler(req.Instrument),
+		MessageHandler:   wsHandler(req.MarketType),
 		ErrorHandler:     d.errorMarkPriceHandler(req.ID, req),
 		ConnectedHandler: d.connectedMarketPriceHandler(req),
 	}, conf)
@@ -201,7 +201,7 @@ func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
 
 	d.streams[req.ID] = dfmanager.Stream{
 		UUID:        req.ID,
-		Instrument:  req.Instrument,
+		MarketType:  req.MarketType,
 		Symbol:      req.Symbol,
 		DataType:    "markprice",
 		IsConnected: true,
@@ -221,7 +221,7 @@ func (d *df) AddMarketKlineDataFeed(req *dfmanager.KlineMarketRequest) error {
 	conf := &wsmanager.WebsocketConfig{}
 
 	endpoint := okWsEndpoint + "/ws/v5/business"
-	wsHandler := func(instrument exchange.InstrumentType) func(message []byte) {
+	wsHandler := func(marketType exchange.MarketType) func(message []byte) {
 		return func(message []byte) {
 			if string(message) == "pong" {
 				// 每隔20s发送ping过去，预期会收到pong
@@ -241,7 +241,7 @@ func (d *df) AddMarketKlineDataFeed(req *dfmanager.KlineMarketRequest) error {
 				return
 			}
 
-			te, err := toMarkKlineEvent(message, instrument)
+			te, err := toMarkKlineEvent(message, marketType)
 			if err != nil {
 				if req.ErrorHandler != nil {
 					req.ErrorHandler(err)
@@ -255,7 +255,7 @@ func (d *df) AddMarketKlineDataFeed(req *dfmanager.KlineMarketRequest) error {
 	err := d.addWebsocket(&websocket.WebsocketRequest{
 		ID:               req.ID,
 		Endpoint:         endpoint,
-		MessageHandler:   wsHandler(req.Instrument),
+		MessageHandler:   wsHandler(req.MarketType),
 		ErrorHandler:     d.errorMarkKlineHandler(req.ID, req),
 		ConnectedHandler: d.connectedMarketKlineHandler(req),
 	}, conf)
@@ -265,7 +265,7 @@ func (d *df) AddMarketKlineDataFeed(req *dfmanager.KlineMarketRequest) error {
 
 	d.streams[req.ID] = dfmanager.Stream{
 		UUID:        req.ID,
-		Instrument:  req.Instrument,
+		MarketType:  req.MarketType,
 		Symbol:      req.Symbol,
 		DataType:    "markkline",
 		IsConnected: true,
@@ -285,7 +285,7 @@ func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
 	conf := &wsmanager.WebsocketConfig{}
 
 	endpoint := okWsEndpoint + "/ws/v5/business"
-	wsHandler := func(instrument exchange.InstrumentType) func(message []byte) {
+	wsHandler := func(marketType exchange.MarketType) func(message []byte) {
 		return func(message []byte) {
 			if string(message) == "pong" {
 				// 每隔20s发送ping过去，预期会收到pong
@@ -305,7 +305,7 @@ func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
 				return
 			}
 
-			te, err := toKlineEvent(message, instrument)
+			te, err := toKlineEvent(message, marketType)
 			if err != nil {
 				if req.ErrorHandler != nil {
 					req.ErrorHandler(err)
@@ -319,7 +319,7 @@ func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
 	err := d.addWebsocket(&websocket.WebsocketRequest{
 		ID:             req.ID,
 		Endpoint:       endpoint,
-		MessageHandler: wsHandler(req.Instrument),
+		MessageHandler: wsHandler(req.MarketType),
 		ErrorHandler:   d.errorKlineHandler(req.ID, req),
 	}, conf)
 	if err != nil {
@@ -328,7 +328,7 @@ func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
 
 	d.streams[req.ID] = dfmanager.Stream{
 		UUID:        req.ID,
-		Instrument:  req.Instrument,
+		MarketType:  req.MarketType,
 		Symbol:      req.Symbol,
 		DataType:    "kline",
 		IsConnected: true,
@@ -348,7 +348,7 @@ func (d *df) AddSymbolUpdateDataFeed(req *dfmanager.SymbolUpdateRequest) error {
 	conf := &wsmanager.WebsocketConfig{}
 
 	endpoint := okWsEndpoint + "/ws/v5/public"
-	wsHandler := func(instrument exchange.InstrumentType) func(message []byte) {
+	wsHandler := func(marketType exchange.MarketType) func(message []byte) {
 		return func(message []byte) {
 			if string(message) == "pong" {
 				// 每隔20s发送ping过去，预期会收到pong
@@ -368,7 +368,7 @@ func (d *df) AddSymbolUpdateDataFeed(req *dfmanager.SymbolUpdateRequest) error {
 				return
 			}
 
-			te, err := toSymbolUpdateEvent(message, instrument)
+			te, err := toSymbolUpdateEvent(message, marketType)
 			if err != nil {
 				if req.ErrorHandler != nil {
 					req.ErrorHandler(err)
@@ -382,7 +382,7 @@ func (d *df) AddSymbolUpdateDataFeed(req *dfmanager.SymbolUpdateRequest) error {
 	err := d.addWebsocket(&websocket.WebsocketRequest{
 		ID:               req.ID,
 		Endpoint:         endpoint,
-		MessageHandler:   wsHandler(req.Instrument),
+		MessageHandler:   wsHandler(req.MarketType),
 		ErrorHandler:     d.errorSymbolUpdateHandler(req.ID, req),
 		ConnectedHandler: d.connectedSymbolUpdateHandler(req),
 	}, conf)
@@ -529,7 +529,7 @@ func (d *df) connectedMarketKlineHandler(req *dfmanager.KlineMarketRequest) func
 func (d *df) connectedSymbolUpdateHandler(req *dfmanager.SymbolUpdateRequest) func(id string, conn websocket.WebSocketConn) {
 	return func(id string, conn websocket.WebSocketConn) {
 		// ws := d.wsm.GetWebsocket(id)
-		fmt.Println("symbolupdate链接成功回调:", req.Instrument)
+		fmt.Println("symbolupdate链接成功回调:", req.MarketType)
 		sub := wsInstTypeSub{
 			Op: "subscribe",
 			Args: []struct {
@@ -538,7 +538,7 @@ func (d *df) connectedSymbolUpdateHandler(req *dfmanager.SymbolUpdateRequest) fu
 			}{
 				{
 					Channel:  "instruments",
-					InstType: string(req.Instrument),
+					InstType: string(req.MarketType),
 				},
 			},
 		}
@@ -690,7 +690,7 @@ func (d *df) keepAlive() {
 	}
 }
 
-func toTradeEvent(message []byte, instrument exchange.InstrumentType) (*exchange.TradeEvent, error) {
+func toTradeEvent(message []byte, marketType exchange.MarketType) (*exchange.TradeEvent, error) {
 	e := &okxTradeAllEvent{}
 	err := json.Unmarshal(message, e)
 	if err != nil {
@@ -707,7 +707,7 @@ func toTradeEvent(message []byte, instrument exchange.InstrumentType) (*exchange
 		TradeID:    trade.TradeID,
 		Symbol:     e.Arg.InstID,
 		Exchange:   exchange.OkxExchange,
-		Instrument: instrument,
+		MarketType: marketType,
 	}
 
 	tradeTime, err := strconv.ParseInt(trade.TradeTime, 10, 64)
@@ -733,7 +733,7 @@ func toTradeEvent(message []byte, instrument exchange.InstrumentType) (*exchange
 	return te, nil
 }
 
-func toMarkPriceEvent(message []byte, instrument exchange.InstrumentType) (*exchange.MarkPriceEvent, error) {
+func toMarkPriceEvent(message []byte, marketType exchange.MarketType) (*exchange.MarkPriceEvent, error) {
 	e := &okxMarkPriceEvent{}
 	err := json.Unmarshal(message, e)
 	if err != nil {
@@ -765,7 +765,7 @@ func toMarkPriceEvent(message []byte, instrument exchange.InstrumentType) (*exch
 	return te, nil
 }
 
-func toMarkKlineEvent(message []byte, instrument exchange.InstrumentType) (*exchange.KlineMarketEvent, error) {
+func toMarkKlineEvent(message []byte, marketType exchange.MarketType) (*exchange.KlineMarketEvent, error) {
 	e := &okxMarkKlineEvent{}
 	err := json.Unmarshal(message, e)
 	if err != nil {
@@ -816,7 +816,7 @@ func toMarkKlineEvent(message []byte, instrument exchange.InstrumentType) (*exch
 	return te, nil
 }
 
-func toKlineEvent(message []byte, instrument exchange.InstrumentType) (*exchange.KlineEvent, error) {
+func toKlineEvent(message []byte, marketType exchange.MarketType) (*exchange.KlineEvent, error) {
 	e := &okxMarkKlineEvent{}
 	err := json.Unmarshal(message, e)
 	if err != nil {
@@ -861,20 +861,20 @@ func toKlineEvent(message []byte, instrument exchange.InstrumentType) (*exchange
 	}
 
 	te := &exchange.KlineEvent{
-		Symbol:         e.Arg.InstID,
-		OpenTime:       ts,
-		Open:           open,
-		High:           high,
-		Low:            low,
-		Close:          close,
-		Volume:         volume,
-		InstrumentType: instrument,
-		Confirm:        trade[6],
+		Symbol:     e.Arg.InstID,
+		OpenTime:   ts,
+		Open:       open,
+		High:       high,
+		Low:        low,
+		Close:      close,
+		Volume:     volume,
+		MarketType: marketType,
+		Confirm:    trade[6],
 	}
 	return te, nil
 }
 
-func toSymbolUpdateEvent(message []byte, instrument exchange.InstrumentType) ([]*exchange.SymbolUpdateEvent, error) {
+func toSymbolUpdateEvent(message []byte, marketType exchange.MarketType) ([]*exchange.SymbolUpdateEvent, error) {
 	e := &okxSymbolUpdateEvent{}
 	err := json.Unmarshal(message, e)
 	if err != nil {
@@ -888,7 +888,6 @@ func toSymbolUpdateEvent(message []byte, instrument exchange.InstrumentType) ([]
 	result := make([]*exchange.SymbolUpdateEvent, 0, len(e.Data))
 
 	for _, v := range e.Data {
-		// instrumentType := exchange.InstrumentType(v.InstType)
 		minsz, err := decimal.NewFromString(v.MinSz)
 		if err != nil {
 			return nil, err
@@ -936,7 +935,7 @@ func toSymbolUpdateEvent(message []byte, instrument exchange.InstrumentType) ([]
 		}
 
 		te := &exchange.SymbolUpdateEvent{
-			InstrumentType: instrument,
+			MarketType:     marketType,
 			OriginalSymbol: v.InstID,
 			OriginalAsset:  v.BaseCcy,
 			MinSize:        minsz,

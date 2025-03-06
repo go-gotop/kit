@@ -46,7 +46,7 @@ func TestToPrice(t *testing.T) {
 		Size:	decimal.NewFromInt(1),
 		Price:	decimal.NewFromInt(1000),
 		Side:	exchange.SideTypeBuy,
-		Instrument: exchange.InstrumentTypeSpot,
+		MarketType: exchange.MarketTypeSpot,
 	}
 	pp := toPrice(te)
 	assert.Equal(t, te.TradedAt, pp.Timestamp)

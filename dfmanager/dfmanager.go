@@ -9,14 +9,14 @@ type DataFeedRequest struct {
 	Symbol       string
 	StartTime    int64
 	EndTime      int64
-	Instrument   exchange.InstrumentType
+	MarketType   exchange.MarketType
 	Event        func(data *exchange.TradeEvent)
 	ErrorHandler func(err error)
 }
 
 type MarkPriceRequest struct {
 	ID           string
-	Instrument   exchange.InstrumentType
+	MarketType   exchange.MarketType
 	Symbol       string
 	Event        func(data *exchange.MarkPriceEvent)
 	ErrorHandler func(err error)
@@ -28,7 +28,7 @@ type KlineRequest struct {
 	Period       string
 	StartTime    int64
 	EndTime      int64
-	Instrument   exchange.InstrumentType
+	MarketType   exchange.MarketType
 	Event        func(data *exchange.KlineEvent)
 	ErrorHandler func(err error)
 }
@@ -37,21 +37,21 @@ type KlineMarketRequest struct {
 	ID           string
 	Symbol       string
 	Period       string
-	Instrument   exchange.InstrumentType
+	MarketType   exchange.MarketType
 	Event        func(data *exchange.KlineMarketEvent)
 	ErrorHandler func(err error)
 }
 
 type SymbolUpdateRequest struct {
 	ID           string
-	Instrument   exchange.InstrumentType
+	MarketType   exchange.MarketType
 	Event        func(data []*exchange.SymbolUpdateEvent)
 	ErrorHandler func(err error)
 }
 
 type Stream struct {
 	UUID        string
-	Instrument  exchange.InstrumentType
+	MarketType  exchange.MarketType
 	DataType    string
 	Symbol      string
 	IsConnected bool

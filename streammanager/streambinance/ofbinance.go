@@ -90,7 +90,7 @@ type listenKey struct {
 	APIKey           string                  `json:"api_key"`
 	SecretKey        string                  `json:"secret_key"`
 	CreatedTime      time.Time               `json:"created_time"`
-	Instrument       exchange.InstrumentType `json:"instrument"`
+	MarketType       exchange.MarketType     `json:"market_type"`
 	UUIDList         []string                `json:"uuid_list"`
 	IsUnifiedAccount bool                    `json:"is_unified_account"` // 统一账户, 默认 false
 
@@ -139,9 +139,9 @@ func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 		endpoint = fmt.Sprintf("%s/%s", bnPortfolioMarginWsEndpoint, key)
 	} else {
 		endpoint = fmt.Sprintf("%s/%s", bnSpotWsEndpoint, key)
-		if req.Instrument == exchange.InstrumentTypeFutures {
+		if req.MarketType == exchange.MarketTypeFuturesUSDMargined || req.MarketType == exchange.MarketTypePerpetualUSDMargined {
 			endpoint = fmt.Sprintf("%s/%s", bnFuturesWsEndpoint, key)
-		} else if req.Instrument == exchange.InstrumentTypeMargin {
+		} else if req.MarketType == exchange.MarketTypeMargin {
 			endpoint = fmt.Sprintf("%s/%s", bnMarginWsEndpoint, key)
 		}
 	}
@@ -160,11 +160,11 @@ func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 		}
 
 		// 判断账户id是否存在listenkey，存在则不用再次添加，只添加uuid, 更新createTime 和 listenkey
-		if _, ok := o.listenKeySets[req.AccountId+string(req.Instrument)]; ok {
-			o.listenKeySets[req.AccountId+string(req.Instrument)].UUIDList = append(o.listenKeySets[req.AccountId+string(req.Instrument)].UUIDList, uuid)
-			o.listenKeySets[req.AccountId+string(req.Instrument)].CreatedTime = generateTime
-			o.listenKeySets[req.AccountId+string(req.Instrument)].Key = key
-			err := o.saveListenKeySet(req.AccountId, string(req.Instrument), o.listenKeySets[req.AccountId+string(req.Instrument)])
+		if _, ok := o.listenKeySets[req.AccountId+string(req.MarketType)]; ok {
+			o.listenKeySets[req.AccountId+string(req.MarketType)].UUIDList = append(o.listenKeySets[req.AccountId+string(req.MarketType)].UUIDList, uuid)
+			o.listenKeySets[req.AccountId+string(req.MarketType)].CreatedTime = generateTime
+			o.listenKeySets[req.AccountId+string(req.MarketType)].Key = key
+			err := o.saveListenKeySet(req.AccountId, string(req.MarketType), o.listenKeySets[req.AccountId+string(req.MarketType)])
 			if err != nil {
 				return nil, err
 			}
@@ -173,29 +173,29 @@ func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 				AccountID:        req.AccountId,
 				Key:              key,
 				CreatedTime:      generateTime,
-				Instrument:       req.Instrument,
+				MarketType:       req.MarketType,
 				APIKey:           req.APIKey,
 				SecretKey:        req.SecretKey,
 				UUIDList:         []string{uuid},
 				IsUnifiedAccount: req.IsUnifiedAccount,
 			}
-			o.listenKeySets[req.AccountId+string(req.Instrument)] = lk
+			o.listenKeySets[req.AccountId+string(req.MarketType)] = lk
 
-			err = o.saveListenKeySet(req.AccountId, string(req.Instrument), lk)
+			err = o.saveListenKeySet(req.AccountId, string(req.MarketType), lk)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	return o.listenKeySets[req.AccountId+string(req.Instrument)].UUIDList, nil
+	return o.listenKeySets[req.AccountId+string(req.MarketType)].UUIDList, nil
 }
 
-func (o *of) CloseStream(accountId string, instrument exchange.InstrumentType, uuid string) error {
+func (o *of) CloseStream(accountId string, marketType exchange.MarketType, uuid string) error {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 
-	lk, err := o.getListenKeySet(accountId, string(instrument))
+	lk, err := o.getListenKeySet(accountId, string(marketType))
 
 	if err != nil {
 		return err
@@ -216,9 +216,9 @@ func (o *of) CloseStream(accountId string, instrument exchange.InstrumentType, u
 	}
 
 	if len(lk.UUIDList) > 0 {
-		o.listenKeySets[accountId+string(instrument)] = lk
+		o.listenKeySets[accountId+string(marketType)] = lk
 
-		err := o.saveListenKeySet(accountId, string(instrument), lk)
+		err := o.saveListenKeySet(accountId, string(marketType), lk)
 		if err != nil {
 			return err
 		}
@@ -226,8 +226,8 @@ func (o *of) CloseStream(accountId string, instrument exchange.InstrumentType, u
 	}
 
 	// 如果UUIDList为空，则删除listenKey
-	delete(o.listenKeySets, lk.AccountID+string(lk.Instrument))
-	err = o.deleteListenKeySet(lk.AccountID, string(instrument))
+	delete(o.listenKeySets, lk.AccountID+string(lk.MarketType))
+	err = o.deleteListenKeySet(lk.AccountID, string(marketType))
 	if err != nil {
 		return err
 	}
@@ -254,7 +254,7 @@ func (o *of) StreamList() []streammanager.Stream {
 				AccountId:   v.AccountID,
 				APIKey:      v.APIKey,
 				Exchange:    o.name,
-				Instrument:  v.Instrument,
+				MarketType:  v.MarketType,
 				IsConnected: o.wsm.IsConnected(uuid),
 			})
 		}
@@ -293,7 +293,7 @@ func (o *of) createWebsocketHandler(req *streammanager.StreamRequest, rcli *redi
 		switch j.Get("e").MustString() {
 		// 现货杠杠订单更新 | 统一账户杠杆订单更新
 		case "executionReport":
-			if req.Instrument == exchange.InstrumentTypeFutures {
+			if req.MarketType == exchange.MarketTypeFuturesUSDMargined || req.MarketType == exchange.MarketTypePerpetualUSDMargined {
 				return
 			}
 			o.opts.logger.Debugf("Binance WS订单事件: %s", string(message))
@@ -339,7 +339,7 @@ func (o *of) createWebsocketHandler(req *streammanager.StreamRequest, rcli *redi
 
 		// 合约订单更新  ｜ 统一账户合约订单更新
 		case "ORDER_TRADE_UPDATE":
-			if req.Instrument == exchange.InstrumentTypeSpot || req.Instrument == exchange.InstrumentTypeMargin {
+			if req.MarketType == exchange.MarketTypeSpot || req.MarketType == exchange.MarketTypeMargin {
 				return
 			}
 			o.opts.logger.Debugf("Binance WS订单事件: %s", string(message))
@@ -404,16 +404,16 @@ func (o *of) createWebsocketHandler(req *streammanager.StreamRequest, rcli *redi
 
 			// 关闭accountId下所有连接
 			for _, lk := range o.listenKeySets {
-				if lk.AccountID+string(lk.Instrument) == req.AccountId+string(req.Instrument) {
+				if lk.AccountID+string(lk.MarketType) == req.AccountId+string(req.MarketType) {
 					for _, uuid := range lk.UUIDList {
 						o.wsm.CloseWebsocket(uuid)
 					}
 				}
 			}
 			// 删除 listenKey
-			delete(o.listenKeySets, req.AccountId+string(req.Instrument))
+			delete(o.listenKeySets, req.AccountId+string(req.MarketType))
 
-			o.deleteListenKeySet(req.AccountId, string(req.Instrument))
+			o.deleteListenKeySet(req.AccountId, string(req.MarketType))
 
 			// 推送事件
 			if req.ErrorEvent != nil {
@@ -452,13 +452,13 @@ func (o *of) generateListenKey(req *streammanager.StreamRequest) (string, error)
 	}
 
 	if !req.IsUnifiedAccount {
-		if req.Instrument == exchange.InstrumentTypeFutures {
+		if req.MarketType == exchange.MarketTypeFuturesUSDMargined || req.MarketType == exchange.MarketTypePerpetualUSDMargined {
 			r.Endpoint = "/fapi/v1/listenKey"
 			o.client.SetApiEndpoint(bnFuturesEndpoint)
-		} else if req.Instrument == exchange.InstrumentTypeSpot {
+		} else if req.MarketType == exchange.MarketTypeSpot {
 			r.Endpoint = "/api/v3/userDataStream"
 			o.client.SetApiEndpoint(bnSpotEndpoint)
-		} else if req.Instrument == exchange.InstrumentTypeMargin {
+		} else if req.MarketType == exchange.MarketTypeMargin {
 			r.Endpoint = "/sapi/v1/userDataStream"
 			o.client.SetApiEndpoint(bnSpotEndpoint)
 		}
@@ -493,14 +493,14 @@ func (o *of) updateListenKey(lk *listenKey) error {
 	}
 
 	if !lk.IsUnifiedAccount {
-		if lk.Instrument == exchange.InstrumentTypeSpot {
+		if lk.MarketType == exchange.MarketTypeSpot {
 			r.Endpoint = "/api/v3/userDataStream"
 			r.SetFormParam("listenKey", lk.Key)
 			o.client.SetApiEndpoint(bnSpotEndpoint)
-		} else if lk.Instrument == exchange.InstrumentTypeFutures {
+		} else if lk.MarketType == exchange.MarketTypeFuturesUSDMargined || lk.MarketType == exchange.MarketTypePerpetualUSDMargined {
 			r.Endpoint = "/fapi/v1/listenKey"
 			o.client.SetApiEndpoint(bnFuturesEndpoint)
-		} else if lk.Instrument == exchange.InstrumentTypeMargin {
+		} else if lk.MarketType == exchange.MarketTypeMargin {
 			r.Endpoint = "/sapi/v1/userDataStream"
 			r.SetFormParam("listenKey", lk.Key)
 			o.client.SetApiEndpoint(bnSpotEndpoint)
@@ -518,7 +518,7 @@ func (o *of) updateListenKey(lk *listenKey) error {
 
 	// 更新listenKey createTime
 	lk.CreatedTime = time.Now()
-	err = o.saveListenKeySet(lk.AccountID, string(lk.Instrument), lk)
+	err = o.saveListenKeySet(lk.AccountID, string(lk.MarketType), lk)
 	if err != nil {
 		return err
 	}
@@ -586,24 +586,24 @@ func (o *of) initListenKeySetsFromRedis() error {
 			continue
 		}
 		if lk != nil {
-			o.listenKeySets[lk.AccountID+string(lk.Instrument)] = lk
+			o.listenKeySets[lk.AccountID+string(lk.MarketType)] = lk
 		}
 	}
 
 	return nil
 }
 
-func (o *of) saveListenKeySet(accountId string, instrument string, lk *listenKey) error {
+func (o *of) saveListenKeySet(accountId string, marketType string, lk *listenKey) error {
 	data, err := json.Marshal(lk)
 	if err != nil {
 		return err
 	}
 
-	return o.rdb.Set(context.Background(), redisKeyPrefix+accountId+instrument, data, o.opts.listenKeyExpire).Err()
+	return o.rdb.Set(context.Background(), redisKeyPrefix+accountId+marketType, data, o.opts.listenKeyExpire).Err()
 }
 
-func (o *of) getListenKeySet(accountId string, instrument string) (*listenKey, error) {
-	data, err := o.rdb.Get(context.Background(), redisKeyPrefix+accountId+instrument).Result()
+func (o *of) getListenKeySet(accountId string, marketType string) (*listenKey, error) {
+	data, err := o.rdb.Get(context.Background(), redisKeyPrefix+accountId+marketType).Result()
 	if err != nil {
 		if err == redis.Nil {
 			return nil, nil
@@ -620,8 +620,8 @@ func (o *of) getListenKeySet(accountId string, instrument string) (*listenKey, e
 	return &lk, nil
 }
 
-func (o *of) deleteListenKeySet(accountId string, instrument string) error {
-	return o.rdb.Del(context.Background(), redisKeyPrefix+accountId+instrument).Err()
+func (o *of) deleteListenKeySet(accountId string, marketType string) error {
+	return o.rdb.Del(context.Background(), redisKeyPrefix+accountId+marketType).Err()
 }
 
 func pingHandler(appData string, conn websocket.WebSocketConn) error {
@@ -677,7 +677,7 @@ func swoueToOrderEvent(event *bnSpotWsOrderUpdateEvent) (*exchange.OrderResultEv
 		TransactionTime: event.TransactionTime,
 		Side:            exchange.SideType(event.Side),
 		Type:            exchange.OrderType(event.Type),
-		Instrument:      exchange.InstrumentTypeSpot,
+		MarketType:      exchange.MarketTypeSpot,
 		Volume:          volume,
 		By:              exchange.ByTaker,
 		Price:           price,
@@ -739,7 +739,7 @@ func swoueUniToOrderEvent(event *bnUniSpotWsOrderUpdateEvent) (*exchange.OrderRe
 		TransactionTime: event.TransactionTime,
 		Side:            exchange.SideType(event.Side),
 		Type:            exchange.OrderType(event.Type),
-		Instrument:      exchange.InstrumentTypeSpot,
+		MarketType:      exchange.MarketTypeSpot,
 		Volume:          volume,
 		By:              exchange.ByTaker,
 		Price:           price,
@@ -801,7 +801,7 @@ func fwoueToOrderEvent(event *bnFuturesWsOrderUpdateEvent) (*exchange.OrderResul
 		By:              exchange.ByTaker,
 		Side:            exchange.SideType(event.Side),
 		Type:            exchange.OrderType(event.Type),
-		Instrument:      exchange.InstrumentTypeFutures,
+		MarketType:      exchange.MarketTypePerpetualUSDMargined,
 		Volume:          volume,
 		Price:           price,
 		LatestVolume:    latestVolume,

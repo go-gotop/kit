@@ -80,14 +80,14 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 		PingHandler: pingHandler,
 		PongHandler: pongHandler,
 	}
-	switch req.Instrument {
-	case exchange.InstrumentTypeSpot:
+	switch req.MarketType {
+	case exchange.MarketTypeSpot:
 		endpoint = fmt.Sprintf("%s/%s@trade", bnSpotWsEndpoint, symbol)
 		fn = spotToTradeEvent
-	case exchange.InstrumentTypeMargin:
+	case exchange.MarketTypeMargin:
 		endpoint = fmt.Sprintf("%s/%s@trade", bnSpotWsEndpoint, symbol)
 		fn = marginToTradeEvent
-	case exchange.InstrumentTypeFutures:
+	case exchange.MarketTypeFuturesUSDMargined, exchange.MarketTypePerpetualUSDMargined:
 		endpoint = fmt.Sprintf("%s/%s@aggTrade", bnFuturesWsEndpoint, symbol)
 		fn = futuresToTradeEvent
 	}
@@ -113,7 +113,7 @@ func (d *df) AddDataFeed(req *dfmanager.DataFeedRequest) error {
 	d.streams[req.ID] = dfmanager.Stream{
 		UUID:        req.ID,
 		Symbol:      symbol,
-		Instrument:  req.Instrument,
+		MarketType:  req.MarketType,
 		DataType:    "trade",
 		IsConnected: true,
 	}
@@ -136,8 +136,8 @@ func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
 		PingHandler: pingHandler,
 		PongHandler: pongHandler,
 	}
-	switch req.Instrument {
-	case exchange.InstrumentTypeFutures:
+	switch req.MarketType {
+	case exchange.MarketTypeFuturesUSDMargined, exchange.MarketTypePerpetualUSDMargined:
 		symbol := strings.ToLower(req.Symbol)
 		endpoint = fmt.Sprintf("%s?streams=%s@markPrice@1s", bnFunturesStreamEndpoint, symbol)
 		fn = futuresMarkPriceToMarkPrice
@@ -164,7 +164,7 @@ func (d *df) AddMarketPriceDataFeed(req *dfmanager.MarkPriceRequest) error {
 	d.streams[req.ID] = dfmanager.Stream{
 		UUID:        req.ID,
 		Symbol:      req.Symbol,
-		Instrument:  req.Instrument,
+		MarketType:  req.MarketType,
 		DataType:    "markPrice",
 		IsConnected: true,
 	}
@@ -175,7 +175,7 @@ func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
 	var (
 		endpoint string
 		symbol   string
-		fn       func(message []byte, instrument exchange.InstrumentType) (*exchange.KlineEvent, error)
+		fn       func(message []byte, instrument exchange.MarketType) (*exchange.KlineEvent, error)
 	)
 	d.mux.Lock()
 	defer d.mux.Unlock()
@@ -190,14 +190,14 @@ func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
 		PongHandler: pongHandler,
 	}
 	fn = toKlineEvent
-	switch req.Instrument {
-	case exchange.InstrumentTypeSpot:
+	switch req.MarketType {
+	case exchange.MarketTypeSpot:
 		endpoint = bnSpotWsEndpoint
-	case exchange.InstrumentTypeFutures:
+	case exchange.MarketTypeFuturesUSDMargined, exchange.MarketTypePerpetualUSDMargined:
 		endpoint = bnFuturesWsEndpoint
 	}
 	wsHandler := func(message []byte) {
-		te, err := fn(message, req.Instrument)
+		te, err := fn(message, req.MarketType)
 		if err != nil {
 			if req.ErrorHandler != nil {
 				req.ErrorHandler(err)
@@ -218,7 +218,7 @@ func (d *df) AddKlineDataFeed(req *dfmanager.KlineRequest) error {
 	d.streams[req.ID] = dfmanager.Stream{
 		UUID:        req.ID,
 		Symbol:      symbol,
-		Instrument:  req.Instrument,
+		MarketType:  req.MarketType,
 		DataType:    "kline",
 		IsConnected: true,
 	}
@@ -289,7 +289,7 @@ func pongHandler(appData string, conn websocket.WebSocketConn) error {
 	return conn.WriteMessage(gwebsocket.PingMessage, []byte(appData))
 }
 
-func toKlineEvent(message []byte, instrument exchange.InstrumentType) (*exchange.KlineEvent, error) {
+func toKlineEvent(message []byte, instrument exchange.MarketType) (*exchange.KlineEvent, error) {
 	e := &binanceKlineEvent{}
 	err := json.Unmarshal(message, e)
 	if err != nil {
@@ -337,7 +337,7 @@ func toKlineEvent(message []byte, instrument exchange.InstrumentType) (*exchange
 
 	te := &exchange.KlineEvent{
 		Symbol:                   e.Symbol,
-		InstrumentType:           instrument,
+		MarketType:               instrument,
 		Open:                     open,
 		High:                     high,
 		Low:                      low,
@@ -366,7 +366,7 @@ func spotToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
 		Symbol:     e.Symbol,
 		TradedAt:   e.TradeTime,
 		Exchange:   exchange.BinanceExchange,
-		Instrument: exchange.InstrumentTypeSpot,
+		MarketType: exchange.MarketTypeSpot,
 	}
 	size, err := decimal.NewFromString(e.Quantity)
 	if err != nil {
@@ -398,7 +398,7 @@ func marginToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
 		Symbol:     e.Symbol,
 		TradedAt:   e.TradeTime,
 		Exchange:   exchange.BinanceExchange,
-		Instrument: exchange.InstrumentTypeMargin,
+		MarketType: exchange.MarketTypeMargin,
 	}
 	size, err := decimal.NewFromString(e.Quantity)
 	if err != nil {
@@ -429,7 +429,7 @@ func futuresToTradeEvent(message []byte) (*exchange.TradeEvent, error) {
 		Symbol:     e.Symbol,
 		TradedAt:   e.TradeTime,
 		Exchange:   exchange.BinanceExchange,
-		Instrument: exchange.InstrumentTypeFutures,
+		MarketType: exchange.MarketTypeFuturesUSDMargined,
 	}
 	size, err := decimal.NewFromString(e.Quantity)
 	if err != nil {

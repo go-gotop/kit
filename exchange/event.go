@@ -27,8 +27,8 @@ type OrderResultEvent struct {
 	By string
 	// CreatedBy 创建者 USER，SYSTEM
 	CreatedBy string
-	// Instrument 种类 SPOT, FUTURES
-	Instrument InstrumentType
+	// MarketType 种类 SPOT, FUTURES
+	MarketType MarketType
 	// Status 订单状态: OpeningPosition, HoldingPosition, ClosingPosition, ClosedPosition
 	Status PositionStatus
 	// ExecutionType 本次订单执行类型:NEW, TRADE, CANCELED, REJECTED, EXPIRED
@@ -82,8 +82,8 @@ type StrategySignalEvent struct {
 	OrderType OrderType
 	// PositionSide LONG，SHORT
 	PositionSide PositionSide
-	// Instrument 种类 SPOT, FUTURES, MARGIN
-	Instrument InstrumentType
+	// MarketType 种类 SPOT, FUTURES, MARGIN
+	MarketType MarketType
 	// Symbol 交易对
 	Symbol Symbol
 	// Size 头寸数量
@@ -111,7 +111,7 @@ type AccountChangeEvent struct {
 	// 账户类型: 经典 CLASSIC, 统一 UNIFIED
 	AccountType string
 	// 交易种类
-	Instrument []InstrumentType
+	MarketType []MarketType
 	// 交易所
 	Exchange string
 	// api_key
@@ -132,7 +132,7 @@ type TradeEvent struct {
 	Size       decimal.Decimal
 	Price      decimal.Decimal
 	Side       SideType
-	Instrument InstrumentType
+	MarketType MarketType
 }
 
 type MarkPriceEvent struct {
@@ -159,7 +159,7 @@ type KlineEvent struct {
 	NumberOfTrades           int64
 	TakerBuyBaseAssetVolume  decimal.Decimal
 	TakerBuyQuoteAssetVolume decimal.Decimal
-	InstrumentType           InstrumentType
+	MarketType               MarketType
 	Confirm                  string // 0 代表 K 线未完结，1 代表 K 线已完结。
 }
 
@@ -175,7 +175,7 @@ type KlineMarketEvent struct {
 
 type SymbolUpdateEvent struct {
 	// 种类
-	InstrumentType InstrumentType
+	MarketType MarketType
 	// 原始交易对名称
 	OriginalSymbol string
 	// 原始交易对资产名称

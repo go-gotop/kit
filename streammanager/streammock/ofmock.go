@@ -68,7 +68,7 @@ type listenKey struct {
 	APIKey      string
 	SecretKey   string
 	CreatedTime time.Time
-	Instrument  exchange.InstrumentType
+	MarketType  exchange.MarketType
 	uuidList    []string
 }
 
@@ -104,7 +104,7 @@ func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 	generateTime := time.Now()
 	uuid := uuid.New().String() // 一个链接的uuid，因为一个账户可能存在多条链接，所以不能用账户ID做标识
 	// 拼接 listenKey 到请求地址
-	endpoint := fmt.Sprintf("%s?listenKey=%s&instrument=%s", o.opts.wsEndpoint, key, req.Instrument)
+	endpoint := fmt.Sprintf("%s?listenKey=%s&instrument=%s", o.opts.wsEndpoint, key, req.MarketType)
 
 	wsHandler := func(message []byte) {
 		event := &wsOrderUpdateEvent{}
@@ -139,7 +139,7 @@ func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 		AccountID:   req.AccountId,
 		Key:         key,
 		CreatedTime: generateTime,
-		Instrument:  req.Instrument,
+		MarketType:  req.MarketType,
 		APIKey:      req.APIKey,
 		SecretKey:   req.SecretKey,
 		uuidList:    []string{uuid},
@@ -148,7 +148,7 @@ func (o *of) AddStream(req *streammanager.StreamRequest) ([]string, error) {
 	return o.listenKeySets[req.AccountId].uuidList, nil
 }
 
-func (o *of) CloseStream(accountId string, instrument exchange.InstrumentType, uuid string) error {
+func (o *of) CloseStream(accountId string, marketType exchange.MarketType, uuid string) error {
 	o.mux.Lock()
 	defer o.mux.Unlock()
 
@@ -196,7 +196,7 @@ func (o *of) StreamList() []streammanager.Stream {
 				AccountId:   v.AccountID,
 				APIKey:      v.APIKey,
 				Exchange:    o.name,
-				Instrument:  v.Instrument,
+				MarketType:  v.MarketType,
 				IsConnected: o.wsm.IsConnected(uuid),
 			})
 		}
@@ -234,7 +234,7 @@ func (o *of) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.Webso
 
 func (o *of) generateListenKey(req *streammanager.StreamRequest) (string, error) {
 	for _, lk := range o.listenKeySets {
-		if lk.AccountID == req.AccountId && lk.Instrument == req.Instrument {
+		if lk.AccountID == req.AccountId && lk.MarketType == req.MarketType {
 			return lk.Key, nil
 		}
 	}
@@ -247,7 +247,7 @@ func (o *of) generateListenKey(req *streammanager.StreamRequest) (string, error)
 	}
 
 	r.Endpoint = "/api/exchange/listenkey"
-	r.SetFormParam("instrumentType", req.Instrument)
+	r.SetFormParam("instrumentType", string(req.MarketType))
 	o.client.SetApiEndpoint(o.opts.mockExchangEndpoint)
 	data, err := o.client.CallAPI(context.Background(), r)
 	if err != nil {
@@ -366,7 +366,7 @@ func swoueToOrderEvent(event *wsOrderUpdateEvent) (*exchange.OrderResultEvent, e
 		return nil, err
 	}
 	ps := exchange.PositionSideLong
-	if event.Instrument == string(exchange.InstrumentTypeFutures) && event.PositionSide == string(exchange.PositionSideShort) {
+	if (event.Instrument == string(exchange.MarketTypeFuturesUSDMargined) || event.Instrument == string(exchange.MarketTypePerpetualUSDMargined)) && event.PositionSide == string(exchange.PositionSideShort) {
 		ps = exchange.PositionSideShort
 	}
 	avgPrice := decimal.Zero
@@ -385,7 +385,7 @@ func swoueToOrderEvent(event *wsOrderUpdateEvent) (*exchange.OrderResultEvent, e
 		By:              exchange.ByTaker, // 默认为吃单  mock 交易所目前只有市价单
 		Side:            exchange.SideType(event.Side),
 		Type:            exchange.OrderType(event.Type),
-		Instrument:      exchange.InstrumentType(event.Instrument),
+		MarketType:      exchange.MarketType(event.Instrument),
 		Volume:          volume,
 		Price:           price,
 		LatestVolume:    latestVolume,

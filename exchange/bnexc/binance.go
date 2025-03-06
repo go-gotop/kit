@@ -38,7 +38,7 @@ func (b *binance) GetDepth(ctx context.Context, req *exchange.GetDepthRequest) (
 		SecType:  bnhttp.SecTypeNone,
 	}
 	r = r.SetParams(bnhttp.Params{"symbol": req.Symbol.OriginalSymbol, "limit": req.Limit})
-	if req.InstrumentType == exchange.InstrumentTypeFutures {
+	if req.MarketType == exchange.MarketTypeFuturesUSDMargined || req.MarketType == exchange.MarketTypePerpetualUSDMargined {
 		r.Endpoint = "/fapi/v1/depth"
 		b.client.SetApiEndpoint(bnFuturesEndpoint)
 	} else {
@@ -100,14 +100,14 @@ func (b *binance) GetMarkPriceKline(ctx context.Context, req *exchange.GetMarkPr
 func (b *binance) GetKline(ctx context.Context, req *exchange.GetKlineRequest) ([]exchange.GetKlineResponse, error) {
 	var r *bnhttp.Request
 
-	if req.InstrumentType == exchange.InstrumentTypeSpot {
+	if req.MarketType == exchange.MarketTypeSpot {
 		r = &bnhttp.Request{
 			Method:   http.MethodGet,
 			Endpoint: "/api/v3/klines",
 			SecType:  bnhttp.SecTypeNone,
 		}
 		b.client.SetApiEndpoint(bnSpotEndpoint)
-	} else if req.InstrumentType == exchange.InstrumentTypeFutures {
+	} else if req.MarketType == exchange.MarketTypeFuturesUSDMargined || req.MarketType == exchange.MarketTypePerpetualUSDMargined {
 		r = &bnhttp.Request{
 			Method:   http.MethodGet,
 			Endpoint: "/fapi/v1/klines",
@@ -186,7 +186,7 @@ func (b *binance) GetKline(ctx context.Context, req *exchange.GetKlineRequest) (
 }
 
 func (b *binance) Assets(ctx context.Context, req *exchange.GetAssetsRequest) ([]exchange.Asset, error) {
-	if req.InstrumentType == exchange.InstrumentTypeSpot {
+	if req.MarketType == exchange.MarketTypeSpot {
 		result, err := b.spotAssets(ctx, req)
 		if err != nil {
 			return nil, err
@@ -213,25 +213,25 @@ func (b *binance) GetAccountConfig(ctx context.Context, req *exchange.GetAccount
 }
 
 func (b *binance) CreateOrder(ctx context.Context, o *exchange.CreateOrderRequest) error {
-	if o.Instrument == exchange.InstrumentTypeSpot {
+	if o.MarketType == exchange.MarketTypeSpot {
 		return b.createSpotOrder(ctx, o)
-	} else if o.Instrument == exchange.InstrumentTypeFutures {
+	} else if o.MarketType == exchange.MarketTypeFuturesUSDMargined || o.MarketType == exchange.MarketTypePerpetualUSDMargined {
 		return b.createFuturesOrder(ctx, o)
-	} else if o.Instrument == exchange.InstrumentTypeMargin {
+	} else if o.MarketType == exchange.MarketTypeMargin {
 		return b.createMarginOrder(ctx, o)
 	}
 	return exchange.ErrInstrumentTypeNotSupported
 }
 
 func (b *binance) SearchOrder(ctx context.Context, o *exchange.SearchOrderRequest) (*exchange.SearchOrderResponse, error) {
-	if o.InstrumentType == exchange.InstrumentTypeSpot {
+	if o.MarketType == exchange.MarketTypeSpot {
 		return b.searchSpotOrder(ctx, o)
 	}
 	return b.searchFuturesOrder(ctx, o)
 }
 
 func (b *binance) SearchTrades(ctx context.Context, o *exchange.SearchTradesRequest) ([]*exchange.SearchTradesResponse, error) {
-	if o.InstrumentType == exchange.InstrumentTypeSpot {
+	if o.MarketType == exchange.MarketTypeSpot {
 		return b.searchSpotTrades(ctx, o)
 	}
 	return b.searchFuturesTrades(ctx, o)
@@ -252,7 +252,7 @@ func (b *binance) GetMarginInterestRate(ctx context.Context, req *exchange.GetMa
 		Method:    http.MethodGet,
 		Endpoint:  "/sapi/v1/margin/next-hourly-interest-rate",
 		SecType:   bnhttp.SecTypeSigned,
-	}
+	}	
 	b.client.SetApiEndpoint(bnSpotEndpoint)
 	r = r.SetParams(bnhttp.Params{"assets": req.Assets, "isIsolated": req.IsIsolated})
 	data, err := b.client.CallAPI(ctx, r)
@@ -617,7 +617,7 @@ func (b *binance) searchSpotOrder(ctx context.Context, o *exchange.SearchOrderRe
 		SecretKey:      o.SecretKey,
 		Symbol:         o.Symbol.OriginalSymbol,
 		OrderID:        result.OrderID,
-		InstrumentType: exchange.InstrumentTypeSpot,
+		MarketType:     exchange.MarketTypeSpot,
 	})
 	if err != nil {
 		return nil, err
@@ -705,7 +705,7 @@ func (b *binance) searchFuturesOrder(ctx context.Context, o *exchange.SearchOrde
 		SecretKey:      o.SecretKey,
 		Symbol:         o.Symbol.OriginalSymbol,
 		OrderID:        result.OrderID,
-		InstrumentType: exchange.InstrumentTypeSpot,
+		MarketType:     exchange.MarketTypeSpot,
 	})
 	if err != nil {
 		return nil, err
@@ -854,7 +854,7 @@ func bnFuturesAssetsToAssets(b []*bnFuturesBalance) ([]exchange.Asset, error) {
 			Free:       balance,
 			Locked:     locked,
 			Exchange:   exchange.BinanceExchange,
-			Instrument: exchange.InstrumentTypeFutures,
+			MarketType: exchange.MarketTypeFuturesUSDMargined,
 		})
 	}
 	return result, nil
@@ -876,7 +876,7 @@ func bnSpotAssetsToAssets(s *bnSpotAccount) ([]exchange.Asset, error) {
 			Free:       free,
 			Locked:     locked,
 			Exchange:   exchange.BinanceExchange,
-			Instrument: exchange.InstrumentTypeSpot,
+			MarketType: exchange.MarketTypeSpot,
 		})
 	}
 	return result, nil
