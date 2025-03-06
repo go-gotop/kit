@@ -39,3 +39,9 @@ func WithCheckListenKeyPeriod(checkListenKeyPeriod time.Duration) Option {
 		o.checkListenKeyPeriod = checkListenKeyPeriod
 	}
 }
+
+func WithConnectCount(connectCount int) Option {
+	return func(o *options) {
+		o.connectCount = connectCount
+	}
+}

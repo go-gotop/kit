@@ -56,7 +56,7 @@ func NewBinanceStream(cli *bnhttp.Client, redisClient *redis.Client, limiter lim
 		maxConnDuration:      t,
 		listenKeyExpire:      58 * time.Minute,
 		checkListenKeyPeriod: 5 * time.Second,
-		connectCount:         2,
+		connectCount:         1,
 	}
 
 	for _, opt := range opts {
