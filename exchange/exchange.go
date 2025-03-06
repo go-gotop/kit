@@ -63,11 +63,11 @@ const (
 	ByMaker = "MAKER"
 	ByTaker = "TAKER"
 
-	CreatedByUser   = "BY_USER"
-	CreatedBySystem = "BY_SYSTEM"
+	CreatedByUser   = "USER"
+	CreatedBySystem = "SYSTEM"
 
-	TransactionByUser   = "BY_USER"
-	TransactionBySystem = "BY_SYSTEM"
+	TransactionByUser   = "USER"
+	TransactionBySystem = "SYSTEM"
 
 	PosModeIsolated PosMode = "ISOLATED" // 逐仓
 	PosModeCross    PosMode = "CROSS"    // 全仓
@@ -79,10 +79,10 @@ const (
 	MarginTypeMargin   MarginType = "MARGIN"
 	MarginTypeIsolated MarginType = "ISOLATED"
 
-	TransactionStatusTrading TransactionStatus = "TRANSACTION_TRADING"
-	TransactionStatusSuspend TransactionStatus = "TRANSACTION_SUSPEND"
-	TransactionStatusClose   TransactionStatus = "TRANSACTION_CLOSE"
-	TransactionStatusFinish  TransactionStatus = "TRANSACTION_FINISH"
+	TransactionStatusTrading TransactionStatus = "RUNNING"
+	TransactionStatusSuspend TransactionStatus = "SUSPENDED"
+	TransactionStatusClose   TransactionStatus = "STOPPED"
+	TransactionStatusFinish  TransactionStatus = "FINISHED"
 
 	SideTypeBuy  SideType = "BUY"
 	SideTypeSell SideType = "SELL"
@@ -106,11 +106,11 @@ const (
 	// 标识系统异常订单
 	OrderStateUnusual OrderState = "UNUSUAL"
 
-	PositionStatusNew     PositionStatus = "NEW_POSITION"
-	PositionStatusOpening PositionStatus = "OPENING_POSITION"
-	PositionStatusHolding PositionStatus = "HOlDING_POSITION"
-	PositionStatusClosing PositionStatus = "CLOSING_POSITION"
-	PositionStatusClosed  PositionStatus = "CLOSED_POSITION"
+	PositionStatusNew     PositionStatus = "NEW"
+	PositionStatusOpening PositionStatus = "OPENING"
+	PositionStatusHolding PositionStatus = "HOLDING"
+	PositionStatusClosing PositionStatus = "CLOSING"
+	PositionStatusClosed  PositionStatus = "CLOSED"
 
 	PositionSideLong  PositionSide = "LONG"
 	PositionSideShort PositionSide = "SHORT"
