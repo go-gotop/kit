@@ -305,9 +305,9 @@ func (o *of) createWebsocketHandler(req *streammanager.StreamRequest, rcli *redi
 					o.opts.logger.Error("order unmarshal error", err)
 					return
 				}
-				if !o.onlyProcessing(event.ClientOrderId+event.Status, rcli) {
-					return
-				}
+				// if !o.onlyProcessing(event.ClientOrderId+event.Status, rcli) {
+				// 	return
+				// }
 				oe, err := swoueUniToOrderEvent(event)
 				if err != nil {
 					o.opts.logger.Error("order to order event error", err)
@@ -324,9 +324,9 @@ func (o *of) createWebsocketHandler(req *streammanager.StreamRequest, rcli *redi
 					o.opts.logger.Error("order unmarshal error", err)
 					return
 				}
-				if !o.onlyProcessing(event.ClientOrderId+event.Status, rcli) {
-					return
-				}
+				// if !o.onlyProcessing(event.ClientOrderId+event.Status, rcli) {
+				// 	return
+				// }
 				oe, err := swoueToOrderEvent(event)
 				if err != nil {
 					o.opts.logger.Error("order to order event error", err)
@@ -349,9 +349,9 @@ func (o *of) createWebsocketHandler(req *streammanager.StreamRequest, rcli *redi
 				o.opts.logger.Error("order unmarshal error", err)
 				return
 			}
-			if !o.onlyProcessing(event.OrderTradeUpdate.ClientOrderID+event.OrderTradeUpdate.Status, rcli) {
-				return
-			}
+			// if !o.onlyProcessing(event.OrderTradeUpdate.ClientOrderID+event.OrderTradeUpdate.Status, rcli) {
+			// 	return
+			// }
 			oe, err := fwoueToOrderEvent(&event.OrderTradeUpdate)
 			if err != nil {
 				o.opts.logger.Error("order to order event error", err)
