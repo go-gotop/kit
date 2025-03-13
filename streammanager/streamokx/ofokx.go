@@ -428,6 +428,13 @@ func (o *of) toOrderEvent(message []byte, marketType exchange.MarketType) ([]*ex
 			filledVolume = decimal.Zero
 		}
 
+		mk := marketType
+		if event.Arg.InstType == "FUTURES" {
+			mk = exchange.MarketTypeFuturesUSDMargined
+		} else if event.Arg.InstType == "SWAP" {
+			mk = exchange.MarketTypePerpetualUSDMargined
+		}
+
 		ore := &exchange.OrderResultEvent{
 			PositionSide:      okexc.OkxTPositionSide(d.PosSide),
 			Exchange:          exchange.OkxExchange,
@@ -439,7 +446,7 @@ func (o *of) toOrderEvent(message []byte, marketType exchange.MarketType) ([]*ex
 			TransactionTime:   updateTime,
 			Side:              okexc.OkxTSide(d.Side),
 			Type:              okexc.OkxTMarketType(d.OrderType),
-			MarketType:        marketType,
+			MarketType:        mk,
 			Volume:            volume,
 			By:                by,
 			Price:             price,
