@@ -247,7 +247,7 @@ func (o *of) addWebsocket(req *websocket.WebsocketRequest, conf *wsmanager.Webso
 func (o *of) createWebsocketHandler(uuid string, req *streammanager.StreamRequest, subhandler func(uuid string, req *streammanager.StreamRequest) error) func(message []byte) {
 	return func(message []byte) {
 		if string(message) == "pong" {
-			// 每隔10s发��ping过去，预期会收到pong
+			// 每隔10s发ping过去，预期会收到pong
 			return
 		}
 		j, err := okhttp.NewJSON(message)
@@ -307,7 +307,8 @@ func (o *of) errorHandler(id string, req *streammanager.StreamRequest) func(err 
 
 		// 开启一个计时器，10秒后再次检查连接状态，如果连接已经关闭，则删除连接
 		time.AfterFunc(10*time.Second, func() {
-			if !o.wsm.GetWebsocket(id).IsConnected() {
+			ws := o.wsm.GetWebsocket(id)
+			if ws == nil || !ws.IsConnected() {
 				o.wsm.CloseWebsocket(id)
 				o.mux.Lock()
 				defer o.mux.Unlock()
