@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	okEndpoint = "https://aws.okx.com"
+	okEndpoint = "https://www.okx.com"
 )
 
 func NewOkx(cli *okhttp.Client) exchange.Exchange {
