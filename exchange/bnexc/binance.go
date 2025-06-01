@@ -252,7 +252,7 @@ func (b *binance) GetMarginInterestRate(ctx context.Context, req *exchange.GetMa
 		Method:    http.MethodGet,
 		Endpoint:  "/sapi/v1/margin/next-hourly-interest-rate",
 		SecType:   bnhttp.SecTypeSigned,
-	}	
+	}
 	b.client.SetApiEndpoint(bnSpotEndpoint)
 	r = r.SetParams(bnhttp.Params{"assets": req.Assets, "isIsolated": req.IsIsolated})
 	data, err := b.client.CallAPI(ctx, r)
@@ -431,6 +431,39 @@ func (b *binance) convertFundingRate(data *bnPremiumIndex) *exchange.GetFundingR
 }
 
 func (b *binance) CancelOrder(ctx context.Context, o *exchange.CancelOrderRequest) error {
+	r := &bnhttp.Request{
+		APIKey:    o.APIKey,
+		SecretKey: o.SecretKey,
+		Method:    http.MethodDelete,
+		Endpoint:  "/api/v3/order",
+		SecType:   bnhttp.SecTypeSigned,
+	}
+
+	if o.MarketType == exchange.MarketTypePerpetualUSDMargined {
+		r.Endpoint = "/fapi/v1/order"
+		b.client.SetApiEndpoint(bnFuturesEndpoint)
+	} else {
+		b.client.SetApiEndpoint(bnSpotEndpoint)
+	}
+
+	r = r.SetFormParams(bnhttp.Params{
+		"symbol":            o.Symbol,
+		"origClientOrderId": o.ClientOrderID,
+	})
+
+	data, err := b.client.CallAPI(ctx, r)
+	if err != nil {
+		return err
+	}
+
+	var res bnCancelOrderResponse
+	err = bnhttp.Json.Unmarshal(data, &res)
+	if err != nil {
+		return err
+	}
+	if res.Status != "CANCELED" {
+		return fmt.Errorf("order not canceled, status: %s", res.Status)
+	}
 	return nil
 }
 
@@ -613,11 +646,11 @@ func (b *binance) searchSpotOrder(ctx context.Context, o *exchange.SearchOrderRe
 
 	// 获取成交记录，统计手续费
 	trades, err := b.SearchTrades(ctx, &exchange.SearchTradesRequest{
-		APIKey:         o.APIKey,
-		SecretKey:      o.SecretKey,
-		Symbol:         o.Symbol.OriginalSymbol,
-		OrderID:        result.OrderID,
-		MarketType:     exchange.MarketTypeSpot,
+		APIKey:     o.APIKey,
+		SecretKey:  o.SecretKey,
+		Symbol:     o.Symbol.OriginalSymbol,
+		OrderID:    result.OrderID,
+		MarketType: exchange.MarketTypeSpot,
 	})
 	if err != nil {
 		return nil, err
@@ -701,11 +734,11 @@ func (b *binance) searchFuturesOrder(ctx context.Context, o *exchange.SearchOrde
 
 	// 获取成交记录，统计手续费
 	trades, err := b.SearchTrades(ctx, &exchange.SearchTradesRequest{
-		APIKey:         o.APIKey,
-		SecretKey:      o.SecretKey,
-		Symbol:         o.Symbol.OriginalSymbol,
-		OrderID:        result.OrderID,
-		MarketType:     exchange.MarketTypeSpot,
+		APIKey:     o.APIKey,
+		SecretKey:  o.SecretKey,
+		Symbol:     o.Symbol.OriginalSymbol,
+		OrderID:    result.OrderID,
+		MarketType: exchange.MarketTypeSpot,
 	})
 	if err != nil {
 		return nil, err

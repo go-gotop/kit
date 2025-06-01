@@ -432,8 +432,10 @@ type SearchTradesResponse struct {
 type CancelOrderRequest struct {
 	APIKey        string
 	SecretKey     string
+	Passphrase    string
 	ClientOrderID string
 	Symbol        string
+	MarketType    MarketType
 }
 
 type CancelOrderResponse struct {

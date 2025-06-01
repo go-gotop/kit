@@ -437,6 +437,37 @@ func (o *okx) CreateOrder(ctx context.Context, req *exchange.CreateOrderRequest)
 }
 
 func (o *okx) CancelOrder(ctx context.Context, req *exchange.CancelOrderRequest) error {
+	r := &okhttp.Request{
+		APIKey:     req.APIKey,
+		SecretKey:  req.SecretKey,
+		Passphrase: req.Passphrase,
+		Method:     "POST",
+		Endpoint:   "/api/v5/trade/cancel-order",
+		SecType:    okhttp.SecTypeSigned,
+	}
+
+	o.client.SetApiEndpoint(okEndpoint)
+
+	params := okhttp.Params{
+		"instId":  req.Symbol,
+		"clOrdId": req.ClientOrderID,
+	}
+
+	r.SetParams(params)
+	data, err := o.client.CallAPI(ctx, r)
+	if err != nil {
+		return err
+	}
+
+	var responseData CancelOrderResponse
+	if err := json.Unmarshal(data, &responseData); err != nil {
+		return fmt.Errorf("error parsing response data: %v", err)
+	}
+
+	if responseData.Code != "0" {
+		return fmt.Errorf("operation failed, code: %s, message: %s", responseData.Code, responseData.Msg)
+	}
+
 	return nil
 }
 
@@ -688,24 +719,24 @@ func (o *okx) GetPosition(ctx context.Context, req *exchange.GetPositionRequest)
 		}
 
 		position := exchange.GetPositionResponse{
-			Symbol:         item.InstID,
-			MarketType:     marketType,
-			AvgPrice:       avgPx,
-			Fee:            fee,
-			FundingFee:     fundingFee,
-			Size:           pos,
-			Upl:            upl,
-			Pnl:            pnl,
-			RealizedPnl:    realizedPnl,
-			Lever:          item.Lever,
-			LiqPx:          liqPx,
-			Margin:         margin,
-			Liab:           liab,
-			Interest:       interest,
-			BePx:           bePx,
-			PositionSide:   positionSide,
-			CreateTime:     ctime,
-			UpdateTime:     utime,
+			Symbol:       item.InstID,
+			MarketType:   marketType,
+			AvgPrice:     avgPx,
+			Fee:          fee,
+			FundingFee:   fundingFee,
+			Size:         pos,
+			Upl:          upl,
+			Pnl:          pnl,
+			RealizedPnl:  realizedPnl,
+			Lever:        item.Lever,
+			LiqPx:        liqPx,
+			Margin:       margin,
+			Liab:         liab,
+			Interest:     interest,
+			BePx:         bePx,
+			PositionSide: positionSide,
+			CreateTime:   ctime,
+			UpdateTime:   utime,
 		}
 		positions = append(positions, &position)
 	}

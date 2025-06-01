@@ -176,3 +176,15 @@ type DepthResponse struct {
 		Ts   string     `json:"ts"`
 	} `json:"data"`
 }
+
+type CancelOrderResponse struct {
+	Code string `json:"code"`
+	Data []struct {
+		ClOrdId string `json:"clOrdId"`
+		OrdId   string `json:"ordId"`
+		SCode   string `json:"sCode"`
+		SMsg    string `json:"sMsg"`
+		Ts      string `json:"ts"`
+	} `json:"data"`
+	Msg string `json:"msg"`
+}

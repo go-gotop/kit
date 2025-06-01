@@ -366,3 +366,10 @@ type bnDepthResponse struct {
 	Bid [][]string `json:"bids"`
 	Ask [][]string `json:"asks"`
 }
+
+
+type bnCancelOrderResponse struct {
+	Symbol string `json:"symbol"`
+	OrderID int64 `json:"orderId"`
+	Status string `json:"status"`
+}
