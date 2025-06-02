@@ -522,4 +522,6 @@ type Exchange interface {
 	GetKline(ctx context.Context, req *GetKlineRequest) ([]GetKlineResponse, error)
 	// 获取产品深度
 	GetDepth(ctx context.Context, req *GetDepthRequest) (GetDepthResponse, error)
+	// 获取最新价格
+	GetTickerPrice(ctx context.Context, symbol string, marketType MarketType) (decimal.Decimal, error)
 }

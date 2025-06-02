@@ -467,6 +467,39 @@ func (b *binance) CancelOrder(ctx context.Context, o *exchange.CancelOrderReques
 	return nil
 }
 
+func (b *binance) GetTickerPrice(ctx context.Context, symbol string, marketType exchange.MarketType) (decimal.Decimal, error) {
+	r := &bnhttp.Request{
+		Method:   http.MethodGet,
+		Endpoint: "/api/v3/ticker/price",
+		SecType:  bnhttp.SecTypeNone,
+	}
+
+	if marketType == exchange.MarketTypeSpot {
+		b.client.SetApiEndpoint(bnSpotEndpoint)
+	} else if marketType == exchange.MarketTypePerpetualUSDMargined {
+		r.Endpoint = "/fapi/v1/ticker/price"
+		b.client.SetApiEndpoint(bnFuturesEndpoint)
+	} else {
+		return decimal.Zero, exchange.ErrInstrumentTypeNotSupported
+	}
+
+	r = r.SetParams(bnhttp.Params{"symbol": symbol})
+	data, err := b.client.CallAPI(ctx, r)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	var res bnTickerPriceResponse
+	err = bnhttp.Json.Unmarshal(data, &res)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	price, err := decimal.NewFromString(res.Price)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	return price, nil
+}
+
 func (b *binance) spotAssets(ctx context.Context, req *exchange.GetAssetsRequest) (*bnSpotAccount, error) {
 	var res bnSpotAccount
 	r := &bnhttp.Request{

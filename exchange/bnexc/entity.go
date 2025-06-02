@@ -373,3 +373,9 @@ type bnCancelOrderResponse struct {
 	OrderID int64 `json:"orderId"`
 	Status string `json:"status"`
 }
+
+type bnTickerPriceResponse struct {
+	Symbol string `json:"symbol"`
+	Price  string `json:"price"`
+	Time   int64  `json:"time"`
+}

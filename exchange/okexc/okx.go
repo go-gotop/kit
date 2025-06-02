@@ -354,6 +354,50 @@ func (o *okx) GetKline(ctx context.Context, req *exchange.GetKlineRequest) ([]ex
 	return klines, nil
 }
 
+func (o *okx) GetTickerPrice(ctx context.Context, symbol string, marketType exchange.MarketType) (decimal.Decimal, error) {
+	r := &okhttp.Request{
+		Method:   "GET",
+		Endpoint: "/api/v5/market/ticker",
+		SecType:  okhttp.SecTypeNone,
+	}
+
+	o.client.SetApiEndpoint(okEndpoint)
+
+	params := okhttp.Params{
+		"instId": symbol,
+	}
+
+	if marketType == exchange.MarketTypeSpot {
+		params["instType"] = "SPOT"
+	} else if marketType == exchange.MarketTypeFuturesUSDMargined || marketType == exchange.MarketTypePerpetualUSDMargined {
+		params["instType"] = "FUTURES"
+	} else {
+		return decimal.Zero, exchange.ErrInstrumentTypeNotSupported
+	}
+
+	r.SetParams(params)
+	data, err := o.client.CallAPI(ctx, r)
+	if err != nil {
+		return decimal.Zero, err
+	}
+
+	var response TickerPriceResponse
+	if err := json.Unmarshal(data, &response); err != nil {
+		return decimal.Zero, fmt.Errorf("error parsing response data: %v", err)
+	}
+
+	if response.Code != "0" {
+		return decimal.Zero, fmt.Errorf("operation failed, code: %s, message: %s", response.Code, response.Msg)
+	}
+
+	price, err := decimal.NewFromString(response.Data[0].Last)
+	if err != nil {
+		return decimal.Zero, err
+	}
+
+	return price, nil
+}
+
 func (o *okx) GetAccountConfig(ctx context.Context, req *exchange.GetAccountConfigRequest) (exchange.GetAccountConfigResponse, error) {
 	r := &okhttp.Request{
 		APIKey:     req.APIKey,

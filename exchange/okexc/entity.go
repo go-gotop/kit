@@ -188,3 +188,12 @@ type CancelOrderResponse struct {
 	} `json:"data"`
 	Msg string `json:"msg"`
 }
+
+type TickerPriceResponse struct {
+	Code string `json:"code"`
+	Data []struct {
+		InstID string `json:"instId"`
+		Last   string `json:"last"`
+	} `json:"data"`
+	Msg string `json:"msg"`
+}
