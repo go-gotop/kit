@@ -494,10 +494,13 @@ func (o *okx) CancelOrder(ctx context.Context, req *exchange.CancelOrderRequest)
 
 	params := okhttp.Params{
 		"instId":  req.Symbol,
-		"clOrdId": req.ClientOrderID,
 	}
 
-	r.SetParams(params)
+	if req.ClientOrderID != "" {
+		params["clOrdId"] = req.ClientOrderID
+	}
+
+	r = r.SetJSONBody(params)
 	data, err := o.client.CallAPI(ctx, r)
 	if err != nil {
 		return err
