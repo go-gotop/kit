@@ -186,7 +186,7 @@ func (b *binance) GetKline(ctx context.Context, req *exchange.GetKlineRequest) (
 }
 
 func (b *binance) Assets(ctx context.Context, req *exchange.GetAssetsRequest) ([]exchange.Asset, error) {
-	if req.MarketType == exchange.MarketTypeSpot {
+	if req.MarketType == exchange.MarketTypeSpot || req.MarketType == exchange.MarketTypeMargin {
 		result, err := b.spotAssets(ctx, req)
 		if err != nil {
 			return nil, err
@@ -196,16 +196,18 @@ func (b *binance) Assets(ctx context.Context, req *exchange.GetAssetsRequest) ([
 			return nil, err
 		}
 		return data, nil
+	} else if req.MarketType == exchange.MarketTypeFuturesUSDMargined || req.MarketType == exchange.MarketTypePerpetualUSDMargined {
+		result, err := b.futuresAssets(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+		data, err := bnFuturesAssetsToAssets(result)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
 	}
-	result, err := b.futuresAssets(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-	data, err := bnFuturesAssetsToAssets(result)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
+	return nil, exchange.ErrInstrumentTypeNotSupported
 }
 
 func (b *binance) GetAccountConfig(ctx context.Context, req *exchange.GetAccountConfigRequest) (exchange.GetAccountConfigResponse, error) {
@@ -510,6 +512,9 @@ func (b *binance) spotAssets(ctx context.Context, req *exchange.GetAssetsRequest
 		SecType:   bnhttp.SecTypeSigned,
 	}
 	b.client.SetApiEndpoint(bnSpotEndpoint)
+
+	// 忽略零余额资产
+	r = r.SetParams(bnhttp.Params{"omitZeroBalances": true})
 	data, err := b.client.CallAPI(ctx, r)
 	if err != nil {
 		return nil, err
@@ -524,7 +529,7 @@ func (b *binance) spotAssets(ctx context.Context, req *exchange.GetAssetsRequest
 func (b *binance) futuresAssets(ctx context.Context, req *exchange.GetAssetsRequest) ([]*bnFuturesBalance, error) {
 	r := &bnhttp.Request{
 		Method:    http.MethodGet,
-		Endpoint:  "/fapi/v2/balance",
+		Endpoint:  "/fapi/v3/balance",
 		APIKey:    req.APIKey,
 		SecretKey: req.SecretKey,
 		SecType:   bnhttp.SecTypeSigned,
@@ -907,18 +912,27 @@ func (b *binance) searchFuturesTrades(ctx context.Context, o *exchange.SearchTra
 func bnFuturesAssetsToAssets(b []*bnFuturesBalance) ([]exchange.Asset, error) {
 	result := make([]exchange.Asset, 0)
 	for _, v := range b {
-		balance, err := decimal.NewFromString(v.AvailableBalance)
+		// 总余额(未包含未实现盈亏)
+		balance, err := decimal.NewFromString(v.Balance)
 		if err != nil {
 			return nil, err
 		}
-		locked, err := decimal.NewFromString(v.Balance)
+		// 未实现盈亏
+		crossUnPnl, err := decimal.NewFromString(v.CrossUnPnl)
+		if err != nil {
+			return nil, err
+		}
+		// 保证金余额
+		marginBalance := balance.Add(crossUnPnl)
+		// 可用余额
+		available, err := decimal.NewFromString(v.AvailableBalance)
 		if err != nil {
 			return nil, err
 		}
 		result = append(result, exchange.Asset{
 			AssetName:  v.Asset,
-			Free:       balance,
-			Locked:     locked,
+			Free:       available,
+			Locked:     marginBalance.Sub(available),
 			Exchange:   exchange.BinanceExchange,
 			MarketType: exchange.MarketTypeFuturesUSDMargined,
 		})
