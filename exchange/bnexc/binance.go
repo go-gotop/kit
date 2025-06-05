@@ -346,7 +346,63 @@ func (b *binance) GetMaxSize(ctx context.Context, req *exchange.GetMaxSizeReques
 }
 
 func (b *binance) GetPosition(ctx context.Context, req *exchange.GetPositionRequest) ([]*exchange.GetPositionResponse, error) {
-	return nil, nil
+	r := &bnhttp.Request{
+		APIKey:    req.APIKey,
+		SecretKey: req.SecretKey,
+		Method:    http.MethodGet,
+		Endpoint:  "/fapi/v2/positionRisk",
+		SecType:   bnhttp.SecTypeSigned,
+	}
+	b.client.SetApiEndpoint(bnFuturesEndpoint)
+	r = r.SetParams(bnhttp.Params{"symbol": req.Symbol})
+	data, err := b.client.CallAPI(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	var res []bnPositionRisk
+	err = bnhttp.Json.Unmarshal(data, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	var positions []*exchange.GetPositionResponse
+	for _, v := range res {
+		size, err := decimal.NewFromString(v.PositionAmt)
+		if err != nil {
+			return nil, err
+		}
+		avgPrice, err := decimal.NewFromString(v.EntryPrice)
+		if err != nil {
+			return nil, err
+		}
+		liqPx, err := decimal.NewFromString(v.LiqPrice)
+		if err != nil {
+			return nil, err
+		}
+		upl, err := decimal.NewFromString(v.UnRealizedProfit)
+		if err != nil {
+			return nil, err
+		}
+		bePx, err := decimal.NewFromString(v.BreakEvenPrice)
+		if err != nil {
+			return nil, err
+		}
+
+		positions = append(positions, &exchange.GetPositionResponse{
+			Symbol:       v.Symbol,
+			MarketType:   exchange.MarketTypePerpetualUSDMargined,
+			AvgPrice:     avgPrice,
+			Size:         size,
+			Upl:          upl,
+			Lever:        v.Leverage,
+			LiqPx:        liqPx,
+			BePx:         bePx,
+			PositionSide: exchange.PositionSide(v.PositionSide),
+			CreateTime:   v.UpdateTime,
+			UpdateTime:   v.UpdateTime,
+		})
+	}
+	return positions, nil
 }
 
 func (b *binance) GetHistoryPosition(ctx context.Context, req *exchange.GetPositionHistoryRequest) error {

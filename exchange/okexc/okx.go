@@ -667,6 +667,8 @@ func (o *okx) GetPosition(ctx context.Context, req *exchange.GetPositionRequest)
 		SecType:    okhttp.SecTypeSigned,
 	}
 
+	r.SetParam("instId", req.Symbol)
+
 	o.client.SetApiEndpoint(okEndpoint)
 	data, err := o.client.CallAPI(ctx, r)
 	if err != nil {

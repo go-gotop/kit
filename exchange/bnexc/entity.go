@@ -367,15 +367,45 @@ type bnDepthResponse struct {
 	Ask [][]string `json:"asks"`
 }
 
-
 type bnCancelOrderResponse struct {
-	Symbol string `json:"symbol"`
-	OrderID int64 `json:"orderId"`
-	Status string `json:"status"`
+	Symbol  string `json:"symbol"`
+	OrderID int64  `json:"orderId"`
+	Status  string `json:"status"`
 }
 
 type bnTickerPriceResponse struct {
 	Symbol string `json:"symbol"`
 	Price  string `json:"price"`
 	Time   int64  `json:"time"`
+}
+
+type bnPositionRisk struct {
+	// 交易对
+	Symbol string `json:"symbol"`
+	// 头寸数量
+	PositionAmt string `json:"positionAmt"`
+	// 开仓均价
+	EntryPrice string `json:"entryPrice"`
+	// 盈亏平衡价
+	BreakEvenPrice string `json:"breakEvenPrice"`
+	// 当前标记价格
+	MarkPrice string `json:"markPrice"`
+	// 持仓未实现盈亏
+	UnRealizedProfit string `json:"unRealizedProfit"`
+	// 参考强平价格
+	LiqPrice string `json:"liquidationPrice"`
+	// 杠杆倍数
+	Leverage string `json:"leverage"`
+	// 当前杠杆倍数允许的名义价值上限
+	MaxNotionalValue string `json:"maxNotionalValue"`
+	// 逐仓模式或全仓模式
+	MarginType string `json:"marginType"`
+	// 逐仓保证金
+	IsolatedMargin string `json:"isolatedMargin"`
+	// 持仓方向
+	PositionSide string `json:"positionSide"`
+	// 名义价值
+	Notional string `json:"notional"`
+	// 更新时间
+	UpdateTime int64 `json:"updateTime"`
 }

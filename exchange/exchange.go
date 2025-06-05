@@ -170,9 +170,9 @@ var (
 )
 
 type GetDepthRequest struct {
-	Symbol         Symbol
-	Limit          uint8
-	MarketType     MarketType
+	Symbol     Symbol
+	Limit      uint8
+	MarketType MarketType
 }
 
 type GetDepthResponse struct {
@@ -188,12 +188,12 @@ type GetAccountConfigRequest struct {
 }
 
 type GetKlineRequest struct {
-	Symbol         Symbol
-	Start          int64
-	End            int64
-	Period         string
-	Limit          uint8
-	MarketType     MarketType
+	Symbol     Symbol
+	Start      int64
+	End        int64
+	Period     string
+	Limit      uint8
+	MarketType MarketType
 }
 
 type GetKlineResponse struct {
@@ -280,6 +280,7 @@ type GetPositionRequest struct {
 	APIKey     string
 	SecretKey  string
 	Passphrase string
+	Symbol     string
 }
 
 type GetPositionHistoryRequest struct {
@@ -300,24 +301,24 @@ type SetLeverageRequest struct {
 }
 
 type GetPositionResponse struct {
-	Symbol         string
-	MarketType     MarketType
-	AvgPrice       decimal.Decimal // 开仓均价
-	Fee            decimal.Decimal
-	FundingFee     decimal.Decimal
-	PositionSide   PositionSide
-	Size           decimal.Decimal // 仓位数量
-	Upl            decimal.Decimal // 未实现盈亏
-	Pnl            decimal.Decimal // 平仓订单累积收益额
-	RealizedPnl    decimal.Decimal // 已实现盈亏
-	Lever          string          // 杠杆倍数
-	LiqPx          decimal.Decimal // 强平价格
-	Margin         decimal.Decimal // 保证金率
-	Liab           decimal.Decimal // 仓位的负债
-	Interest       decimal.Decimal // 仓位的利息
-	BePx           decimal.Decimal // 盈亏平衡价
-	CreateTime     int64           // 创建时间
-	UpdateTime     int64           // 更新时间
+	Symbol       string
+	MarketType   MarketType
+	AvgPrice     decimal.Decimal // 开仓均价
+	Fee          decimal.Decimal
+	FundingFee   decimal.Decimal
+	PositionSide PositionSide
+	Size         decimal.Decimal // 仓位数量
+	Upl          decimal.Decimal // 未实现盈亏
+	Pnl          decimal.Decimal // 平仓订单累积收益额
+	RealizedPnl  decimal.Decimal // 已实现盈亏
+	Lever        string          // 杠杆倍数
+	LiqPx        decimal.Decimal // 强平价格
+	Margin       decimal.Decimal // 保证金率
+	Liab         decimal.Decimal // 仓位的负债
+	Interest     decimal.Decimal // 仓位的利息
+	BePx         decimal.Decimal // 盈亏平衡价
+	CreateTime   int64           // 创建时间
+	UpdateTime   int64           // 更新时间
 
 }
 
@@ -342,10 +343,10 @@ type GetFundingRateResponse struct {
 }
 
 type GetAssetsRequest struct {
-	APIKey         string
-	SecretKey      string
-	Passphrase     string
-	MarketType     MarketType
+	APIKey     string
+	SecretKey  string
+	Passphrase string
+	MarketType MarketType
 }
 
 type CreateOrderRequest struct {
@@ -380,12 +381,12 @@ type CreateOrderResponse struct {
 }
 
 type SearchOrderRequest struct {
-	APIKey         string
-	SecretKey      string
-	Passphrase     string
-	ClientOrderID  string
-	MarketType     MarketType
-	Symbol         Symbol
+	APIKey        string
+	SecretKey     string
+	Passphrase    string
+	ClientOrderID string
+	MarketType    MarketType
+	Symbol        Symbol
 }
 
 type SearchOrderResponse struct {
@@ -411,11 +412,11 @@ type SearchOrderResponse struct {
 
 // 账户成交历史
 type SearchTradesRequest struct {
-	APIKey         string
-	SecretKey      string
-	Symbol         string
-	OrderID        string
-	MarketType     MarketType
+	APIKey     string
+	SecretKey  string
+	Symbol     string
+	OrderID    string
+	MarketType MarketType
 }
 
 type SearchTradesResponse struct {
