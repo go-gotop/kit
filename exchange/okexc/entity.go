@@ -11,6 +11,9 @@ func OkxSide(side exchange.SideType) string {
 }
 
 func OkxOrderType(orderType exchange.OrderType) string {
+	if orderType == exchange.OrderTypeLimitMaker {
+		return "post_only"
+	}
 	return strings.ToLower(string(orderType))
 }
 

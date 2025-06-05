@@ -966,13 +966,17 @@ func toBnFuturesOrderParams(o *exchange.CreateOrderRequest) bnhttp.Params {
 	m := bnhttp.Params{
 		"symbol":           o.Symbol.OriginalSymbol,
 		"side":             o.Side,
-		"type":             o.OrderType,
 		"quantity":         o.Size,
-		"newOrderRespType": "RESULT",
+		"newOrderRespType": "ACK",
 	}
-	if o.OrderType == exchange.OrderTypeLimit {
+	if o.OrderType == exchange.OrderTypeLimitMaker {
+		m["type"] = "LIMIT"
+		m["timeInForce"] = "GTX" // 无法成为maker单则取消
+	} else if o.OrderType == exchange.OrderTypeLimit {
+		m["type"] = "LIMIT"
 		m["timeInForce"] = "GTC"
-		m["newOrderRespType"] = "ACK"
+	} else {
+		m["type"] = o.OrderType
 	}
 	if o.PositionSide != "" {
 		m["positionSide"] = o.PositionSide

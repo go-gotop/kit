@@ -101,6 +101,7 @@ const (
 	SideTypeSell SideType = "SELL"
 
 	OrderTypeLimit              OrderType = "LIMIT"
+	OrderTypeLimitMaker         OrderType = "LIMIT_MAKER" // 限价只做Marker单
 	OrderTypeMarket             OrderType = "MARKET"
 	OrderTypeStop               OrderType = "STOP"
 	OrderTypeStopMarket         OrderType = "STOP_MARKET"
