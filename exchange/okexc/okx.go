@@ -689,7 +689,7 @@ func (o *okx) GetPosition(ctx context.Context, req *exchange.GetPositionRequest)
 
 		avgPx, err := decimal.NewFromString(item.AvgPx)
 		if err != nil {
-			return nil, err
+			avgPx = decimal.Zero
 		}
 
 		fee, err := decimal.NewFromString(item.Fee)
@@ -749,12 +749,12 @@ func (o *okx) GetPosition(ctx context.Context, req *exchange.GetPositionRequest)
 
 		ctime, err := strconv.ParseInt(item.CTime, 10, 64)
 		if err != nil {
-			return nil, err
+			ctime = 0
 		}
 
 		utime, err := strconv.ParseInt(item.UTime, 10, 64)
 		if err != nil {
-			return nil, err
+			utime = 0
 		}
 
 		positionSide, err := o.posSideToPositionSide(item.InstType, item.PosSide, item.Pos, item.PosCcy, item.Ccy)
