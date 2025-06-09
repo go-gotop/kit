@@ -762,8 +762,12 @@ func (o *okx) GetPosition(ctx context.Context, req *exchange.GetPositionRequest)
 			return nil, err
 		}
 
-		marketType := exchange.MarketTypeFuturesUSDMargined
-		if item.InstType == "MARGIN" {
+		marketType := exchange.MarketTypeSpot
+		if item.InstType == "SWAP" {
+			marketType = exchange.MarketTypePerpetualUSDMargined
+		} else if item.InstType == "FUTURES" {
+			marketType = exchange.MarketTypeFuturesUSDMargined
+		} else if item.InstType == "MARGIN" {
 			marketType = exchange.MarketTypeMargin
 		}
 
