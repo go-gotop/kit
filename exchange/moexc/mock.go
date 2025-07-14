@@ -169,6 +169,10 @@ func (m *mockExchange) SetLeverage(ctx context.Context, req *exchange.SetLeverag
 	return nil
 }
 
+func (m *mockExchange) GetLeverage(ctx context.Context, req *exchange.GetLeverageRequest) (exchange.GetLeverageResponse, error) {
+	return exchange.GetLeverageResponse{}, errors.New("not implemented")
+}
+
 func (m *mockExchange) GetPosition(ctx context.Context, req *exchange.GetPositionRequest) ([]*exchange.GetPositionResponse, error) {
 	return nil, nil
 }

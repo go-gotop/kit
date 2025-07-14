@@ -856,6 +856,43 @@ func (o *okx) SetLeverage(ctx context.Context, req *exchange.SetLeverageRequest)
 	return nil
 }
 
+func (o *okx) GetLeverage(ctx context.Context, req *exchange.GetLeverageRequest) (exchange.GetLeverageResponse, error) {
+	r := &okhttp.Request{
+		APIKey:     req.APIKey,
+		SecretKey:  req.SecretKey,
+		Passphrase: req.Passphrase,
+		Method:     "GET",
+		Endpoint:   "/api/v5/account/leverage-info",
+		SecType:    okhttp.SecTypeSigned,
+	}
+	r.SetParam("instId", req.Symbol)
+	r.SetParam("mgnMode", OkxPosMode(exchange.PosModeCross))
+	o.client.SetApiEndpoint(okEndpoint)
+	data, err := o.client.CallAPI(ctx, r)
+	if err != nil {
+		return exchange.GetLeverageResponse{}, err
+	}
+
+	var response LeverageInfoResponse
+	if err := json.Unmarshal(data, &response); err != nil {
+		return exchange.GetLeverageResponse{}, fmt.Errorf("error parsing response data: %v", err)
+	}
+
+	if response.Code != "0" {
+		return exchange.GetLeverageResponse{}, fmt.Errorf("operation failed, code: %s, message: %s", response.Code, response.Msg)
+	}
+
+	if response.Data == nil || len(response.Data) == 0 {
+		return exchange.GetLeverageResponse{}, fmt.Errorf("operation failed, code: %s, message: %s", response.Code, response.Msg)
+	}
+
+	return exchange.GetLeverageResponse{
+		Symbol:     response.Data[0].InstID,
+		Leverage:   response.Data[0].Lever,
+		MarginType: response.Data[0].MgnMode,
+	}, nil
+}
+
 func (o *okx) GetMaxSize(ctx context.Context, req *exchange.GetMaxSizeRequest) ([]exchange.GetMaxSizeResponse, error) {
 	r := &okhttp.Request{
 		APIKey:     req.APIKey,

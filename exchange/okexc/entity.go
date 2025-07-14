@@ -147,6 +147,17 @@ type LeverageResponse struct {
 	Msg string `json:"msg"`
 }
 
+type LeverageInfoResponse struct {
+	Code string `json:"code"`
+	Data []struct {
+		InstID  string `json:"instId"`
+		Lever   string `json:"lever"`
+		MgnMode string `json:"mgnMode"`
+		PosSide string `json:"posSide"`
+	} `json:"data"`
+	Msg string `json:"msg"`
+}
+
 type MaxSizeResponse struct {
 	Code string `json:"code"`
 	Data []struct {

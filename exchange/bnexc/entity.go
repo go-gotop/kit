@@ -409,3 +409,9 @@ type bnPositionRisk struct {
 	// 更新时间
 	UpdateTime int64 `json:"updateTime"`
 }
+
+type bnFuturesLeverageResponse struct {
+	Symbol     string `json:"symbol"`
+	Leverage   string `json:"leverage"`
+	MarginType string `json:"marginType"`
+}

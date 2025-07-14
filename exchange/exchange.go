@@ -298,6 +298,7 @@ type SetLeverageRequest struct {
 	Mode       string
 	Lever      string
 	Symbol     string
+	MarketType MarketType
 }
 
 type GetPositionResponse struct {
@@ -443,6 +444,21 @@ type CancelOrderRequest struct {
 type CancelOrderResponse struct {
 }
 
+// 获取标的物杠杆配置
+type GetLeverageRequest struct {
+	APIKey     string
+	SecretKey  string
+	Passphrase string
+	Symbol     string
+	MarketType MarketType
+}
+
+type GetLeverageResponse struct {
+	Symbol     string
+	Leverage   string
+	MarginType string
+}
+
 type Asset struct {
 	AssetName  string
 	Exchange   string
@@ -514,6 +530,8 @@ type Exchange interface {
 	GetHistoryPosition(ctx context.Context, req *GetPositionHistoryRequest) error
 	// 批量设置杠杠
 	SetLeverage(ctx context.Context, req *SetLeverageRequest) error
+	// 获取标的物杠杆配置
+	GetLeverage(ctx context.Context, req *GetLeverageRequest) (GetLeverageResponse, error)
 	// 获取账户配置
 	GetAccountConfig(ctx context.Context, req *GetAccountConfigRequest) (GetAccountConfigResponse, error)
 	// 获取最大下单量

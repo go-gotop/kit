@@ -90,7 +90,56 @@ func (b *binance) GetDepth(ctx context.Context, req *exchange.GetDepthRequest) (
 }
 
 func (b *binance) SetLeverage(ctx context.Context, req *exchange.SetLeverageRequest) error {
+	if req.MarketType == exchange.MarketTypePerpetualUSDMargined {
+		r := &bnhttp.Request{
+			APIKey:    req.APIKey,
+			SecretKey: req.SecretKey,
+			Method:    http.MethodPost,
+			Endpoint:  "/fapi/v1/leverage",
+		}
+		r = r.SetParams(bnhttp.Params{
+			"symbol":   req.Symbol,
+			"leverage": req.Lever,
+		})
+		b.client.SetApiEndpoint(bnFuturesEndpoint)
+		data, err := b.client.CallAPI(ctx, r)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("set leverage: %s\n", string(data))
+	}
 	return nil
+}
+
+func (b *binance) GetLeverage(ctx context.Context, req *exchange.GetLeverageRequest) (exchange.GetLeverageResponse, error) {
+	if req.MarketType == exchange.MarketTypePerpetualUSDMargined {
+		r := &bnhttp.Request{
+			APIKey:    req.APIKey,
+			SecretKey: req.SecretKey,
+			Method:    http.MethodGet,
+			Endpoint:  "/fapi/v1/symbolConfig",
+		}
+		b.client.SetApiEndpoint(bnFuturesEndpoint)
+		data, err := b.client.CallAPI(ctx, r)
+		if err != nil {
+			return exchange.GetLeverageResponse{}, err
+		}
+		var results []bnFuturesLeverageResponse
+		err = bnhttp.Json.Unmarshal(data, &results)
+		if err != nil {
+			return exchange.GetLeverageResponse{}, err
+		}
+		for _, v := range results {
+			if v.Symbol == req.Symbol {
+				return exchange.GetLeverageResponse{
+					Symbol:     v.Symbol,
+					Leverage:   v.Leverage,
+					MarginType: v.MarginType,
+				}, nil
+			}
+		}
+	}
+	return exchange.GetLeverageResponse{}, errors.New("symbol not found")
 }
 
 func (b *binance) GetMarkPriceKline(ctx context.Context, req *exchange.GetMarkPriceKlineRequest) ([]exchange.GetMarkPriceKlineResponse, error) {
