@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/go-gotop/kit/exchange"
 	"github.com/go-gotop/kit/requests/bnhttp"
@@ -96,6 +97,7 @@ func (b *binance) SetLeverage(ctx context.Context, req *exchange.SetLeverageRequ
 			SecretKey: req.SecretKey,
 			Method:    http.MethodPost,
 			Endpoint:  "/fapi/v1/leverage",
+			SecType:   bnhttp.SecTypeSigned,
 		}
 		r = r.SetParams(bnhttp.Params{
 			"symbol":   req.Symbol,
@@ -114,11 +116,13 @@ func (b *binance) SetLeverage(ctx context.Context, req *exchange.SetLeverageRequ
 func (b *binance) GetLeverage(ctx context.Context, req *exchange.GetLeverageRequest) (exchange.GetLeverageResponse, error) {
 	if req.MarketType == exchange.MarketTypePerpetualUSDMargined {
 		r := &bnhttp.Request{
-			APIKey:    req.APIKey,
-			SecretKey: req.SecretKey,
 			Method:    http.MethodGet,
 			Endpoint:  "/fapi/v1/symbolConfig",
+			APIKey:    req.APIKey,
+			SecretKey: req.SecretKey,
+			SecType:   bnhttp.SecTypeSigned,
 		}
+		r = r.SetParams(bnhttp.Params{"symbol": req.Symbol})
 		b.client.SetApiEndpoint(bnFuturesEndpoint)
 		data, err := b.client.CallAPI(ctx, r)
 		if err != nil {
@@ -133,7 +137,7 @@ func (b *binance) GetLeverage(ctx context.Context, req *exchange.GetLeverageRequ
 			if v.Symbol == req.Symbol {
 				return exchange.GetLeverageResponse{
 					Symbol:     v.Symbol,
-					Leverage:   v.Leverage,
+					Leverage:   strconv.FormatInt(v.Leverage, 10),
 					MarginType: v.MarginType,
 				}, nil
 			}

@@ -412,6 +412,6 @@ type bnPositionRisk struct {
 
 type bnFuturesLeverageResponse struct {
 	Symbol     string `json:"symbol"`
-	Leverage   string `json:"leverage"`
+	Leverage   int64  `json:"leverage"`
 	MarginType string `json:"marginType"`
 }
