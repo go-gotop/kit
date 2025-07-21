@@ -40,11 +40,12 @@ func (b *binance) TransferAsset(ctx context.Context, req *exchange.TransferAsset
 		Endpoint:  "/sapi/v1/asset/transfer",
 		SecType:   bnhttp.SecTypeSigned,
 	}
-	r = r.SetFormParams(bnhttp.Params{
+	r = r.SetParams(bnhttp.Params{
 		"asset":  req.Asset,
 		"amount": req.Amount,
 		"type":   req.Type,
 	})
+	b.client.SetApiEndpoint(bnSpotEndpoint)
 	data, err := b.client.CallAPI(ctx, r)
 	if err != nil {
 		return err
