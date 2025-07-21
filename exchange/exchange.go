@@ -459,6 +459,15 @@ type GetLeverageResponse struct {
 	MarginType string
 }
 
+type TransferAssetRequest struct {
+	APIKey     string
+	SecretKey  string
+	Passphrase string
+	Type       string // 划转类型
+	Asset      string // 资产名称
+	Amount     decimal.Decimal
+}
+
 type Asset struct {
 	AssetName  string
 	Exchange   string
@@ -544,4 +553,6 @@ type Exchange interface {
 	GetDepth(ctx context.Context, req *GetDepthRequest) (GetDepthResponse, error)
 	// 获取最新价格
 	GetTickerPrice(ctx context.Context, symbol string, marketType MarketType) (decimal.Decimal, error)
+	// 资产划转
+	TransferAsset(ctx context.Context, req *TransferAssetRequest) error
 }

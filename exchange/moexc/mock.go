@@ -43,6 +43,10 @@ func (m *mockExchange) Name() string {
 	return exchange.MockExchange
 }
 
+func (m *mockExchange) TransferAsset(ctx context.Context, req *exchange.TransferAssetRequest) error {
+	return errors.New("not implemented")
+}
+
 func (m *mockExchange) GetTickerPrice(ctx context.Context, symbol string, marketType exchange.MarketType) (decimal.Decimal, error) {
 	return decimal.Zero, errors.New("not implemented")
 }

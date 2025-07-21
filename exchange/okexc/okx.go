@@ -3,6 +3,7 @@ package okexc
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -28,6 +29,10 @@ type okx struct {
 
 func (o *okx) Name() string {
 	return exchange.OkxExchange
+}
+
+func (o *okx) TransferAsset(ctx context.Context, req *exchange.TransferAssetRequest) error {
+	return errors.New("not implemented")
 }
 
 func (o *okx) GetDepth(ctx context.Context, req *exchange.GetDepthRequest) (exchange.GetDepthResponse, error) {
@@ -493,7 +498,7 @@ func (o *okx) CancelOrder(ctx context.Context, req *exchange.CancelOrderRequest)
 	o.client.SetApiEndpoint(okEndpoint)
 
 	params := okhttp.Params{
-		"instId":  req.Symbol,
+		"instId": req.Symbol,
 	}
 
 	if req.ClientOrderID != "" {

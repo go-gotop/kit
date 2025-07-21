@@ -32,6 +32,27 @@ func (b *binance) Name() string {
 	return exchange.BinanceExchange
 }
 
+func (b *binance) TransferAsset(ctx context.Context, req *exchange.TransferAssetRequest) error {
+	r := &bnhttp.Request{
+		APIKey:    req.APIKey,
+		SecretKey: req.SecretKey,
+		Method:    http.MethodPost,
+		Endpoint:  "/sapi/v1/asset/transfer",
+		SecType:   bnhttp.SecTypeSigned,
+	}
+	r = r.SetFormParams(bnhttp.Params{
+		"asset":  req.Asset,
+		"amount": req.Amount,
+		"type":   req.Type,
+	})
+	data, err := b.client.CallAPI(ctx, r)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("transfer asset: %s\n", string(data))
+	return nil
+}
+
 func (b *binance) GetDepth(ctx context.Context, req *exchange.GetDepthRequest) (exchange.GetDepthResponse, error) {
 	r := &bnhttp.Request{
 		Method:   http.MethodGet,
